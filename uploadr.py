@@ -418,7 +418,7 @@ class Uploadr:
         for ext in RAW_EXT:
             print ("About to convert files with extension:" + ext + " files.")
 
-            for dirpath, dirnames, filenames in os.walk(unicode(FILES_DIR), followlinks=True):
+            for dirpath, dirnames, filenames in os.walk(unicode(FILES_DIR, 'utf-8'), followlinks=True):
                 if '.picasaoriginals' in dirnames:
                     dirnames.remove('.picasaoriginals')
                 if '@eaDir' in dirnames:
@@ -462,7 +462,7 @@ class Uploadr:
         """
 
         files = []
-        for dirpath, dirnames, filenames in os.walk(unicode(FILES_DIR), followlinks=True):
+        for dirpath, dirnames, filenames in os.walk(unicode(FILES_DIR, 'utf-8'), followlinks=True):
             for f in filenames:
                 filePath = os.path.join(dirpath, f)
                 if self.isFileIgnored(filePath):
@@ -491,7 +491,7 @@ class Uploadr:
         """
 
 	if args.dry_run :
-		print("Dry Run Uploading " + file + "...")
+		print("Dry Run Uploading " + file.encode('utf-8') + "...")
 		return True
 
         success = False
@@ -504,7 +504,7 @@ class Uploadr:
 
             last_modified = os.stat(file).st_mtime;
             if row is None:
-                print("Uploading " + file + "...")
+                print("Uploading " + file.encode('utf-8') + "...")
 
                 if FULL_SET_NAME:
                     setName = os.path.relpath(os.path.dirname(file), FILES_DIR)
@@ -566,10 +566,10 @@ class Uploadr:
                                 break
 
                     if not search_result and res.documentElement.attributes['stat'].value != "ok":
-                        print("A problem occurred while attempting to upload the file: " + file)
+                        print("A problem occurred while attempting to upload the file: " + file.encode('utf-8'))
                         raise IOError(str(res.toxml()))
 
-                    print("Successfully uploaded the file: " + file)
+                    print("Successfully uploaded the file: " + file.encode('utf-8'))
 
                     if search_result:
                         file_id = int(search_result["photos"]["photo"][0]["id"])
@@ -596,7 +596,7 @@ class Uploadr:
                             print("Error setting date")
                         if res_set_date['stat'] != 'ok':
                             raise IOError(res_set_date)
-                        print("Successfully set date for pic number: " + str(file_id) + " File: " + file + " date:" + video_date)                    
+                        print("Successfully set date for pic number: " + str(file_id) + " File: " + file.encode('utf-8') + " date:" + video_date)                    
                     
                     success = True
                 except:
@@ -888,7 +888,8 @@ class Uploadr:
                     setId = set[0]
 
                 if row[2] == None and newSetCreated == False:
-                    print("adding file to set " + row[1].decode('utf-8'))
+#                    print("adding file to set " + row[1].decode('utf-8'))
+                    print("adding file to set " + row[1])
                     self.addFileToSet(setId, row, cur)
         print('*****Completed creating sets*****')
 
