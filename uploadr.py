@@ -474,6 +474,8 @@ class Uploadr:
                     fileSize = os.path.getsize(dirpath + "/" + f)
                     if (fileSize < FILE_MAX_SIZE):
                         files.append(os.path.normpath(dirpath + "/" + f).replace("'", "\'"))
+                    else:
+                        print("Skipping file due to size restriction: " + ( os.path.normpath( dirpath.encode('utf-8') + "/" + f.encode('utf-8') ) ) )                        
         files.sort()
         return files
 
@@ -578,6 +580,24 @@ class Uploadr:
                     cur.execute(
                         'INSERT INTO files (files_id, path, md5, last_modified, tagged) VALUES (?, ?, ?, ?, 1)',
                         (file_id, file, file_checksum, last_modified))
+                    
+                    # Update Date/Time on Flickr for Video files
+                    import mimetypes
+                    import time
+                    filetype = mimetypes.guess_type(file)
+                    if 'video' in filetype[0]:
+                        video_date = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(last_modified))
+                        try:
+                            res_set_date = flick.photos_set_dates(file_id, video_date)
+                            if res_set_date['stat'] == 'ok':
+                                print("Set date ok")
+                        except (IOError, ValueError, httplib.HTTPException):
+                            print(str(sys.exc_info()))
+                            print("Error setting date")
+                        if res_set_date['stat'] != 'ok':
+                            raise IOError(res_set_date)
+                        print("Successfully set date for pic number: " + str(file_id) + " File: " + file + " date:" + video_date)                    
+                    
                     success = True
                 except:
                     print(str(sys.exc_info()))
@@ -594,8 +614,8 @@ class Uploadr:
     def replacePhoto(self, file, file_id, oldFileMd5, fileMd5, last_modified, cur, con):
 
         if args.dry_run :
-		print("Dry Run Replace file " + file + "...")
-                return True
+            print("Dry Run Replace file " + file + "...")
+            return True
 
         success = False
         print("Replacing the file: " + file + "...")
@@ -610,6 +630,23 @@ class Uploadr:
             d["api_sig"] = sig
             d["api_key"] = FLICKR["api_key"]
             url = self.build_request(api.replace, d, (photo,))
+
+            # Update Date/Time on Flickr for Video files
+            import mimetypes
+            import time
+            filetype = mimetypes.guess_type(file)
+            if 'video' in filetype[0]:
+                video_date = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(last_modified))
+                try:
+                    res_set_date = flick.photos_set_dates(file_id, video_date)
+                    if res_set_date['stat'] == 'ok':
+                        print("Set date ok")
+                except (IOError, ValueError, httplib.HTTPException):
+                    print(str(sys.exc_info()))
+                    print("Error setting date")
+                if res_set_date['stat'] != 'ok':
+                    raise IOError(res_set_date)
+                print("Successfully set date for pic number: " + str(file_id) + " File: " + file + " date:" + video_date)
 
             res = None
             res_add_tag = None
@@ -672,8 +709,8 @@ class Uploadr:
     def deleteFile(self, file, cur):
 
         if args.dry_run :
-	        print("Deleting file: " + file[1].decode('utf-8'))
-                return True
+            print("Deleting file: " + file[1].decode('utf-8'))
+            return True
 
         success = False
         print("Deleting file: " + file[1].decode('utf-8'))
@@ -1121,6 +1158,20 @@ class Uploadr:
             "tag_id": str(tag_id),
         }
 
+        url = self.urlGen(api.rest, data, self.signCall(data))
+        return self.getResponse(url)
+
+    # Update Date/Time on Flickr for Video files
+    def photos_set_dates(self, photo_id, datetxt):
+        data = {
+            "auth_token": str(self.token),
+            "perms": str(self.perms),
+            "format": "json",
+            "nojsoncallback": "1",
+            "method": "flickr.photos.setDates",
+            "photo_id": str(photo_id),
+            "date_taken": str(datetxt)
+        }
         url = self.urlGen(api.rest, data, self.signCall(data))
         return self.getResponse(url)
 
