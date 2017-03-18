@@ -152,6 +152,19 @@ class Uploadr:
 
         return hashlib.md5(f).hexdigest()
 
+    def isThisStringUnicode(self, s):
+        """
+        Determines if a string is Unicode )return True) or not (returns False) to allow correct print operations.
+        Example:
+            print (u'File ' + file.encode('utf-8') + u'...') if self.isThisStringUnicode( file) else ("File " + file + "...")
+        """
+        if isinstance(s, unicode):
+            return True
+        elif isinstance(s, str):
+            return False
+        else:
+            return False
+
     def urlGen(self, base, data, sig):
         """ urlGen
         """
@@ -396,6 +409,7 @@ class Uploadr:
         else:
             count = 0
             for i, file in enumerate(changedMedia):
+                #print u'file.type' + str(type(file)).encode('utf-8')
                 success = self.uploadFile(file)
                 if args.drip_feed and success and i != changedMedia_count - 1:
                     print("Waiting " + str(DRIP_TIME) + " seconds before next upload")
@@ -416,7 +430,7 @@ class Uploadr:
 
         print "*****Converting files*****"
         for ext in RAW_EXT:
-            print ("About to convert files with extension:" + ext + " files.")
+            print (u'About to convert files with extension: ' + ext.encode('utf-8') + u' files.') if self.isThisStringUnicode( ext) else ("About to convert files with extension: " + ext + " files.")
 
             for dirpath, dirnames, filenames in os.walk(unicode(FILES_DIR, 'utf-8'), followlinks=True):
                 if '.picasaoriginals' in dirnames:
@@ -430,7 +444,17 @@ class Uploadr:
                     if (fileExt.lower() == ext):
 
                         if (not os.path.exists(dirpath + "/" + filename + ".JPG")):
-                            print("About to create JPG from raw " + dirpath + "/" + f)
+                            if self.isThisStringUnicode( dirpath):
+                                if self.isThisStringUnicode( f):
+                                    print (u'About to create JPG from raw ' + dirpath.encode('utf-8') + u'/' + f.encode('utf-8'))
+                                else:
+                                    print (u'About to create JPG from raw ' + dirpath.encode('utf-8') + u'/'),
+                                    print ( f)
+                            elif self.isThisStringUnicode( f):
+                                print("About to create JPG from raw " + dirpath + "/"),
+                                print( f.encode('utf-8'))
+                            else:
+                                print("About to create JPG from raw " + dirpath + "/" + f)
 
                             flag = ""
                             if ext is "cr2":
@@ -444,7 +468,18 @@ class Uploadr:
                             p = subprocess.call(command, shell=True)
 
                         if (not os.path.exists(dirpath + "/" + filename + ".JPG_original")):
-                            print ("About to copy tags from " + dirpath + "/" + f + " to JPG.")
+                            if self.isThisStringUnicode( dirpath):
+                                if self.isThisStringUnicode( f):
+                                    print (u'About to copy tags from ' + dirpath.encode('utf-8') + u'/' + f.encode('utf-8') + u' to JPG.')
+                                else:
+                                    print (u'About to copy tags from ' + dirpath.encode('utf-8') + u'/'),
+                                    print ( f + " to JPG.")
+                            elif self.isThisStringUnicode( f):
+                                print("About to copy tags from " + dirpath + "/"),
+                                print( f.encode('utf-8') + u' to JPG.')
+                            else:
+                                print ("About to copy tags from " + dirpath + "/" + f + " to JPG.")
+
 
                             command = RAW_TOOL_PATH + "exiftool -tagsfromfile '" + dirpath + "/" + f + "' -r -all:all -ext JPG '" + dirpath + "/" + filename + ".JPG'"
                             # print(command)
@@ -453,7 +488,7 @@ class Uploadr:
 
                             print ("Finished copying tags.")
 
-            print ("Finished converting files with extension:" + ext + ".")
+            print (u'Finished converting files with extension:' + ext.encode('utf-8') + u'.') if self.isThisStringUnicode( ext) else ("Finished converting files with extension:" + ext + ".")
 
         print "*****Completed converting files*****"
 
@@ -473,7 +508,8 @@ class Uploadr:
                 if ext in ALLOWED_EXT:
                     fileSize = os.path.getsize(dirpath + "/" + f)
                     if (fileSize < FILE_MAX_SIZE):
-                        files.append(os.path.normpath(dirpath + "/" + f).replace("'", "\'"))
+                        files.append(os.path.normpath(dirpath.encode('utf-8') + "/" + f.encode(' utf-8')).replace("'", "\'"))
+                        #files.append(os.path.normpath(dirpath + "/" + f).replace("'", "\'"))
                     else:
                         print("Skipping file due to size restriction: " + ( os.path.normpath( dirpath.encode('utf-8') + "/" + f.encode('utf-8') ) ) )                        
         files.sort()
@@ -491,7 +527,10 @@ class Uploadr:
         """
 
 	if args.dry_run :
-		print("Dry Run Uploading " + file.encode('utf-8') + "...")
+                print u'file.type=' + str(type(file)).encode('utf-8')
+		print (u'Dry Run Uploading ', file, '...')
+		#print (u'Dry Run Uploading ', file.encode('utf-8'), '...')
+		#print ("Dry Run Uploading " + file.encode('utf-8') + "...")
 		return True
 
         success = False
@@ -504,14 +543,21 @@ class Uploadr:
 
             last_modified = os.stat(file).st_mtime;
             if row is None:
-                print("Uploading " + file.encode('utf-8') + "...")
+#                print("Uploading " + file.encode('utf-8') + "...")
+#                print u'file.type=' + str(type(file)).encode('utf-8') + str(self.isThisStringUnicode( file))
+                print (u'Uploading ' + file.encode('utf-8') + u'...') if self.isThisStringUnicode( file) else ("Uploading " + file + "...")
 
                 if FULL_SET_NAME:
-                    setName = os.path.relpath(os.path.dirname(file), FILES_DIR)
+                    setName = os.path.relpath(os.path.dirname(file), unicode(FILES_DIR, 'utf-8'))
                 else:
                     head, setName = os.path.split(os.path.dirname(file))
                 try:
-                    photo = ('photo', file.encode('utf-8'), open(file, 'rb').read())
+                    #print u'setName' + str(type(setName)).encode('utf-8')
+                    print (u'setName: ' + setName.encode('utf-8') ) if self.isThisStringUnicode( setName) else ("setName: " + setName )
+                    if self.isThisStringUnicode( file):
+                        photo = ('photo', file.encode('utf-8'), open(file, 'rb').read())
+                    else:
+                        photo = ('photo', file, open(file, 'rb').read())
                     if args.title:  # Replace
                         FLICKR["title"] = args.title
                     if args.description:  # Replace
@@ -526,7 +572,9 @@ class Uploadr:
                         "title": str(FLICKR["title"]),
                         "description": str(FLICKR["description"]),
                         # replace commas to avoid tags conflicts
-                        "tags": '{} {} checksum:{}'.format(FLICKR["tags"], setName.encode('utf-8'), file_checksum).replace(',', ''),
+                        # "tags": '{} {} checksum:{}'.format(FLICKR["tags"], setName.encode('utf-8'), file_checksum).replace(',', ''),
+                        # MSP: Remove SetName from tags
+                        "tags": '{} checksum:{}'.format(FLICKR["tags"], file_checksum).replace(',', ''),
                         "is_public": str(FLICKR["is_public"]),
                         "is_friend": str(FLICKR["is_friend"]),
                         "is_family": str(FLICKR["is_family"])
@@ -566,10 +614,10 @@ class Uploadr:
                                 break
 
                     if not search_result and res.documentElement.attributes['stat'].value != "ok":
-                        print("A problem occurred while attempting to upload the file: " + file.encode('utf-8'))
+                        print (u'A problem occurred while attempting to upload the file: ' + file.encode('utf-8')) if self.isThisStringUnicode( file) else ("A problem occurred while attempting to upload the file:  " + file )
                         raise IOError(str(res.toxml()))
 
-                    print("Successfully uploaded the file: " + file.encode('utf-8'))
+                    print (u'Successfully uploaded the file: ' + file.encode('utf-8')) if self.isThisStringUnicode( file) else ("Successfully uploaded the file: " + file)
 
                     if search_result:
                         file_id = int(search_result["photos"]["photo"][0]["id"])
@@ -596,8 +644,9 @@ class Uploadr:
                             print("Error setting date")
                         if res_set_date['stat'] != 'ok':
                             raise IOError(res_set_date)
-                        print("Successfully set date for pic number: " + str(file_id) + " File: " + file.encode('utf-8') + " date:" + video_date)                    
-                    
+                        #print("Successfully set date for pic number: " + str(file_id) + " File: " + file.encode('utf-8') + " date:" + video_date)    
+                        print (u'Successfully set date for pic number: ' + file.encode('utf-8') + u' date:' + video_date) if self.isThisStringUnicode( file) else ("Successfully set date for pic number: " + file + " date:" + video_date)
+     
                     success = True
                 except:
                     print(str(sys.exc_info()))
@@ -614,13 +663,16 @@ class Uploadr:
     def replacePhoto(self, file, file_id, oldFileMd5, fileMd5, last_modified, cur, con):
 
         if args.dry_run :
-            print("Dry Run Replace file " + file + "...")
+            print (u'Dry Run Replace file ' + file.encode('utf-8') + u'...') if self.isThisStringUnicode( file) else ("Dry Run Replace file " + file + "...")
             return True
 
         success = False
-        print("Replacing the file: " + file + "...")
+        print (u'Replacing the file: ' + file.encode('utf-8') + u'...') if self.isThisStringUnicode( file) else ("Replacing the file: " + file + "...")
         try:
-            photo = ('photo', file.encode('utf-8'), open(file, 'rb').read())
+            if self.isThisStringUnicode( file):
+                photo = ('photo', file.encode('utf-8'), open(file, 'rb').read())
+            else:
+                photo = ('photo', file, open(file, 'rb').read())
 
             d = {
                 "auth_token": str(self.token),
@@ -646,7 +698,8 @@ class Uploadr:
                     print("Error setting date")
                 if res_set_date['stat'] != 'ok':
                     raise IOError(res_set_date)
-                print("Successfully set date for pic number: " + str(file_id) + " File: " + file + " date:" + video_date)
+                #print("Successfully set date for pic number: " + str(file_id) + " File: " + file.encode('utf-8') + " date:" + video_date)
+                print (u'Successfully set date for pic number: ' + str(file_id) + u' File: ' + file.encode('utf-8') + u' date:' + video_date) if self.isThisStringUnicode( file) else ("Successfully set date for pic number: " + str(file_id) + ' File: ' + file + " date:" + video_date)
 
             res = None
             res_add_tag = None
@@ -683,7 +736,7 @@ class Uploadr:
             if res.documentElement.attributes['stat'].value != "ok" \
                     or res_add_tag['stat'] != 'ok' \
                     or res_get_info['stat'] != 'ok':
-                print("A problem occurred while attempting to upload the file: " + file)
+                print (u'A problem occurred while attempting to upload the file: ' + file.encode('utf-8')) if self.isThisStringUnicode( file) else ("A problem occurred while attempting to upload the file: " + file)
 
             if res.documentElement.attributes['stat'].value != "ok":
                 raise IOError(str(res.toxml()))
@@ -694,7 +747,7 @@ class Uploadr:
             if res_get_info['stat'] != 'ok':
                 raise IOError(res_get_info)
 
-            print("Successfully replaced the file: " + file)
+            print (u'Successfully replaced the file: ' + file.encode('utf-8')) if self.isThisStringUnicode( file) else ("Successfully replaced the file: " + file )
 
             # Add to set
             cur.execute('UPDATE files SET md5 = ?,last_modified = ? WHERE files_id = ?',
@@ -709,11 +762,12 @@ class Uploadr:
     def deleteFile(self, file, cur):
 
         if args.dry_run :
-            print("Deleting file: " + file[1].decode('utf-8'))
+            print (u'Deleting file: ' + file[1].encode('utf-8')) if self.isThisStringUnicode( file[1]) else ("Deleting file: " + file[1])
             return True
 
         success = False
-        print("Deleting file: " + file[1].decode('utf-8'))
+        print (u'Deleting file: ' + file[1].encode('utf-8')) if self.isThisStringUnicode( file[1]) else ("Deleting file: " + file[1])
+
 
         try:
             d = {
@@ -756,7 +810,11 @@ class Uploadr:
         return success
 
     def logSetCreation(self, setId, setName, primaryPhotoId, cur, con):
-        print("adding set to log: " + setName.decode('utf-8'))
+        print u'setName.type=' + str(type(setName)).encode('utf-8')
+        #print ( u'adding set to log: '.encode('utf-8') + setName.encode('utf-8'))
+        print ( u'adding set to log: '.encode('utf-8') )
+        print ( str(setName) )
+        #print("adding set to log: ", str(setName).encode('utf-8'))
 
         success = False
         cur.execute("INSERT INTO sets (set_id, name, primary_photo_id) VALUES (?,?,?)",
@@ -871,7 +929,7 @@ class Uploadr:
 
             for row in files:
                 if FULL_SET_NAME:
-                    setName = os.path.relpath(os.path.dirname(row[1]), FILES_DIR)
+                    setName = os.path.relpath(os.path.dirname(row[1]), unicode(FILES_DIR, 'utf-8'))
                 else:
                     head, setName = os.path.split(os.path.dirname(row[1]))
                 newSetCreated = False
@@ -882,16 +940,17 @@ class Uploadr:
 
                 if set == None:
                     setId = self.createSet(setName, row[0], cur, con)
-                    print("Created the set: " + setName.decode('utf-8'))
+                    print (u'Created the set: ' + setName.encode('utf-8')) if self.isThisStringUnicode( setName) else ("Created the set: " + setName)
                     newSetCreated = True
                 else:
                     setId = set[0]
 
                 if row[2] == None and newSetCreated == False:
-#                    print("adding file to set " + row[1].decode('utf-8'))
-                    print("adding file to set " + row[1])
+                    print (u'adding file to set ' + row[1].encode('utf-8') + u'...') if self.isThisStringUnicode( row[1]) else ("adding file to set " + row[1])
+                    
                     self.addFileToSet(setId, row, cur)
         print('*****Completed creating sets*****')
+
 
     def addFileToSet(self, setId, file, cur):
 
@@ -913,8 +972,8 @@ class Uploadr:
 
             res = self.getResponse(url)
             if (self.isGood(res)):
-
-                print("Successfully added file " + str(file[1]) + " to its set.")
+                #print("Successfully added file " + str(file[1]).encode('utf-8') + " to its set.")
+                print (u'Successfully added file ' + file[1].encode('utf-8') + u' to its set.') if self.isThisStringUnicode( file[1]) else ("Successfully added file " + file[1] + " to its set.")
 
                 cur.execute("UPDATE files SET set_id = ? WHERE files_id = ?", (setId, file[0]))
 
@@ -922,7 +981,7 @@ class Uploadr:
                 if (res['code'] == 1):
                     print("Photoset not found, creating new set...")
                     if FULL_SET_NAME:
-                        setName = os.path.relpath(os.path.dirname(file[1]), FILES_DIR)
+                        setName = os.path.relpath(os.path.dirname(file[1]), unicode(FILES_DIR, 'utf-8'))
                     else:
                         head, setName = os.path.split(os.path.dirname(file[1]))
                     con = lite.connect(DB_PATH)
@@ -937,7 +996,10 @@ class Uploadr:
             print(str(sys.exc_info()))
 
     def createSet(self, setName, primaryPhotoId, cur, con):
-        print("Creating new set: " + setName.decode('utf-8'))
+        print u'setName.type=' + str(type(setName)).encode('utf-8')
+        print ( u'Creating new set: '.encode('utf-8'))
+        print ( str(setName) )
+        #print("Creating new set: ", str(setName).encode('utf-8'))
 
         if args.dry_run :
                 return True
@@ -1068,7 +1130,7 @@ class Uploadr:
                     cur.execute("SELECT set_id FROM sets WHERE set_id = '" + setId + "'")
                     foundSets = cur.fetchone()
                     if foundSets == None:
-                        print(u"Adding set #{0} ({1}) with primary photo #{2}".format(setId, setName, primaryPhotoId))
+                        print(u"Adding set #{0} ({1}) with primary photo #{2}".format(setId, setName.encode('utf-8'), primaryPhotoId))
                         cur.execute("INSERT INTO sets (set_id, name, primary_photo_id) VALUES (?,?,?)",
                                     (setId, setName, primaryPhotoId))
                 con.commit()
