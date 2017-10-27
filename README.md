@@ -1,6 +1,10 @@
 flickr-uploader
 ===============
 
+## IMPORTANT NOTE: WORK IN PROGRESS...
+* Being updated to use sybrenstuvel's flickrapi and OAuth...
+* Work in progress... do not use just yet.
+
 Upload a directory of media to Flickr to use as a backup to your local storage.
 
 ## Features:
