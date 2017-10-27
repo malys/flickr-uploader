@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 
 """
+    XXX: Being updated to use flickrapi and OAUTH
+    XXX: To double check the DRY-RUN option.
+    XXX: An invalid FOLDER defined in .INI file will delete all files! Fixed!
+    XXX: RE-upload pictures removed from flickr.
 
     flickr-uploader designed for Synology Devices
     Upload a directory of media to Flickr to use as a backup to your local storage.
@@ -16,6 +20,7 @@
     Requirements:
 
     -Python 2.7+
+    -flicrkapi module
     -File write access (for the token and local database)
     -Flickr API key (free)
 
@@ -37,6 +42,7 @@
     Upload files placed within a directory to your Flickr account.
 
    Inspired by:
+        https://github.com/sybrenstuvel/flickrapi
         http://micampe.it/things/flickruploadr
         https://github.com/joelmx/flickrUploadr/blob/master/python3/uploadr.py
 
@@ -51,6 +57,10 @@
 
 
 """
+
+# ----------------------------------------------------------------------------
+# Import section
+#
 import httplib
 import sys
 import argparse
@@ -58,10 +68,14 @@ import mimetools
 import mimetypes
 import os
 import time
+# Check if it is still required
 import urllib
+# Check if it is still required
 import urllib2
+# Check if it is still required
 import webbrowser
 import sqlite3 as lite
+# Check if it is still required
 import json
 from xml.dom.minidom import parse
 import hashlib
@@ -71,24 +85,98 @@ import subprocess
 import re
 import ConfigParser
 from multiprocessing.pool import ThreadPool
+import flickrapi
+import xml
+import os.path
+import logging
+import pprint
 
+# ----------------------------------------------------------------------------
+# Python version must be greater than 2.7 for this script to run
+#
 if sys.version_info < (2, 7):
     sys.stderr.write("This script requires Python 2.7 or newer.\n")
     sys.stderr.write("Current version: " + sys.version + "\n")
     sys.stderr.flush()
     sys.exit(1)
 
+# ----------------------------------------------------------------------------
+# Constants class
 #
+# List out the constants to be used
+#
+class UPLDRConstants:
+    """ UPLDRConstants class
+    """
+
+    TimeFormat = '%Y.%m.%d %H:%M:%S'
+    
+    def __init__(self):
+        """ Constructor
+        """
+        pass
+
+# ----------------------------------------------------------------------------
+# Global Variables
+#   nutime = for working with time module (import time)
+#   nuflickr = object for flicks API module (import flickrapi)
+#
+nutime = time
+nuflickr = None
+
+# -----------------------------------------------------------------------------
+# isThisStringUnicode
+#
+# Returns true if String is Unicode
+#
+def isThisStringUnicode( s):
+    """
+    Determines if a string is Unicode (return True) or not (returns False) to allow correct print operations.
+    Example:
+        print(u'File ' + file.encode('utf-8') + u'...') if isThisStringUnicode( file) else ("File " + file + "...")
+    """
+    if isinstance(s, unicode):
+        return True
+    elif isinstance(s, str):
+        return False
+    else:
+        return False
+
+# -------------------------------------------------------------------------
+# niceprint 
+#
+# Print a message with the format:
+#   [2017.10.25 22:32:03]:[PRINT   ]:[uploadr] Some Message
+#
+def niceprint(s):
+    """
+    Print a message with the format:
+        [2017.10.25 22:32:03]:[PRINT   ]:[uploadr] Some Message
+    """
+    # print(u'DEBUG--->UTF-8:'.encode('utf-8') + s.encode('utf-8')) if isThisStringUnicode( s) else ('DEBUG--->ASCII:' + s)
+    print('[{!s}]:[{!s:8s}]:[{!s}] {!s}'.format(
+            nutime.strftime(UPLDRConstants.TimeFormat),
+            'PRINT',
+            'uploadr',
+            s.encode('utf-8') if isThisStringUnicode(s) else s))
+# ----------------------------------------------------------------------------
 # Read Config from config.ini file
 #
-
+# Obtain configuration from uploadr.ini
+# Refer to contents of uploadr.ini for explanation on configuration parameters
+#
 config = ConfigParser.ConfigParser()
 config.read(os.path.join(os.path.dirname(sys.argv[0]), "uploadr.ini"))
-FILES_DIR = eval(config.get('Config', 'FILES_DIR'))
+# FILES_DIR = eval(config.get('Config', 'FILES_DIR'))
+if config.has_option('Config', 'FILES_DIR'):
+    FILES_DIR = eval(config.get('Config', 'FILES_DIR'))
+else:
+    FILES_DIR = ""
 FLICKR = eval(config.get('Config', 'FLICKR'))
 SLEEP_TIME = eval(config.get('Config', 'SLEEP_TIME'))
 DRIP_TIME = eval(config.get('Config', 'DRIP_TIME'))
 DB_PATH = eval(config.get('Config', 'DB_PATH'))
+TOKEN_CACHE = eval(config.get('Config', 'TOKEN_CACHE'))
 LOCK_PATH = eval(config.get('Config', 'LOCK_PATH'))
 TOKEN_PATH = eval(config.get('Config', 'TOKEN_PATH'))
 EXCLUDED_FOLDERS = eval(config.get('Config', 'EXCLUDED_FOLDERS'))
@@ -102,8 +190,75 @@ CONVERT_RAW_FILES = eval(config.get('Config', 'CONVERT_RAW_FILES'))
 FULL_SET_NAME = eval(config.get('Config', 'FULL_SET_NAME'))
 SOCKET_TIMEOUT = eval(config.get('Config', 'SOCKET_TIMEOUT'))
 MAX_UPLOAD_ATTEMPTS = eval(config.get('Config', 'MAX_UPLOAD_ATTEMPTS'))
+# LOGGING_LEVEL = eval(config.get('Config', 'LOGGING_LEVEL'))
+LOGGING_LEVEL = (config.get('Config', 'LOGGING_LEVEL')
+                 if config.has_option('Config', 'LOGGING_LEVEL')
+                 else logging.WARNING)
 
+# ----------------------------------------------------------------------------
+# Logging
+#
+# Obtain configuration level from Configuration file.
+# If not available or not valid assume WARNING level and notify of that fact.
+# Two uses:
+#   Simply log message at approriate level
+#       logging.warning('Status: {!s}'.format('Setup Complete'))
+#   Control additional specific output depending on level
+#       if LOGGING_LEVEL <= logging.INFO:
+#            logging.info('Output for {!s}:'.format('uploadResp'))
+#            xml.etree.ElementTree.dump(uploadResp)
+#            <generate any further output>
+#
+if (int(LOGGING_LEVEL) if str.isdigit(LOGGING_LEVEL) else 99) not in [
+                        logging.NOTSET,
+                        logging.DEBUG,
+                        logging.INFO,
+                        logging.WARNING,
+                        logging.ERROR,
+                        logging.CRITICAL]:
+    LOGGING_LEVEL = logging.WARNING
+    sys.stderr.write('[{!s}]:[WARNING ]:[uploadr] LOGGING_LEVEL not defined or incorrect '
+                     'on INI file: [{!s}]. '
+                     'Assuming WARNING level.\n'.format(
+                            nutime.strftime(UPLDRConstants.TimeFormat),
+                            os.path.join(os.path.dirname(sys.argv[0]),
+                                         "uploadr.ini")))
+# Force conversion of LOGGING_LEVEL into int() for later use in conditionals
+LOGGING_LEVEL = int(LOGGING_LEVEL)
+logging.basicConfig(stream=sys.stderr,
+                    level=int(LOGGING_LEVEL),
+                    datefmt=UPLDRConstants.TimeFormat,
+                    format='[%(asctime)s]:[%(levelname)-8s]:[%(name)s] '
+                           '%(message)s')
+                           # '\n\t%(message)s')
 
+# ----------------------------------------------------------------------------
+# Test section for logging.
+#   Only applicable if LOGGING_LEVEL is INFO or below (DEBUG, NOTSET)
+#
+if LOGGING_LEVEL <= logging.INFO:
+    logging.info(u'sys.getfilesystemencoding:[{!s}]'.
+                    format(sys.getfilesystemencoding()))
+    logging.info( 'LOGGING_LEVEL Value: {!s}'.format(LOGGING_LEVEL))
+    if LOGGING_LEVEL <= logging.WARNING:
+        logging.critical('Message with {!s}'.format(
+                                    'CRITICAL UNDER min WARNING LEVEL'))
+        logging.error('Message with {!s}'.format(
+                                    'ERROR UNDER min WARNING LEVEL'))
+        logging.warning('Message with {!s}'.format(
+                                    'WARNING UNDER min WARNING LEVEL'))
+        logging.info('Message with {!s}'.format(
+                                    'INFO UNDER min WARNING LEVEL'))
+if LOGGING_LEVEL <= logging.INFO:
+    logging.info('Message with {!s}'.format(
+                                'FLICKR Configuration:'))
+    pprint.pprint(FLICKR)
+    
+# ----------------------------------------------------------------------------
+# APIConstants class
+#
+# To be removed.
+#
 class APIConstants:
     """ APIConstants class
     """
@@ -116,17 +271,53 @@ class APIConstants:
 
     def __init__(self):
         """ Constructor
-       """
+        """
         pass
-
 
 api = APIConstants()
 
+# ----------------------------------------------------------------------------
+# FileWithCallback class
+#
+# For use with flickrapi upload for showing callback progress information
+# Check function callback definition
+# 
+class FileWithCallback(object):
+    def __init__(self, filename, callback):
+        self.file = open(filename, 'rb')
+        self.callback = callback
+        # the following attributes and methods are required
+        self.len = os.path.getsize(filename)
+        self.fileno = self.file.fileno
+        self.tell = self.file.tell
 
+    def read(self, size):
+        if self.callback:
+            self.callback(self.tell() * 100 // self.len)
+        return self.file.read(size)
+ 
+# ----------------------------------------------------------------------------
+# callback
+#
+# For use with flickrapi upload for showing callback progress information
+# Check function FileWithCallback definition
+# 
+def callback(progress):
+    # only print rounded percentages: 0, 10, 20, 30, up to 100
+    # adapt as required
+    if ((progress % 30) == 0):
+        print(progress)
+
+# ----------------------------------------------------------------------------
+# Uploadr
+#
+#   Main class for uploading of files.
+#   
 class Uploadr:
     """ Uploadr class
     """
 
+    # Flicrk connection authentication token
     token = None
     perms = ""
 
@@ -135,8 +326,7 @@ class Uploadr:
         """
         self.token = self.getCachedToken()
 
-
-
+    # Maybe removed after migration to flickrapi
     def signCall(self, data):
         """
         Signs args via md5 per http://www.flickr.com/services/api/auth.spec.html (Section 8)
@@ -152,19 +342,6 @@ class Uploadr:
 
         return hashlib.md5(f).hexdigest()
 
-    def isThisStringUnicode(self, s):
-        """
-        Determines if a string is Unicode )return True) or not (returns False) to allow correct print operations.
-        Example:
-            print (u'File ' + file.encode('utf-8') + u'...') if self.isThisStringUnicode( file) else ("File " + file + "...")
-        """
-        if isinstance(s, unicode):
-            return True
-        elif isinstance(s, str):
-            return False
-        else:
-            return False
-
     def urlGen(self, base, data, sig):
         """ urlGen
         """
@@ -173,171 +350,112 @@ class Uploadr:
         encoded_url = base + "?" + urllib.urlencode(data)
         return encoded_url
 
+    # -------------------------------------------------------------------------
+    # authenticate
+    #
+    # Authenticates via flicrapi on flicr.com
+    #
     def authenticate(self):
-        """ Authenticate user so we can upload files
         """
+        Authenticate user so we can upload files
+        """
+        global nuflickr 
+
+        # instantiate nuflickr for connection to flickr via flickrapi
+        nuflickr = flickrapi.FlickrAPI(FLICKR["api_key"], FLICKR["secret"], token_cache_location=TOKEN_CACHE)
 
         print("Getting new token")
-        self.getFrob()
-        self.getAuthKey()
-        self.getToken()
-        self.cacheToken()
+        
+        # Get request token
+        nuflickr.get_request_token(oauth_callback='oob')
+    
+        # Show url. Copy and paste it in your browser
+        authorize_url = nuflickr.auth_url(perms=u'delete')
+        print(authorize_url)
+    
+        # Prompt for verifier code from the user 
+        verifier = unicode(raw_input('Verifier code: '))
+    
+        if LOGGING_LEVEL <= logging.WARNING:
+            logging.warning('Verifier: {!s}'.format(verifier))
+    
+        # Trade the request token for an access token
+        print(nuflickr.get_access_token(verifier))
 
-    def getFrob(self):
-        """
-        flickr.auth.getFrob
+        if LOGGING_LEVEL <= logging.WARNING:
+            logging.critical('{!s} with {!s} permissions: {!s}'.format(
+                                        'Check Authentication',
+                                        'delete',
+                                        nuflickr.token_valid(perms='delete')))
+            logging.critical('Token Cache: {!s}', nuflickr.token_cache.token)
 
-        Returns a frob to be used during authentication. This method call must be
-        signed.
-
-        This method does not require authentication.
-        Arguments
-
-        "api_key" (Required)
-        Your API application key. See here for more details.
-        """
-
-        d = {
-            "method": "flickr.auth.getFrob",
-            "format": "json",
-            "nojsoncallback": "1"
-        }
-        sig = self.signCall(d)
-        url = self.urlGen(api.rest, d, sig)
-        try:
-            response = self.getResponse(url)
-            if (self.isGood(response)):
-                FLICKR["frob"] = str(response["frob"]["_content"])
-            else:
-                self.reportError(response)
-        except:
-            print("Error: cannot get frob:" + str(sys.exc_info()))
-
-    def getAuthKey(self):
-        """
-        Checks to see if the user has authenticated this application
-        """
-        d = {
-            "frob": FLICKR["frob"],
-            "perms": "delete"
-        }
-        sig = self.signCall(d)
-        url = self.urlGen(api.auth, d, sig)
-        ans = ""
-        try:
-            webbrowser.open(url)
-            print("Copy-paste following URL into a web browser and follow instructions:")
-            print(url)
-            ans = raw_input("Have you authenticated this application? (Y/N): ")
-        except:
-            print(str(sys.exc_info()))
-        if (ans.lower() == "n"):
-            print("You need to allow this program to access your Flickr site.")
-            print("Copy-paste following URL into a web browser and follow instructions:")
-            print(url)
-            print("After you have allowed access restart uploadr.py")
-            sys.exit()
-
-    def getToken(self):
-        """
-        http://www.flickr.com/services/api/flickr.auth.getToken.html
-
-        flickr.auth.getToken
-
-        Returns the auth token for the given frob, if one has been attached. This method call must be signed.
-        Authentication
-
-        This method does not require authentication.
-        Arguments
-
-        NTC: We need to store the token in a file so we can get it and then check it insted of
-        getting a new on all the time.
-
-        "api_key" (Required)
-           Your API application key. See here for more details.
-        frob (Required)
-           The frob to check.
-        """
-
-        d = {
-            "method": "flickr.auth.getToken",
-            "frob": str(FLICKR["frob"]),
-            "format": "json",
-            "nojsoncallback": "1"
-        }
-        sig = self.signCall(d)
-        url = self.urlGen(api.rest, d, sig)
-        try:
-            res = self.getResponse(url)
-            if (self.isGood(res)):
-                self.token = str(res['auth']['token']['_content'])
-                self.perms = str(res['auth']['perms']['_content'])
-                self.cacheToken()
-            else:
-                self.reportError(res)
-        except:
-            print(str(sys.exc_info()))
-
+    # -------------------------------------------------------------------------
+    # getCachedToken
+    #
+    # If available, obtains the flicrapi Cached Token from local file.
+    # Saves the token on the Class global variable "token"
+    #
     def getCachedToken(self):
         """
         Attempts to get the flickr token from disk.
-       """
-        if (os.path.exists(TOKEN_PATH)):
-            return open(TOKEN_PATH).read()
-        else:
-            return None
-
-    def cacheToken(self):
-        """ cacheToken
         """
+        global nuflickr
+        
+        if LOGGING_LEVEL <= logging.INFO:
+            logging.info('Obtaining Cached tokens')
+        nuflickr = flickrapi.FlickrAPI(FLICKR["api_key"], FLICKR["secret"], token_cache_location=TOKEN_CACHE)
 
         try:
-            open(TOKEN_PATH, "w").write(str(self.token))
+            if nuflickr.token_valid(perms='delete'):
+                if LOGGING_LEVEL <= logging.INFO:
+                    logging.info('Cached token obtained: {!s}'.format(
+                                        nuflickr.token_cache.token))
+                return nuflickr.token_cache.token
+            else:
+                if LOGGING_LEVEL <= logging.INFO:
+                    logging.info('Token Non-Existant.')
+                return None
         except:
-            print("Issue writing token to local cache ", str(sys.exc_info()))
+            niceprint( "Unexpected error:" + sys.exc_info()[0])
+            raise
 
+    # -------------------------------------------------------------------------
+    # checkToken
+    #
+    # If available, obtains the flicrapi Cached Token from local file.
+    #
+    # Returns
+    #   true: if global token is defined and allows flicr 'delete' operation
+    #   false: if  global token is not defined of flicr 'delete' is not allowed
+    #
     def checkToken(self):
-        """
+        """ checkToken
         flickr.auth.checkToken
 
         Returns the credentials attached to an authentication token.
-        Authentication
-
-        This method does not require authentication.
-        Arguments
-
-        "api_key" (Required)
-            Your API application key. See here for more details.
-        auth_token (Required)
-            The authentication token to check.
         """
+        global nuflickr
 
         if (self.token == None):
             return False
         else:
-            d = {
-                "auth_token": str(self.token),
-                "method": "flickr.auth.checkToken",
-                "format": "json",
-                "nojsoncallback": "1"
-            }
-            sig = self.signCall(d)
+            nuflickr = flickrapi.FlickrAPI(FLICKR["api_key"], FLICKR["secret"], token_cache_location=TOKEN_CACHE)
 
-            url = self.urlGen(api.rest, d, sig)
-            try:
-                res = self.getResponse(url)
-                if (self.isGood(res)):
-                    self.token = res['auth']['token']['_content']
-                    self.perms = res['auth']['perms']['_content']
-                    return True
-                else:
-                    self.reportError(res)
-            except:
-                print(str(sys.exc_info()))
-            return False
+            if nuflickr.token_valid(perms='delete'):
+                return True
+            else:
+                logging.warning('Authentication required.')
+                return False            
 
+    #--------------------------------------------------------------------------
+    # removeIgnoreMedia
+    #
+    # When EXCLUDED_FOLDERS defintion changes. You can run the -g
+    # or --remove-ignored option in order to remove files previously loaded
+    # files from
+    # 
     def removeIgnoredMedia(self):
-        print("*****Removing ignored files*****")
+        niceprint('*****Removing ignored files*****')
 
         if (not self.checkToken()):
             self.authenticate()
@@ -352,18 +470,23 @@ class Uploadr:
             for row in rows:
                 if (self.isFileIgnored(row[1].decode('utf-8'))):
                     success = self.deleteFile(row, cur)
-        print("*****Completed ignored files*****")
+        niceprint('*****Completed ignored files*****')
 
+    #--------------------------------------------------------------------------
+    # removeDeleteMedia
+    #
+    # Remove files deleted at the local source
+    # 
     def removeDeletedMedia(self):
-        """ Remove files deleted at the local source
-        loop through database
-        check if file exists
-        if exists, continue
-        if not exists, delete photo from fickr
-        http://www.flickr.com/services/api/flickr.photos.delete.html
+        """
+        Remove files deleted at the local source
+            loop through database
+            check if file exists
+            if exists, continue
+            if not exists, delete photo from fickr (flickr.photos.delete.html)
         """
 
-        print("*****Removing deleted files*****")
+        niceprint('*****Removing deleted files*****')
 
         if (not self.checkToken()):
             self.authenticate()
@@ -378,13 +501,19 @@ class Uploadr:
             for row in rows:
                 if (not os.path.isfile(row[1].decode('utf-8'))):
                     success = self.deleteFile(row, cur)
-        print("*****Completed deleted files*****")
+                    if LOGGING_LEVEL <= logging.WARNING:
+                        logging.warning('deleteFile result: {!s}'.format(
+                                                    success))
+
+        niceprint('*****Completed deleted files*****')
 
     def upload(self):
         """ upload
+        Add files to flickr and into their sets(Albums)
+        If enabled CHANGE_MEDIA, checks for file changes and updates flickr
         """
 
-        print("*****Uploading files*****")
+        niceprint("*****Uploading files*****")
 
         allMedia = self.grabNewFiles()
         # If managing changes, consider all files
@@ -402,35 +531,41 @@ class Uploadr:
         changedMedia_count = len(changedMedia)
         print("Found " + str(changedMedia_count) + " files")
 
-
         if args.processes:
             pool = ThreadPool(processes=int(args.processes))
             pool.map(self.uploadFile, changedMedia)
         else:
             count = 0
             for i, file in enumerate(changedMedia):
+                if LOGGING_LEVEL <= logging.INFO:
+                    logging.info('file:[{!s}] type(file):[{!s}]'.
+                                    format( file,
+                                            type(file)))
                 #print u'file.type' + str(type(file)).encode('utf-8')
                 success = self.uploadFile(file)
                 if args.drip_feed and success and i != changedMedia_count - 1:
                     print("Waiting " + str(DRIP_TIME) + " seconds before next upload")
-                    time.sleep(DRIP_TIME)
+                    nutime.sleep(DRIP_TIME)
                 count = count + 1;
                 if (count % 100 == 0):
                     print("   " + str(count) + " files processed (uploaded, md5ed or timestamp checked)")
             if (count % 100 > 0):
                 print("   " + str(count) + " files processed (uploaded, md5ed or timestamp checked)")
 
-        print("*****Completed uploading files*****")
+        niceprint("*****Completed uploading files*****")
 
     def convertRawFiles(self):
+        
+        # MSP: Not converted... not being used at this time as I do not use RAW Files.
+        
         """ convertRawFiles
         """
         if (not CONVERT_RAW_FILES):
             return
 
-        print "*****Converting files*****"
+        niceprint('*****Converting files*****')
         for ext in RAW_EXT:
-            print (u'About to convert files with extension: ' + ext.encode('utf-8') + u' files.') if self.isThisStringUnicode( ext) else ("About to convert files with extension: " + ext + " files.")
+            print(u'About to convert files with extension: ' + ext.encode('utf-8') + u' files.') if isThisStringUnicode( ext) else ("About to convert files with extension: " + ext + " files.")
 
             for dirpath, dirnames, filenames in os.walk(unicode(FILES_DIR, 'utf-8'), followlinks=True):
                 if '.picasaoriginals' in dirnames:
@@ -444,13 +579,13 @@ class Uploadr:
                     if (fileExt.lower() == ext):
 
                         if (not os.path.exists(dirpath + "/" + filename + ".JPG")):
-                            if self.isThisStringUnicode( dirpath):
-                                if self.isThisStringUnicode( f):
-                                    print (u'About to create JPG from raw ' + dirpath.encode('utf-8') + u'/' + f.encode('utf-8'))
+                            if isThisStringUnicode( dirpath):
+                                if isThisStringUnicode( f):
+                                    print(u'About to create JPG from raw ' + dirpath.encode('utf-8') + u'/' + f.encode('utf-8'))
                                 else:
-                                    print (u'About to create JPG from raw ' + dirpath.encode('utf-8') + u'/'),
-                                    print ( f)
-                            elif self.isThisStringUnicode( f):
+                                    print(u'About to create JPG from raw ' + dirpath.encode('utf-8') + u'/'),
+                                    print( f)
+                            elif isThisStringUnicode( f):
                                 print("About to create JPG from raw " + dirpath + "/"),
                                 print( f.encode('utf-8'))
                             else:
@@ -468,17 +603,17 @@ class Uploadr:
                             p = subprocess.call(command, shell=True)
 
                         if (not os.path.exists(dirpath + "/" + filename + ".JPG_original")):
-                            if self.isThisStringUnicode( dirpath):
-                                if self.isThisStringUnicode( f):
-                                    print (u'About to copy tags from ' + dirpath.encode('utf-8') + u'/' + f.encode('utf-8') + u' to JPG.')
+                            if isThisStringUnicode( dirpath):
+                                if isThisStringUnicode( f):
+                                    print(u'About to copy tags from ' + dirpath.encode('utf-8') + u'/' + f.encode('utf-8') + u' to JPG.')
                                 else:
-                                    print (u'About to copy tags from ' + dirpath.encode('utf-8') + u'/'),
-                                    print ( f + " to JPG.")
-                            elif self.isThisStringUnicode( f):
+                                    print(u'About to copy tags from ' + dirpath.encode('utf-8') + u'/'),
+                                    print( f + " to JPG.")
+                            elif isThisStringUnicode( f):
                                 print("About to copy tags from " + dirpath + "/"),
                                 print( f.encode('utf-8') + u' to JPG.')
                             else:
-                                print ("About to copy tags from " + dirpath + "/" + f + " to JPG.")
+                                print("About to copy tags from " + dirpath + "/" + f + " to JPG.")
 
 
                             command = RAW_TOOL_PATH + "exiftool -tagsfromfile '" + dirpath + "/" + f + "' -r -all:all -ext JPG '" + dirpath + "/" + filename + ".JPG'"
@@ -486,11 +621,11 @@ class Uploadr:
 
                             p = subprocess.call(command, shell=True)
 
-                            print ("Finished copying tags.")
+                            print("Finished copying tags.")
 
-            print (u'Finished converting files with extension:' + ext.encode('utf-8') + u'.') if self.isThisStringUnicode( ext) else ("Finished converting files with extension:" + ext + ".")
+            print(u'Finished converting files with extension:' + ext.encode('utf-8') + u'.') if isThisStringUnicode( ext) else ("Finished converting files with extension:" + ext + ".")
 
-        print "*****Completed converting files*****"
+        niceprint('*****Completed converting files*****')
 
     def grabNewFiles(self):
         """ grabNewFiles
@@ -509,43 +644,71 @@ class Uploadr:
                     fileSize = os.path.getsize(dirpath + "/" + f)
                     if (fileSize < FILE_MAX_SIZE):
                         files.append(os.path.normpath(dirpath.encode('utf-8') + "/" + f.encode(' utf-8')).replace("'", "\'"))
-                        #files.append(os.path.normpath(dirpath + "/" + f).replace("'", "\'"))
                     else:
-                        print("Skipping file due to size restriction: " + ( os.path.normpath( dirpath.encode('utf-8') + "/" + f.encode('utf-8') ) ) )                        
+                        niceprint("Skipping file due to size restriction: " +
+                                    ( os.path.normpath( dirpath.encode('utf-8') +
+                                    "/" + f.encode('utf-8'))))
         files.sort()
+        if LOGGING_LEVEL <= logging.INFO:
+            logging.info('Output for {!s}:'.format('files'))
+            pprint.pprint(files)
+
         return files
 
+    #--------------------------------------------------------------------------
+    # isFileIgnored
+    #
+    # Check if a filename is within the list of EXCLUDED_FOLDERS. Returns:
+    #   true = if filename's folder is within one of the EXCLUDED_FOLDERS
+    #   false = if filename's folder not on one of the EXCLUDED_FOLDERS
+    #
     def isFileIgnored(self, filename):
         for excluded_dir in EXCLUDED_FOLDERS:
             if excluded_dir in os.path.dirname(filename):
                 return True
         
         return False
-
+    #--------------------------------------------------------------------------
+    # uploadFile
+    #
+    # uploads a file into flickr
+    #
     def uploadFile(self, file):
         """ uploadFile
+        upload file into flickr
         """
 
-	if args.dry_run :
-                print u'file.type=' + str(type(file)).encode('utf-8')
-		print (u'Dry Run Uploading ', file, '...')
-		#print (u'Dry Run Uploading ', file.encode('utf-8'), '...')
-		#print ("Dry Run Uploading " + file.encode('utf-8') + "...")
-		return True
+        global nuflickr
+
+        if ( args.dry_run == True):
+            print(u'file.type=' + str(type(file)).encode('utf-8'))
+            print(u'Dry Run Uploading ', file, '...')
+            return True
 
         success = False
         con = lite.connect(DB_PATH)
         con.text_factory = str
         with con:
             cur = con.cursor()
-            cur.execute("SELECT rowid,files_id,path,set_id,md5,tagged,last_modified FROM files WHERE path = ?", (file,))
+            if LOGGING_LEVEL <= logging.DEBUG:
+                logging.debug('Output for {!s}:'.format('uploadFILE SELECT'))
+                logging.debug('{!s}: {!s}'.format('SELECT rowid,files_id,path,'
+                                                 'set_id,md5,tagged,'
+                                                 'last_modified FROM '
+                                                 'files WHERE path = ?',
+                                                 file))
+
+            cur.execute('SELECT rowid,files_id,path,set_id,md5,tagged,'
+                        'last_modified FROM files WHERE path = ?', (file,))
             row = cur.fetchone()
+            if LOGGING_LEVEL <= logging.DEBUG:
+                logging.debug('row {!s}:'.format(row))
 
             last_modified = os.stat(file).st_mtime;
             if row is None:
 #                print("Uploading " + file.encode('utf-8') + "...")
-#                print u'file.type=' + str(type(file)).encode('utf-8') + str(self.isThisStringUnicode( file))
-                print (u'Uploading ' + file.encode('utf-8') + u'...') if self.isThisStringUnicode( file) else ("Uploading " + file + "...")
+#                print u'file.type=' + str(type(file)).encode('utf-8') + str(isThisStringUnicode( file))
+                print(u'Uploading ' + file.encode('utf-8') + u'...') if isThisStringUnicode( file) else ("Uploading " + file + "...")
 
                 if FULL_SET_NAME:
                     setName = os.path.relpath(os.path.dirname(file), unicode(FILES_DIR, 'utf-8'))
@@ -553,8 +716,8 @@ class Uploadr:
                     head, setName = os.path.split(os.path.dirname(file))
                 try:
                     #print u'setName' + str(type(setName)).encode('utf-8')
-                    print (u'setName: ' + setName.encode('utf-8') ) if self.isThisStringUnicode( setName) else ("setName: " + setName )
-                    if self.isThisStringUnicode( file):
+                    print(u'setName: ' + setName.encode('utf-8') ) if isThisStringUnicode( setName) else ("setName: " + setName )
+                    if isThisStringUnicode( file):
                         photo = ('photo', file.encode('utf-8'), open(file, 'rb').read())
                     else:
                         photo = ('photo', file, open(file, 'rb').read())
@@ -565,66 +728,159 @@ class Uploadr:
                     if args.tags:  # Append
                         FLICKR["tags"] += " "
 
+                    # if FLICKR["title"] is empty...
+                    # if filename's exif title is empty...
+                    #   Can't check without import exiftool
+                    # set it to filename OR do not load it up in order to
+                    # allow flickr.com itself to set it up
+                    # NOTE: an empty title forces flickrapi/auth.py
+                    # code like 280 to encode into utf-8 the filename
+                    # this causes an error
+                    # UnicodeDecodeError: 'ascii' codec can't decode byte 0xc3 in position 11: ordinal not in range(128)
+                    # Will try to workaround it by forcing the title
+                    if FLICKR["title"] == "":
+                        path_filename, title_filename = os.path.split(file)
+                        if LOGGING_LEVEL <= logging.WARNING:
+                            logging.warning('path:[{!s}] '
+                                            'filename:[{!s}]'.format(
+                                                path_filename,
+                                                title_filename))
+                        # title_filename = title_filename.split(".")[0]
+                        title_filename = os.path.splitext( title_filename)[0]
+                        print('TITLEFILENAME', title_filename)
+                        if LOGGING_LEVEL <= logging.WARNING:
+                            logging.warning('path:[{!s}] '
+                                            'filename no ext:[{!s}]'.format(
+                                                path_filename,
+                                                title_filename))
+                    else:
+                        title_filename = FLICKR["title"]
+                        if LOGGING_LEVEL <= logging.WARNING:
+                            logging.warning('title '
+                                            'from INI file:[{!s}]'.format(
+                                                title_filename))
+                    
                     file_checksum = self.md5Checksum(file)
-                    d = {
-                        "auth_token": str(self.token),
-                        "perms": str(self.perms),
-                        "title": str(FLICKR["title"]),
-                        "description": str(FLICKR["description"]),
-                        # replace commas to avoid tags conflicts
-                        # "tags": '{} {} checksum:{}'.format(FLICKR["tags"], setName.encode('utf-8'), file_checksum).replace(',', ''),
-                        # MSP: Remove SetName from tags
-                        "tags": '{} checksum:{}'.format(FLICKR["tags"], file_checksum).replace(',', ''),
-                        "is_public": str(FLICKR["is_public"]),
-                        "is_friend": str(FLICKR["is_friend"]),
-                        "is_family": str(FLICKR["is_family"])
-                    }
-                    sig = self.signCall(d)
-                    d["api_sig"] = sig
-                    d["api_key"] = FLICKR["api_key"]
-                    url = self.build_request(api.upload, d, (photo,))
+                    
+                    #     # replace commas to avoid tags conflicts
+                    #     # "tags": '{} {} checksum:{}'.format(FLICKR["tags"], setName.encode('utf-8'), file_checksum).replace(',', ''),
+                    #     # MSP: Remove SetName from tags
+                    #     "tags": '{} checksum:{}'.format(FLICKR["tags"], file_checksum).replace(',', ''),
 
                     res = None
                     search_result = None
                     for x in range(0, MAX_UPLOAD_ATTEMPTS):
                         try:
-                            res = parse(urllib2.urlopen(url, timeout=SOCKET_TIMEOUT))
+                            if FLICKR["title"] == "":
+                                uploadResp = nuflickr.upload(
+                                        filename = file, \
+                                        fileobj = FileWithCallback( file, callback), \
+                                        title = title_filename, \
+                                        description=str(FLICKR["description"]), \
+                                        tags='{} checksum:{}'.format(FLICKR["tags"], file_checksum).replace(',', ''), \
+                                        is_public=str(FLICKR["is_public"]), \
+                                        is_family=str(FLICKR["is_family"]), \
+                                        is_friend=str(FLICKR["is_friend"]) )
+                            else:
+                                uploadResp = nuflickr.upload(
+                                        filename = file, \
+                                        fileobj = FileWithCallback( file, callback), \
+                                        # title = title_filename, \
+                                        title=str(FLICKR["title"]), \
+                                        description=str(FLICKR["description"]), \
+                                        tags='{} checksum:{}'.format(FLICKR["tags"], file_checksum).replace(',', ''), \
+                                        is_public=str(FLICKR["is_public"]), \
+                                        is_family=str(FLICKR["is_family"]), \
+                                        is_friend=str(FLICKR["is_friend"]) )
+                            if LOGGING_LEVEL <= logging.WARNING:
+                                logging.warning('uploadResp: ')
+                                xml.etree.ElementTree.dump(uploadResp)
+                            photo_id = uploadResp.findall('photoid')[0].text
+                            if LOGGING_LEVEL <= logging.WARNING:
+                                logging.warning('OK. Flickr id '
+                                                '= {!s}'.format(photo_id))
                             search_result = None
+                            
+                            # TEST SEARCH TO CONFIRM LOADED
+                            search_result = self.photos_search(file_checksum)
+                            if self.isGood( search_result):
+                                print("search_result:OK")
+                            else:
+                                print("search_result:NOT OK")
+                            
                             break
                         except (IOError, httplib.HTTPException):
                             print(str(sys.exc_info()))
                             print("Check is file already uploaded")
-                            time.sleep(5)
+                            print("MSP: just before time.sleep(DRIP_TIME)...15")
+                            nutime.sleep(15)
+                            print("MSP: just after time.sleep(DRIP_TIME)...15")
 
+                            # on error, check if exists a photo
+                            # with file_checksum 
                             search_result = self.photos_search(file_checksum)
-                            if search_result["stat"] != "ok":
+                            if not self.isGood(search_result):
                                 raise IOError(search_result)
 
-                            if int(search_result["photos"]["total"]) == 0:
+                            # if int(search_result["photos"]["total"]) == 0:
+                            if int(search_result.find('photos').attrib['total']) == 0:
                                 if x == MAX_UPLOAD_ATTEMPTS - 1:
-                                    raise ValueError("Reached maximum number of attempts to upload, skipping")
-
-                                print("Not found, reuploading")
+                                    raise ValueError('Reached maximum number '
+                                                     'of attempts to upload, '
+                                                     'skipping')
+                                niceprint('Not found, reuploading.')
                                 continue
 
-                            if int(search_result["photos"]["total"]) > 1:
-                                raise IOError("More then one file with same checksum, collisions? " + search_result)
+                            # if int(search_result["photos"]["total"]) > 1:
+                            if int(search_result.find('photos').attrib['total']) > 1:
+                                raise IOError('More then one file with same '
+                                              'checksum, collisions? ' +
+                                              search_result)
 
-                            if int(search_result["photos"]["total"]) == 1:
+                            # if int(search_result["photos"]["total"]) == 1:
+                            if int(search_result.find('photos').attrib['total']) == 1:
+                                niceprint('Found, continuing.')
                                 break
 
-                    if not search_result and res.documentElement.attributes['stat'].value != "ok":
-                        print (u'A problem occurred while attempting to upload the file: ' + file.encode('utf-8')) if self.isThisStringUnicode( file) else ("A problem occurred while attempting to upload the file:  " + file )
-                        raise IOError(str(res.toxml()))
+                    # if not search_result and res.documentElement.attributes['stat'].value != "ok":
+                    #     print(u'A problem occurred while attempting to upload the file: ' + file.encode('utf-8')) if isThisStringUnicode( file) else ("A problem occurred while attempting to upload the file:  " + file )
+                    #     raise IOError(str(res.toxml()))
 
-                    print (u'Successfully uploaded the file: ' + file.encode('utf-8')) if self.isThisStringUnicode( file) else ("Successfully uploaded the file: " + file)
+                    # if not search_result and uploadResp.attrib['stat'] != "ok":
+                    if not search_result and not self.isGood(uploadResp):
+                        niceprint(  'A problem occurred while attempting to '
+                                    'upload the file: ' +
+                                    file.encode('utf-8')
+                                    if isThisStringUnicode( file)
+                                    else ('A problem occurred while '
+                                          'attempting to upload the file: ' +
+                                          file ))
+                        raise IOError(str(uploadResp.toxml()))
 
+                    # Successful update
+                    niceprint(  u'Successfully uploaded the file: ' +
+                                file.encode('utf-8')
+                                if isThisStringUnicode( file)
+                                else ('Successfully uploaded the '
+                                      'file: ' +
+                                      file))
+                    # Unsuccessful update given that search_result is not None
                     if search_result:
-                        file_id = int(search_result["photos"]["photo"][0]["id"])
+                        # file_id = int(search_result["photos"]["photo"][0]["id"])
+                        file_id = uploadResp.findall('photoid')[0].text
+                        if LOGGING_LEVEL <= logging.INFO:
+                            logging.info('Output for {!s}:'.
+                                format('uploadResp'))
+                            xml.etree.ElementTree.dump(uploadResp)
+                        if LOGGING_LEVEL <= logging.WARNING:
+                            logging.warning('SEARCH_RESULT file_id={!s}'.
+                                format(file_id))
                     else:
-                        file_id = int(str(res.getElementsByTagName('photoid')[0].firstChild.nodeValue))
+                        # Successful update given that search_result is None
+                        # file_id = int(str(uploadResp.getElementsByTagName('photoid')[0].firstChild.nodeValue))
+                        file_id = int(str(uploadResp.findall('photoid')[0].text))
 
-                    # Add to db
+                    # Add to db the file uploaded
                     cur.execute(
                         'INSERT INTO files (files_id, path, md5, last_modified, tagged) VALUES (?, ?, ?, ?, 1)',
                         (file_id, file, file_checksum, last_modified))
@@ -633,23 +889,47 @@ class Uploadr:
                     import mimetypes
                     import time
                     filetype = mimetypes.guess_type(file)
+                    if LOGGING_LEVEL <= logging.INFO:
+                        logging.info('filetype:[{!s}]:'.format(filetype))
+
                     if 'video' in filetype[0]:
-                        video_date = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(last_modified))
+                        video_date = time.strftime(
+                                        '%Y-%m-%d %H:%M:%S',
+                                        time.localtime(last_modified))
+                        if LOGGING_LEVEL <= logging.INFO:
+                            logging.info('video_date:[{!s}]'.
+                                         format(video_date))
+
                         try:
-                            res_set_date = flick.photos_set_dates(file_id, video_date)
-                            if res_set_date['stat'] == 'ok':
-                                print("Set date ok")
+                            res_set_date = flick.photos_set_dates(
+                                                file_id,
+                                                video_date)
+                            if self.isGood( res_set_date):
+                                niceprint("Set date ok")
                         except (IOError, ValueError, httplib.HTTPException):
                             print(str(sys.exc_info()))
                             print("Error setting date")
-                        if res_set_date['stat'] != 'ok':
+                        if not self.isGood( res_set_date):
                             raise IOError(res_set_date)
                         #print("Successfully set date for pic number: " + str(file_id) + " File: " + file.encode('utf-8') + " date:" + video_date)    
-                        print (u'Successfully set date for pic number: ' + file.encode('utf-8') + u' date:' + video_date) if self.isThisStringUnicode( file) else ("Successfully set date for pic number: " + file + " date:" + video_date)
-     
+                        niceprint(u'Successfully set date for pic number: ' +
+                                    file.encode('utf-8') +
+                                    u' date:' +
+                                    video_date
+                                        if isThisStringUnicode(file)
+                                        else ('Successfully set date for pic '
+                                              'number: ' +
+                                              file +
+                                              ' date:' +
+                                              video_date))
                     success = True
-                except:
+                # except:
+                #     print(str(sys.exc_info()))
+                except flickrapi.exceptions.FlickrError as ex:
+                    print("Error code: %s" % ex.code)
+                    print("Error code:", ex)
                     print(str(sys.exc_info()))
+                    
             elif (MANAGE_CHANGES):
                 if (row[6] == None):
                     cur.execute('UPDATE files SET last_modified = ? WHERE files_id = ?', (last_modified, row[1]))
@@ -663,13 +943,13 @@ class Uploadr:
     def replacePhoto(self, file, file_id, oldFileMd5, fileMd5, last_modified, cur, con):
 
         if args.dry_run :
-            print (u'Dry Run Replace file ' + file.encode('utf-8') + u'...') if self.isThisStringUnicode( file) else ("Dry Run Replace file " + file + "...")
+            print(u'Dry Run Replace file ' + file.encode('utf-8') + u'...') if isThisStringUnicode( file) else ("Dry Run Replace file " + file + "...")
             return True
 
         success = False
-        print (u'Replacing the file: ' + file.encode('utf-8') + u'...') if self.isThisStringUnicode( file) else ("Replacing the file: " + file + "...")
+        print(u'Replacing the file: ' + file.encode('utf-8') + u'...') if isThisStringUnicode( file) else ("Replacing the file: " + file + "...")
         try:
-            if self.isThisStringUnicode( file):
+            if isThisStringUnicode( file):
                 photo = ('photo', file.encode('utf-8'), open(file, 'rb').read())
             else:
                 photo = ('photo', file, open(file, 'rb').read())
@@ -691,15 +971,15 @@ class Uploadr:
                 video_date = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(last_modified))
                 try:
                     res_set_date = flick.photos_set_dates(file_id, video_date)
-                    if res_set_date['stat'] == 'ok':
+                    if self.isGood(res_set_date):
                         print("Set date ok")
                 except (IOError, ValueError, httplib.HTTPException):
                     print(str(sys.exc_info()))
                     print("Error setting date")
-                if res_set_date['stat'] != 'ok':
+                if not self.isGood(res_set_date):
                     raise IOError(res_set_date)
                 #print("Successfully set date for pic number: " + str(file_id) + " File: " + file.encode('utf-8') + " date:" + video_date)
-                print (u'Successfully set date for pic number: ' + str(file_id) + u' File: ' + file.encode('utf-8') + u' date:' + video_date) if self.isThisStringUnicode( file) else ("Successfully set date for pic number: " + str(file_id) + ' File: ' + file + " date:" + video_date)
+                print(u'Successfully set date for pic number: ' + str(file_id) + u' File: ' + file.encode('utf-8') + u' date:' + video_date) if isThisStringUnicode( file) else ("Successfully set date for pic number: " + str(file_id) + ' File: ' + file + " date:" + video_date)
 
             res = None
             res_add_tag = None
@@ -727,7 +1007,7 @@ class Uploadr:
                 except (IOError, ValueError, httplib.HTTPException):
                     print(str(sys.exc_info()))
                     print("Replacing again")
-                    time.sleep(5)
+                    nutime.sleep(5)
 
                     if x == MAX_UPLOAD_ATTEMPTS - 1:
                         raise ValueError("Reached maximum number of attempts to replace, skipping")
@@ -736,7 +1016,7 @@ class Uploadr:
             if res.documentElement.attributes['stat'].value != "ok" \
                     or res_add_tag['stat'] != 'ok' \
                     or res_get_info['stat'] != 'ok':
-                print (u'A problem occurred while attempting to upload the file: ' + file.encode('utf-8')) if self.isThisStringUnicode( file) else ("A problem occurred while attempting to upload the file: " + file)
+                print(u'A problem occurred while attempting to upload the file: ' + file.encode('utf-8')) if isThisStringUnicode( file) else ("A problem occurred while attempting to upload the file: " + file)
 
             if res.documentElement.attributes['stat'].value != "ok":
                 raise IOError(str(res.toxml()))
@@ -747,7 +1027,7 @@ class Uploadr:
             if res_get_info['stat'] != 'ok':
                 raise IOError(res_get_info)
 
-            print (u'Successfully replaced the file: ' + file.encode('utf-8')) if self.isThisStringUnicode( file) else ("Successfully replaced the file: " + file )
+            print(u'Successfully replaced the file: ' + file.encode('utf-8')) if isThisStringUnicode( file) else ("Successfully replaced the file: " + file )
 
             # Add to set
             cur.execute('UPDATE files SET md5 = ?,last_modified = ? WHERE files_id = ?',
@@ -759,32 +1039,36 @@ class Uploadr:
 
         return success
 
+    #--------------------------------------------------------------------------
+    # deletefile
+    #
+    # When EXCLUDED_FOLDERS defintion changes. You can run the -g
+    # or --remove-ignored option in order to remove files previously loaded
+    # files from
+    # 
     def deleteFile(self, file, cur):
+        """ deleteFile
+        delete file from flickr
+        cur represents the control dabase cursor to allow, for example,
+            deleting empty sets
+        """
+        
+        global nuflickr
 
         if args.dry_run :
-            print (u'Deleting file: ' + file[1].encode('utf-8')) if self.isThisStringUnicode( file[1]) else ("Deleting file: " + file[1])
+            print(u'Deleting file: ' + file[1].encode('utf-8')) if isThisStringUnicode( file[1]) else ("Deleting file: " + file[1])
             return True
 
         success = False
-        print (u'Deleting file: ' + file[1].encode('utf-8')) if self.isThisStringUnicode( file[1]) else ("Deleting file: " + file[1])
-
+        print(u'Deleting file: ' + file[1].encode('utf-8')) if isThisStringUnicode( file[1]) else ("Deleting file: " + file[1])
 
         try:
-            d = {
-                # FIXME: double format?
-                "auth_token": str(self.token),
-                "perms": str(self.perms),
-                "format": "rest",
-                "method": "flickr.photos.delete",
-                "photo_id": str(file[0]),
-                "format": "json",
-                "nojsoncallback": "1"
-            }
-            sig = self.signCall(d)
-            url = self.urlGen(api.rest, d, sig)
-            res = self.getResponse(url)
-            if (self.isGood(res)):
-
+            deleteResp = nuflickr.photos.delete(
+                                        photo_id = str(file[0]) )
+            if LOGGING_LEVEL <= logging.WARNING:
+                logging.warning('[{!s}] deleteResp: ')
+                xml.etree.ElementTree.dump(deleteResp)
+            if (self.isGood(deleteResp)):
                 # Find out if the file is the last item in a set, if so, remove the set from the local db
                 cur.execute("SELECT set_id FROM files WHERE files_id = ?", (file[0],))
                 row = cur.fetchone()
@@ -810,12 +1094,17 @@ class Uploadr:
         return success
 
     def logSetCreation(self, setId, setName, primaryPhotoId, cur, con):
-        print u'setName.type=' + str(type(setName)).encode('utf-8')
-        #print ( u'adding set to log: '.encode('utf-8') + setName.encode('utf-8'))
-        print ( u'adding set to log: '.encode('utf-8') )
-        print ( str(setName) )
-        #print("adding set to log: ", str(setName).encode('utf-8'))
+        """
+        Creates on flickrdb local database a SetName(Album)
+        """
 
+        if LOGGING_LEVEL <= logging.INFO:
+            logging.info('setName:[{!s}] setName.type:[{!s}]'.
+                            format( setName,
+                                    type(setName)))
+            # niceprint u'setName.type=' + str(type(setName)).encode('utf-8')
+            logging.warning('Adding set: [{!s}] to log.'.format(setName))
+    
         success = False
         cur.execute("INSERT INTO sets (set_id, name, primary_photo_id) VALUES (?,?,?)",
                     (setId, setName, primaryPhotoId))
@@ -870,11 +1159,16 @@ class Uploadr:
         content_type = 'multipart/form-data; boundary=%s' % BOUNDARY  # XXX what if no files are encoded
         return content_type, body
 
+    #--------------------------------------------------------------------------
+    # isGood
+    #
     def isGood(self, res):
         """ isGood
+        
+            Returns true if attrib['stat'] == "ok" for a given XML object
         """
 
-        if (not res == "" and res['stat'] == "ok"):
+        if (not res == "" and res.attrib['stat'] == "ok"):
             return True
         else:
             return False
@@ -889,6 +1183,7 @@ class Uploadr:
             print("Error: " + str(res))
 
     def getResponse(self, url):
+        # MSP: Probably not required any more
         """
         Send the url and get a response.  Let errors float up
         """
@@ -901,27 +1196,36 @@ class Uploadr:
             print(e.args)
         return json.loads(res, encoding='utf-8')
 
+    #--------------------------------------------------------------------------
+    # run
+    # 
+    # run in daemon mode. runs upload every SLEEP_TIME
+    #
     def run(self):
         """ run
+            Run in daemon mode. runs upload every SLEEP_TIME seconds.
         """
 
         while (True):
             self.upload()
-            print("Last check: " + str(time.asctime(time.localtime())))
-            time.sleep(SLEEP_TIME)
+            print("Last check: " + str(nutime.asctime(time.localtime())))
+            nutime.sleep(SLEEP_TIME)
 
+    #--------------------------------------------------------------------------
+    # createSets
+    #
     def createSets(self):
-
-        print('*****Creating Sets*****')
+        """
+            Creates a set (Album) in Flickr
+        """
+        niceprint('*****Creating Sets*****')
 
         if args.dry_run :
                 return True
 
-
         con = lite.connect(DB_PATH)
         con.text_factory = str
         with con:
-
             cur = con.cursor()
             cur.execute("SELECT files_id, path, set_id FROM files")
 
@@ -940,45 +1244,59 @@ class Uploadr:
 
                 if set == None:
                     setId = self.createSet(setName, row[0], cur, con)
-                    print (u'Created the set: ' + setName.encode('utf-8')) if self.isThisStringUnicode( setName) else ("Created the set: " + setName)
+                    print(u'Created the set: ' + setName.encode('utf-8')) if isThisStringUnicode( setName) else ("Created the set: " + setName)
                     newSetCreated = True
                 else:
                     setId = set[0]
 
                 if row[2] == None and newSetCreated == False:
-                    print (u'adding file to set ' + row[1].encode('utf-8') + u'...') if self.isThisStringUnicode( row[1]) else ("adding file to set " + row[1])
+                    print(u'adding file to set ' + row[1].encode('utf-8') + u'...') if isThisStringUnicode( row[1]) else ("adding file to set " + row[1])
                     
                     self.addFileToSet(setId, row, cur)
-        print('*****Completed creating sets*****')
+        niceprint('*****Completed creating sets*****')
 
-
+    #--------------------------------------------------------------------------
+    # addFiletoSet
+    #
     def addFileToSet(self, setId, file, cur):
-
+        """
+            adds a file to set...
+        """
+        
+        global nuflickr
+        
         if args.dry_run :
                 return True
-
         try:
-            d = {
-                "auth_token": str(self.token),
-                "perms": str(self.perms),
-                "format": "json",
-                "nojsoncallback": "1",
-                "method": "flickr.photosets.addPhoto",
-                "photoset_id": str(setId),
-                "photo_id": str(file[0])
-            }
-            sig = self.signCall(d)
-            url = self.urlGen(api.rest, d, sig)
-
-            res = self.getResponse(url)
-            if (self.isGood(res)):
+            # d = {
+            #     "auth_token": str(self.token),
+            #     "perms": str(self.perms),
+            #     "format": "json",
+            #     "nojsoncallback": "1",
+            #     "method": "flickr.photosets.addPhoto",
+            #     "photoset_id": str(setId),
+            #     "photo_id": str(file[0])
+            # }
+            # sig = self.signCall(d)
+            # url = self.urlGen(api.rest, d, sig)
+            # 
+            # res = self.getResponse(url)
+            # 
+            addPhotoResp = nuflickr.photosets.addPhoto(
+                                photoset_id = str(setId),
+                                photo_id = str(file[0]))
+                                
+            if LOGGING_LEVEL <= logging.WARNING:
+                logging.warning('addPhotoResp: ')
+                xml.etree.ElementTree.dump(addPhotoResp)
+            
+            if (self.isGood(addPhotoResp)):
                 #print("Successfully added file " + str(file[1]).encode('utf-8') + " to its set.")
-                print (u'Successfully added file ' + file[1].encode('utf-8') + u' to its set.') if self.isThisStringUnicode( file[1]) else ("Successfully added file " + file[1] + " to its set.")
+                print(u'Successfully added file ' + file[1].encode('utf-8') + u' to its set.') if isThisStringUnicode( file[1]) else ("Successfully added file " + file[1] + " to its set.")
 
                 cur.execute("UPDATE files SET set_id = ? WHERE files_id = ?", (setId, file[0]))
-
             else:
-                if (res['code'] == 1):
+                if (addPhotoResp['code'] == 1):
                     print("Photoset not found, creating new set...")
                     if FULL_SET_NAME:
                         setName = os.path.relpath(os.path.dirname(file[1]), unicode(FILES_DIR, 'utf-8'))
@@ -987,52 +1305,85 @@ class Uploadr:
                     con = lite.connect(DB_PATH)
                     con.text_factory = str
                     self.createSet(setName, file[0], cur, con)
-                elif (res['code'] == 3):
-                    print(res['message'] + "... updating DB")
+                elif (addPhotoRest['code'] == 3):
+                    print("Photo already in set... updating DB")
+                    print(addPhotoRest['message'] + "... updating DB")
                     cur.execute("UPDATE files SET set_id = ? WHERE files_id = ?", (setId, file[0]))
                 else:
                     self.reportError(res)
         except:
             print(str(sys.exc_info()))
 
+    #--------------------------------------------------------------------------
+    # createSet
+    #
     def createSet(self, setName, primaryPhotoId, cur, con):
-        print u'setName.type=' + str(type(setName)).encode('utf-8')
-        print ( u'Creating new set: '.encode('utf-8'))
-        print ( str(setName) )
+        
+        global nuflickr
+        
+        niceprint(u'setName.type=' + str(type(setName)).encode('utf-8'))
+        niceprint( u'Creating new set: '.encode('utf-8') + str(setName) )
         #print("Creating new set: ", str(setName).encode('utf-8'))
 
         if args.dry_run :
-                return True
-
+            return True
 
         try:
-            d = {
-                "auth_token": str(self.token),
-                "perms": str(self.perms),
-                "format": "json",
-                "nojsoncallback": "1",
-                "method": "flickr.photosets.create",
-                "primary_photo_id": str(primaryPhotoId),
-                "title": setName
-
-            }
-
-            sig = self.signCall(d)
-
-            url = self.urlGen(api.rest, d, sig)
-            res = self.getResponse(url)
-            if (self.isGood(res)):
-                self.logSetCreation(res["photoset"]["id"], setName, primaryPhotoId, cur, con)
-                return res["photoset"]["id"]
+            # d = {
+            #     "auth_token": str(self.token),
+            #     "perms": str(self.perms),
+            #     "format": "json",
+            #     "nojsoncallback": "1",
+            #     "method": "flickr.photosets.create",
+            #     "primary_photo_id": str(primaryPhotoId),
+            #     "title": setName
+            # }
+            # sig = self.signCall(d)
+            # url = self.urlGen(api.rest, d, sig)
+            # res = self.getResponse(url)
+            
+            createResp = nuflickr.photosets.create (
+                            title = setName,
+                            primary_photo_id = str(primaryPhotoId))
+            if LOGGING_LEVEL <= logging.WARNING:
+                logging.warning('createResp: ')
+                xml.etree.ElementTree.dump(createResp)
+                
+            if (self.isGood(createResp)):
+                if LOGGING_LEVEL <= logging.WARNING:
+                    # logging.warning('createResp["photoset"]["id"]'.
+                    #                     format(createResp["photoset"]["id"]))
+                    logging.warning('createResp["photoset"]["id"]'.
+                                        format(createResp.
+                                                    find('photoset').
+                                                    attrib['id']))
+                self.logSetCreation(createResp.find('photoset').attrib['id'],
+                                    setName,
+                                    primaryPhotoId,
+                                    cur,
+                                    con)
+                return createResp.find('photoset').attrib['id']
             else:
-                print(d)
-                self.reportError(res)
+                if LOGGING_LEVEL <= logging.WARNING:
+                    logging.warning('createResp: ')
+                    xml.etree.ElementTree.dump(createResp)
+                self.reportError(createResp)
         except:
             print(str(sys.exc_info()))
         return False
 
+    #--------------------------------------------------------------------------
+    # setupDB
+    #
+    # Creates the control database
+    #
     def setupDB(self):
-        print("Setting up the database: " + DB_PATH)
+        """
+            setupDB
+            
+            Creates the control database
+        """
+        niceprint("Setting up the database: " + DB_PATH)
         con = None
         try:
             con = lite.connect(DB_PATH)
@@ -1047,19 +1398,19 @@ class Uploadr:
             cur.execute('PRAGMA user_version')
             row = cur.fetchone()
             if (row[0] == 0):
-                print('Adding last_modified column to database');
+                niceprint('Adding last_modified column to database');
                 cur = con.cursor()
                 cur.execute('PRAGMA user_version="1"')
                 cur.execute('ALTER TABLE files ADD COLUMN last_modified REAL');
                 con.commit()
             con.close()
         except lite.Error, e:
-            print("Error: %s" % e.args[0])
+            niceprint("Error: %s" % e.args[0])
             if con != None:
                 con.close()
             sys.exit(1)
         finally:
-            print("Completed database setup")
+            niceprint('Completed database setup')
 
     def md5Checksum(self, filePath):
         with open(filePath, 'rb') as fh:
@@ -1071,18 +1422,20 @@ class Uploadr:
                 m.update(data)
             return m.hexdigest()
 
+    # -------------------------------------------------------------------------
     # Method to clean unused sets
+    #   Sets are Albums.
     def removeUselessSetsTable(self):
-        print('*****Removing empty Sets from DB*****')
+        niceprint('*****Removing empty Sets from DB*****')
         if args.dry_run :
                 return True
-
 
         con = lite.connect(DB_PATH)
         con.text_factory = str
         with con:
             cur = con.cursor()
-            cur.execute("SELECT set_id, name FROM sets WHERE set_id NOT IN (SELECT set_id FROM files)")
+            cur.execute("SELECT set_id, name FROM sets WHERE set_id NOT IN\
+                        (SELECT set_id FROM files)")
             unusedsets = cur.fetchall()
 
             for row in unusedsets:
@@ -1090,9 +1443,11 @@ class Uploadr:
                 cur.execute("DELETE FROM sets WHERE set_id = ?", (row[0],))
             con.commit()
 
-        print('*****Completed removing empty Sets from DB*****')
+        niceprint('*****Completed removing empty Sets from DB*****')
 
+    # -------------------------------------------------------------------------
     # Display Sets
+    #
     def displaySets(self):
         con = lite.connect(DB_PATH)
         con.text_factory = str
@@ -1103,85 +1458,230 @@ class Uploadr:
             for row in allsets:
                 print("Set: " + str(row[0]) + "(" + row[1] + ")")
 
+    #--------------------------------------------------------------------------
     # Get sets from Flickr
+    #
+    # Selects the flickrSets from Flickr
+    # for each flickrSet
+    #   Selects the localDBSet from local flickrdb database
+    #   if localDBSet is None INSERTs flickrset into flickrdb
+    #
     def getFlickrSets(self):
-        print('*****Adding Flickr Sets to DB*****')
+        """
+            getFlickrSets
+            
+            Gets list of FLickr Sets (Albums) and populates
+            local DB accordingly
+        """   
+        global nuflickr
+        
+        niceprint('*****Adding Flickr Sets to DB*****')
         if args.dry_run :
                 return True
 
         con = lite.connect(DB_PATH)
         con.text_factory = str
         try:
-            d = {
-                "auth_token": str(self.token),
-                "perms": str(self.perms),
-                "format": "json",
-                "nojsoncallback": "1",
-                "method": "flickr.photosets.getList"
-            }
-            url = self.urlGen(api.rest, d, self.signCall(d))
-            res = self.getResponse(url)
-            if (self.isGood(res)):
+            sets = nuflickr.photosets_getList()
+            
+            if LOGGING_LEVEL <= logging.INFO:
+                logging.info('Output for {!s}'.format('photosets_getList:'))
+                xml.etree.ElementTree.dump(sets)
+
+            """
+
+sets = flickr.photosets.getList(user_id='73509078@N00')
+
+sets.attrib['stat'] => 'ok'
+sets.find('photosets').attrib['cancreate'] => '1'
+
+set0 = sets.find('photosets').findall('photoset')[0]
+
++-------------------------------+-----------+
+| variable                      | value     |
++-------------------------------+-----------+
+| set0.attrib['id']             | u'5'      |
+| set0.attrib['primary']        | u'2483'   |
+| set0.attrib['secret']         | u'abcdef' |
+| set0.attrib['server']         | u'8'      |
+| set0.attrib['photos']         | u'4'      |
+| set0.title[0].text            | u'Test'   |
+| set0.description[0].text      | u'foo'    |
+| set0.find('title').text       | 'Test'    |
+| set0.find('description').text | 'foo'     |
++-------------------------------+-----------+
+
+... and similar for set1 ...
+
+            """
+
+            # print "Before isGood"
+            # # print self.isGood(sets)
+            # print sets.find('photosets').findall('photoset')[0].find('title').text
+            # print "After isGood"
+
+            if (self.isGood(sets)):
                 cur = con.cursor()
-                for row in res['photosets']['photoset']:
-                    setId = row['id']
-                    setName = row['title']['_content']
-                    primaryPhotoId = row['primary']
-                    cur.execute("SELECT set_id FROM sets WHERE set_id = '" + setId + "'")
+                # print "Before Title"
+                # title  = sets['photosets']['photoset'][0]['title']['_content']
+                # print "After Title"
+
+                # print('First set title: %s' % title)
+
+                for row in sets.find('photosets').findall('photoset'):
+                    if LOGGING_LEVEL <= logging.INFO:
+                        logging.info('Output for {!s}:'.format('row'))
+                        xml.etree.ElementTree.dump(row)
+
+                    setId = row.attrib['id']
+                    setName = row.find('title').text
+                    primaryPhotoId = row.attrib['primary']
+                    # print( 'no encode commas', setId, setName, primaryPhotoId)
+                    # print( 'no encode plus' + setId + setName + primaryPhotoId)
+                    # print(u'encode commas',
+                    #         setId.encode('utf-8'),
+                    #         setName.encode('utf-8'),
+                    #         primaryPhotoId.encode('utf-8'))
+                    # print(u'encode plus unicode '.encode('utf-8') +
+                    #         setId.encode('utf-8') + 
+                    #         setName +
+                    #         primaryPhotoId.encode('utf-8'))
+                    if LOGGING_LEVEL <= logging.INFO:
+                        logging.info('isThisStringUnicode [{!s}]:{!s}'.
+                                     format('setId',
+                                            isThisStringUnicode(setId)))
+                        logging.info('isThisStringUnicode [{!s}]:{!s}'.
+                                     format('setName',
+                                            isThisStringUnicode(setName)))
+                        logging.info('isThisStringUnicode [{!s}]:{!s}'.
+                                     format('primaryPhotoId',
+                                            isThisStringUnicode(primaryPhotoId)))
+                    # niceprint('id=' + setId +
+                    #           'setName=' + setName +
+                    #           'prim=' + primaryPhotoId)
+                    niceprint(u'id='.encode('utf-8') +
+                              setId.encode('utf-8') + u' ' +
+                              u'setName='.encode('utf-8') +
+                              setName + u' ' +
+                              u'primaryPhotoId='.encode('utf-8') +
+                              primaryPhotoId.encode('utf-8'))
+                    if LOGGING_LEVEL <= logging.INFO:
+                        logging.info('setId:[{!s}] '
+                                     'setName:[{!s}] '
+                                     'primaryPhotoId:[{!s}]'.
+                                     format(setId,
+                                            setName.encode('utf-8'),
+                                            primaryPhotoId))
+                    
+                    # print( "Before setId")
+                    # print( setId, setName, primaryPhotoId)
+                    # print( "After setId")
+                    cur.execute("SELECT set_id FROM sets WHERE set_id = '"
+                                + setId + "'")
                     foundSets = cur.fetchone()
+                    if LOGGING_LEVEL <= logging.INFO:
+                        logging.info('Output for {!s}:'.format('foundSets'))
+                        print foundSets
+
                     if foundSets == None:
-                        print(u"Adding set #{0} ({1}) with primary photo #{2}".format(setId, setName.encode('utf-8'), primaryPhotoId))
-                        cur.execute("INSERT INTO sets (set_id, name, primary_photo_id) VALUES (?,?,?)",
+                        print(u"Adding set #{0} ({1}) with primary photo #{2}".
+                              format(setId, setName, primaryPhotoId))
+                        cur.execute('INSERT INTO sets (set_id, name, '
+                                    'primary_photo_id) VALUES (?,?,?)',
                                     (setId, setName, primaryPhotoId))
+                
                 con.commit()
+                niceprint('Sleep...3...to allow Commit... TO BE REMOVED?')
+                nutime.sleep(3)
+                niceprint('After Sleep...3...to allow Commit')
                 con.close()
             else:
-                print(d)
-                self.reportError(res)
-        except:
+                xml.etree.ElementTree.dump(sets)
+                self.reportError(sets)
+            
+        except flickrapi.exceptions.FlickrError as ex:
+            print("Error code: %s" % ex.code)
+            print("Error code:", ex)
             print(str(sys.exc_info()))
-        print('*****Completed adding Flickr Sets to DB*****')
 
+        # except:
+        #     print "EXCEPTION"
+        #     FlickrError
+        #     print(str(sys.exc_info()))
+        niceprint('*****Completed adding Flickr Sets to DB*****')
+
+    #--------------------------------------------------------------------------
+    # photos_search
+    #
+    # Searchs for image with on tag:checksum 
+    #
     def photos_search(self, checksum):
-        data = {
-            "auth_token": str(self.token),
-            "perms": str(self.perms),
-            "format": "json",
-            "nojsoncallback": "1",
-            "method": "flickr.photos.search",
-            "user_id": "me",
-            "tags": 'checksum:{}'.format(checksum),
-        }
+        """
+            photos_search
+            Searchs for image with on tag:checksum 
+        """
+        
+        global nuflickr
+        
+        if LOGGING_LEVEL <= logging.INFO:
+            logging.info('FORMAT checksum:{!s}:'.format(checksum))
 
-        url = self.urlGen(api.rest, data, self.signCall(data))
-        return self.getResponse(url)
+        searchResp = nuflickr.photos.search(tags = 'checksum:{}'.format(checksum))
+        # Debug
+        if LOGGING_LEVEL <= logging.INFO:
+            logging.info('Search Results SearchResp:')
+            xml.etree.ElementTree.dump(searchResp)
 
+        return searchResp
+    
+    #--------------------------------------------------------------------------
+    # people_get_photos
+    #
     def people_get_photos(self):
-        data = {
-            "auth_token": str(self.token),
-            "perms": str(self.perms),
-            "format": "json",
-            "nojsoncallback": "1",
-            "user_id": "me",
-            "method": "flickr.people.getPhotos",
-            "per_page": "1"
-        }
+        """
+        """
+        
+        global nuflickr
+        
+        # data = {
+        #     "auth_token": str(self.token),
+        #     "perms": str(self.perms),
+        #     "format": "json",
+        #     "nojsoncallback": "1",
+        #     "user_id": "me",
+        #     "method": "flickr.people.getPhotos",
+        #     "per_page": "1"
+        # }
+        # 
+        # url = self.urlGen(api.rest, data, self.signCall(data))
+        # return self.getResponse(url)
+        
+        getPhotosResp = nuflickr.people.getPhotos( user_id = "me", per_page = 1)
+        return getPhotosResp
 
-        url = self.urlGen(api.rest, data, self.signCall(data))
-        return self.getResponse(url)
-
+    #--------------------------------------------------------------------------
+    # photos_get_not_in_set
+    #
     def photos_get_not_in_set(self):
-        data = {
-            "auth_token": str(self.token),
-            "perms": str(self.perms),
-            "format": "json",
-            "nojsoncallback": "1",
-            "method": "flickr.photos.getNotInSet",
-            "per_page": "1"
-        }
+        """
+        """
+        
+        global nuflickr
 
-        url = self.urlGen(api.rest, data, self.signCall(data))
-        return self.getResponse(url)
+        # data = {
+        #     "auth_token": str(self.token),
+        #     "perms": str(self.perms),
+        #     "format": "json",
+        #     "nojsoncallback": "1",
+        #     "method": "flickr.photos.getNotInSet",
+        #     "per_page": "1"
+        # }
+        # 
+        # url = self.urlGen(api.rest, data, self.signCall(data))
+        # return self.getResponse(url)
+    
+        notinsetResp = nuflickr.photos.getNotInSet ( per_page = 1)
+        return notinsetResp
 
     def photos_add_tags(self, photo_id, tags):
         tags = [tag.replace(',', '') for tag in tags]
@@ -1224,41 +1724,75 @@ class Uploadr:
         url = self.urlGen(api.rest, data, self.signCall(data))
         return self.getResponse(url)
 
-    # Update Date/Time on Flickr for Video files
+    #--------------------------------------------------------------------------
+    # photos_set_dates
+    #
+    # Update Date/Time Taken on Flickr for Video files
+    #
     def photos_set_dates(self, photo_id, datetxt):
-        data = {
-            "auth_token": str(self.token),
-            "perms": str(self.perms),
-            "format": "json",
-            "nojsoncallback": "1",
-            "method": "flickr.photos.setDates",
-            "photo_id": str(photo_id),
-            "date_taken": str(datetxt)
-        }
-        url = self.urlGen(api.rest, data, self.signCall(data))
-        return self.getResponse(url)
+        """
+        Update Date/Time Taken on Flickr for Video files
+        """
+        global nuflickr
+        
+        # data = {
+        #     "auth_token": str(self.token),
+        #     "perms": str(self.perms),
+        #     "format": "json",
+        #     "nojsoncallback": "1",
+        #     "method": "flickr.photos.setDates",
+        #     "photo_id": str(photo_id),
+        #     "date_taken": str(datetxt)
+        # }
+        # url = self.urlGen(api.rest, data, self.signCall(data))
+        
+        respDate = nuflickr.photos.setdates(photo_id = photo_id,
+                                                date_taken = datetxt)
+        if LOGGING_LEVEL <= logging.INFO:
+            logging.info('Output for {!s}:'.format('respDate'))
+            xml.etree.ElementTree.dump(respDate)
 
+        return respDate
+    
+    #--------------------------------------------------------------------------
+    # print_stat
+    #
     def print_stat(self):
+        """ print_stat
+        Shows Total photos and Photos Not in Sets on Flickr
+        """
         con = lite.connect(DB_PATH)
         con.text_factory = str
         with con:
             cur = con.cursor()
             cur.execute("SELECT Count(*) FROM files")
 
-            print 'Total photos on local: {}'.format(cur.fetchone()[0])
+            print( 'Total photos on local: {}'.format(cur.fetchone()[0]))
 
         res = self.people_get_photos()
-        if res["stat"] != "ok":
+        if not self.isGood(res):
             raise IOError(res)
-        print 'Total photos on flickr: {}'.format(res["photos"]["total"])
+        print('DEBUG print people_get_photos')
+        xml.etree.ElementTree.dump(res)
+       
+        print('Total photos on flickr: {}'.
+                format(res.find('photos').attrib['total']))
 
         res = self.photos_get_not_in_set()
-        if res["stat"] != "ok":
+        if not self.isGood(res):
             raise IOError(res)
-        print 'Photos not in sets on flickr: {}'.format(res["photos"]["total"])
+        print('DEBUG print get_not_in_set')
+        xml.etree.ElementTree.dump(res)
 
+        print('Photos not in sets on flickr: {}'.
+                format(res.find('photos').attrib['total']))
 
-print("--------- Start time: " + time.strftime("%c") + " ---------")
+#------------------------------------------------------------------------------
+# Main code
+#
+nutime = time
+
+niceprint("--------- Start time: " + nutime.strftime(UPLDRConstants.TimeFormat) + " ---------")
 if __name__ == "__main__":
     # Ensure that only once instance of this script is running
     f = open(LOCK_PATH, 'w')
@@ -1266,7 +1800,9 @@ if __name__ == "__main__":
         fcntl.lockf(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except IOError, e:
         if e.errno == errno.EAGAIN:
-            sys.stderr.write('[%s] Script already running.\n' % time.strftime('%c'))
+            # sys.stderr.write('[%s] Script already running.\n' % time.strftime('%c'))
+            sys.stderr.write('[{!s}] Script already running.\n'.format(
+                                    nutime.strftime(UPLDRConstants.TimeFormat)))
             sys.exit(-1)
         raise
     parser = argparse.ArgumentParser(description='Upload files to Flickr.')
@@ -1286,37 +1822,51 @@ if __name__ == "__main__":
                         help='Dry run')
     parser.add_argument('-g', '--remove-ignored', action='store_true',
                         help='Remove previously uploaded files, now ignored')
-    args = parser.parse_args() 
-    print args.dry_run
+    args = parser.parse_args()
+    if LOGGING_LEVEL <= logging.INFO:
+        logging.info('Output for {!s}'.format('args:'))
+        pprint.pprint(args)
 
+    # instantiate call Uploadr
     flick = Uploadr()
 
+    if LOGGING_LEVEL <= logging.WARNING:
+        logging.warning('FILES_DIR: [{!s}]'.format(FILES_DIR))
     if FILES_DIR == "":
-        print("Please configure the name of the folder in the script with media available to sync with Flickr.")
+        print('Please configure the name of the folder in the script with '
+              'media available to sync with Flickr.')
         sys.exit()
+    else:
+        if not os.path.isdir(FILES_DIR):
+            print('Please configure the name of an existant folder '
+                  'in the script with media available to sync with Flickr.')
+            sys.exit()
 
     if FLICKR["api_key"] == "" or FLICKR["secret"] == "":
         print("Please enter an API key and secret in the script file (see README).")
         sys.exit()
 
     flick.setupDB()
-
+    
     if args.daemon:
+        # Will run in daemon mode every SLEEP_TIME seconds
+        if LOGGING_LEVEL <= logging.WARNING:
+            logging.warning('Will run in daemon mode every {!s} seconds'.format(SLEEP_TIME))
         flick.run()
     else:
         if not flick.checkToken():
             flick.authenticate()
-        # flick.displaySets()
 
         flick.removeUselessSetsTable()
-        flick.getFlickrSets()
+        flick.getFlickrSets()        
         flick.convertRawFiles()
         flick.upload()
+
         flick.removeDeletedMedia()
         if args.remove_ignored:
             flick.removeIgnoredMedia()
+
         flick.createSets()
         flick.print_stat()
 
-
-print("--------- End time: " + time.strftime("%c") + " ---------")
+niceprint("--------- End time: " + time.strftime(UPLDRConstants.TimeFormat) + " ---------")
