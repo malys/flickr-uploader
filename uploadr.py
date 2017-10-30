@@ -243,9 +243,17 @@ LOGGING_LEVEL = (config.get('Config', 'LOGGING_LEVEL')
 # Two uses:
 #   Simply log message at approriate level
 #       logging.warning('Status: {!s}'.format('Setup Complete'))
-#   Control additional specific output depending on level
+#   Control additional specific output to stderr depending on level
 #       if LOGGING_LEVEL <= logging.INFO:
 #            logging.info('Output for {!s}:'.format('uploadResp'))
+#            logging.info( xml.etree.ElementTree.tostring(
+#                                                    addPhotoResp,
+#                                                    encoding='utf-8',
+#                                                    method='xml'))
+#            <generate any further output>
+#   Control additional specific output to stdout depending on level
+#       if LOGGING_LEVEL <= logging.INFO:
+#            niceprint ('Output for {!s}:'.format('uploadResp'))
 #            xml.etree.ElementTree.dump(uploadResp)
 #            <generate any further output>
 #
@@ -638,17 +646,16 @@ class Uploadr:
                      if ((len(changedMedia) / int(args.processes)) > 0) \
                      else 1
 
-                if LOGGING_LEVEL <= logging.DEBUG:
-                    logging.debug('len(changedMedia):[{!s}] '
-                                  'int(args.processes):[{!s}] '
-                                  'sz per process:[{!s}]'.
-                                  format(len(changedMedia),
-                                         int(args.processes),
-                                         sz))
+                logging.debug('len(changedMedia):[{!s}] '
+                              'int(args.processes):[{!s}] '
+                              'sz per process:[{!s}]'.
+                              format(len(changedMedia),
+                                     int(args.processes),
+                                     sz))
 
                 # Split the Media in chunks to distribute accross Processes
                 for nuChangeMedia in chunk(changedMedia, sz):
-                    logging.debug('===Chunk size: [{!s}]'.
+                    logging.info('===Chunk size: [{!s}]'.
                                     format(sz))
 
                     logging.debug('===Job/Task Process: Creating...')
@@ -1019,7 +1026,10 @@ class Uploadr:
                                         )
                             if LOGGING_LEVEL <= logging.WARNING:
                                 logging.warning('uploadResp: ')
-                                xml.etree.ElementTree.dump(uploadResp)
+                                logging.warning(xml.etree.ElementTree.tostring(
+                                                    uploadResp,
+                                                    encoding='utf-8',
+                                                    method='xml'))
                             if self.isGood(uploadResp):
                                 logging.info('search_result:OK')
                             else:
@@ -1105,13 +1115,13 @@ class Uploadr:
                     if search_result:
                         # file_id = int(search_result["photos"]["photo"][0]["id"])
                         file_id = uploadResp.findall('photoid')[0].text
-                        if LOGGING_LEVEL <= logging.INFO:
-                            logging.info('Output for {!s}:'.
-                                format('uploadResp'))
-                            xml.etree.ElementTree.dump(uploadResp)
-                        if LOGGING_LEVEL <= logging.WARNING:
-                            logging.warning('SEARCH_RESULT file_id={!s}'.
-                                format(file_id))
+                        logging.info('Output for {!s}:'.format('uploadResp'))
+                        logging.info(xml.etree.ElementTree.tostring(
+                                            uploadResp,
+                                            encoding='utf-8',
+                                            method='xml'))
+                        logging.warning('SEARCH_RESULT file_id={!s}'.
+                            format(file_id))
                     else:
                         # Successful update given that search_result is None
                         # file_id = int(str(uploadResp.getElementsByTagName('photoid')[0].firstChild.nodeValue))
@@ -1268,9 +1278,11 @@ class Uploadr:
                                     fileobj=FileWithCallback(file, callback),
                                     photo_id=file_id
                                 )
-                    if LOGGING_LEVEL <= logging.DEBUG:
-                        logging.warning('replaceResp: ')
-                        xml.etree.ElementTree.dump(replaceResp)
+                    logging.info('replaceResp: ')
+                    logging.info( xml.etree.ElementTree.tostring(
+                                                    replaceResp,
+                                                    encoding='utf-8',
+                                                    method='xml'))
                     
                     if (self.isGood(replaceResp)):
                         # Update checksum tag at this time.
@@ -1284,9 +1296,11 @@ class Uploadr:
                             res_get_info = nuflickr.photos_get_info(
                                                 photo_id=file_id
                                                 )
-                            if LOGGING_LEVEL <= logging.DEBUG:
-                                logging.warning('res_get_info: ')
-                                xml.etree.ElementTree.dump(res_get_info)
+                            logging.info('res_get_info: ')
+                            logging.info( xml.etree.ElementTree.tostring(
+                                                    res_get_info,
+                                                    encoding='utf-8',
+                                                    method='xml'))
                             # find tag checksum with oldFileMd5
                             # later use such tagid to update it with Md5
                             if (self.isGood(res_get_info)):
@@ -1308,9 +1322,11 @@ class Uploadr:
                                 else:
                                     # updated tag_id with new Md5
                                     remtagResp = self.photos_remove_tag(tag_id)
-                                    if LOGGING_LEVEL <= logging.DEBUG:
-                                        logging.warning('remtagResp: ')
-                                        xml.etree.ElementTree.dump(remtagResp)
+                                    logging.info('remtagResp: ')
+                                    logging.info(xml.etree.ElementTree.tostring(
+                                                            remtagResp,
+                                                            encoding='utf-8',
+                                                            method='xml'))
                                     if (self.isGood(remtagResp)):
                                         niceprint('Tag removed.')
                                     else:
@@ -1479,9 +1495,11 @@ class Uploadr:
         try:
             deleteResp = nuflickr.photos.delete(
                                         photo_id=str(file[0]))
-            if LOGGING_LEVEL <= logging.INFO:
-                logging.info('Output for {!s}:'.format('deleteResp'))
-                xml.etree.ElementTree.dump(deleteResp)
+            logging.info('Output for {!s}:'.format('deleteResp'))
+            logging.info( xml.etree.ElementTree.tostring(
+                                    deleteResp,
+                                    encoding='utf-8',
+                                    method='xml'))
             if (self.isGood(deleteResp)):
                 # Find out if the file is the last item in a set, if so, remove the set from the local db
                 cur.execute("SELECT set_id FROM files WHERE files_id = ?", (file[0],))
@@ -1596,14 +1614,19 @@ class Uploadr:
         else:
             return False
 
+    #--------------------------------------------------------------------------
+    # reportError
+    #
+    # MSP: Check if required!!
+    #
     def reportError(self, res):
         """ reportError
         """
 
         try:
-            print("Error: " + str(res['code'] + " " + res['message']))
+            print("ReportError: " + str(res['code'] + " " + res['message']))
         except:
-            print("Error: " + str(res))
+            print("ReportError: " + str(res))
 
     # MSP: Probably not required any more
     # def getResponse(self, url):
@@ -1767,7 +1790,11 @@ class Uploadr:
                             primary_photo_id = str(primaryPhotoId))
             if LOGGING_LEVEL <= logging.WARNING:
                 logging.warning('createResp: ')
-                xml.etree.ElementTree.dump(createResp)
+                # xml.etree.ElementTree.dump(createResp)
+                logging.warning( xml.etree.ElementTree.tostring(
+                                                createResp,
+                                                encoding='utf-8',
+                                                method='xml'))
 
             if (self.isGood(createResp)):
                 if LOGGING_LEVEL <= logging.WARNING:
@@ -1784,7 +1811,11 @@ class Uploadr:
             else:
                 if LOGGING_LEVEL <= logging.WARNING:
                     logging.warning('createResp: ')
-                    xml.etree.ElementTree.dump(createResp)
+                    # xml.etree.ElementTree.dump(createResp)
+                    logging.warning( xml.etree.ElementTree.tostring(
+                                                        createResp,
+                                                        encoding='utf-8',
+                                                        method='xml'))
                 self.reportError(createResp)
         except:
             print(str(sys.exc_info()))
@@ -1915,9 +1946,11 @@ class Uploadr:
         try:
             sets = nuflickr.photosets_getList()
 
-            if LOGGING_LEVEL <= logging.INFO:
-                logging.info('Output for {!s}'.format('photosets_getList:'))
-                xml.etree.ElementTree.dump(sets)
+            logging.info('Output for {!s}'.format('photosets_getList:'))
+            logging.info( xml.etree.ElementTree.tostring(
+                                                sets,
+                                                encoding='utf-8',
+                                                method='xml'))
 
             """
 
@@ -1946,11 +1979,6 @@ set0 = sets.find('photosets').findall('photoset')[0]
 
             """
 
-            # print "Before isGood"
-            # # print self.isGood(sets)
-            # print sets.find('photosets').findall('photoset')[0].find('title').text
-            # print "After isGood"
-
             if (self.isGood(sets)):
                 cur = con.cursor()
                 # print "Before Title"
@@ -1960,9 +1988,11 @@ set0 = sets.find('photosets').findall('photoset')[0]
                 # print('First set title: %s' % title)
 
                 for row in sets.find('photosets').findall('photoset'):
-                    if LOGGING_LEVEL <= logging.INFO:
-                        logging.info('Output for {!s}:'.format('row'))
-                        xml.etree.ElementTree.dump(row)
+                    logging.info('Output for {!s}:'.format('row'))
+                    logging.info( xml.etree.ElementTree.tostring(
+                                row,
+                                encoding='utf-8',
+                                method='xml'))
 
                     setId = row.attrib['id']
                     setName = row.find('title').text
@@ -2038,7 +2068,11 @@ set0 = sets.find('photosets').findall('photoset')[0]
                 if con != None:
                     con.close()
             else:
-                xml.etree.ElementTree.dump(sets)
+                logging.warning( xml.etree.ElementTree.tostring(
+                                    sets,
+                                    encoding='utf-8',
+                                    method='xml'))
+                # xml.etree.ElementTree.dump(sets)
                 self.reportError(sets)
 
         except flickrapi.exceptions.FlickrError as ex:
@@ -2069,14 +2103,15 @@ set0 = sets.find('photosets').findall('photoset')[0]
 
         global nuflickr
 
-        if LOGGING_LEVEL <= logging.INFO:
-            logging.info('FORMAT checksum:{!s}:'.format(checksum))
+        logging.info('FORMAT checksum:{!s}:'.format(checksum))
 
         searchResp = nuflickr.photos.search(tags='checksum:{}'.format(checksum))
         # Debug
-        if LOGGING_LEVEL <= logging.INFO:
-            logging.info('Search Results SearchResp:')
-            xml.etree.ElementTree.dump(searchResp)
+        logging.debug('Search Results SearchResp:')
+        logging.debug( xml.etree.ElementTree.tostring(
+                                            searchResp,
+                                            encoding='utf-8',
+                                            method='xml'))
 
         return searchResp
 
@@ -2176,9 +2211,12 @@ set0 = sets.find('photosets').findall('photoset')[0]
 
         respDate = nuflickr.photos.setdates(photo_id=photo_id,
                                             date_taken=datetxt)
-        if LOGGING_LEVEL <= logging.INFO:
-            logging.info('Output for {!s}:'.format('respDate'))
-            xml.etree.ElementTree.dump(respDate)
+        logging.info('Output for {!s}:'.format('respDate'))
+        # xml.etree.ElementTree.dump(respDate)
+        logging.info( xml.etree.ElementTree.tostring(
+                                respDate,
+                                encoding='utf-8',
+                                method='xml'))
 
         return respDate
 
@@ -2208,9 +2246,11 @@ set0 = sets.find('photosets').findall('photoset')[0]
         res = self.people_get_photos()
         if not self.isGood(res):
             raise IOError(res)
-        if LOGGING_LEVEL <= logging.DEBUG:
-            logging.debug('print people_get_photos')
-            xml.etree.ElementTree.dump(res)
+        logging.debug('print people_get_photos')
+        logging.debug( xml.etree.ElementTree.tostring(
+                                res,
+                                encoding='utf-8',
+                                method='xml'))
 
         countflickr = format(res.find('photos').attrib['total'])
         if LOGGING_LEVEL <= logging.DEBUG:
@@ -2221,9 +2261,11 @@ set0 = sets.find('photosets').findall('photoset')[0]
         res = self.photos_get_not_in_set()
         if not self.isGood(res):
             raise IOError(res)
-        if LOGGING_LEVEL <= logging.DEBUG:
-            logging.debug('print get_not_in_set')
-            xml.etree.ElementTree.dump(res)
+        logging.debug('print get_not_in_set')
+        logging.debug( xml.etree.ElementTree.tostring(
+                                res,
+                                encoding='utf-8',
+                                method='xml'))
 
         countnotinsets = format(res.find('photos').attrib['total'])
         if LOGGING_LEVEL <= logging.DEBUG:
@@ -2248,7 +2290,11 @@ set0 = sets.find('photosets').findall('photoset')[0]
                         'id:[{!s}] '
                         'title:[{!s}]'.format(row.attrib['id'],
                                               row.attrib['title']))
-                    xml.etree.ElementTree.dump(row)
+                    # xml.etree.ElementTree.dump(row)
+                    logging.debug( xml.etree.ElementTree.tostring(
+                                    row,
+                                    encoding='utf-8',
+                                    method='xml'))
                 niceprint('Photo get_not_in_set: id:[' +
                           row.attrib['id'] + ']' +
                           'title:[' +
