@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 """
+    XXX: Replacephoto did not delte previouse checksum on IMG_3326
+         It added a second checksum
     XXX: Functions to be migrates...
             convertRawFiles
     XXX: double check parentesis on some niceprint with if else!!! (not parentises at the end or is IT? as it is with print)??
@@ -384,10 +386,10 @@ class Uploadr:
     #     foo = ""
     #     for a in keys:
     #         foo += (a + data[a])
-    # 
+    #
     #     f = FLICKR["secret"] + "api_key" + FLICKR["api_key"] + foo
     #     # f = "api_key" + FLICKR[ "api_key" ] + foo
-    # 
+    #
     #     return hashlib.md5(f).hexdigest()
 
     # MSP: May be removed after migration to flickrapi
@@ -601,9 +603,12 @@ class Uploadr:
         allMedia = self.grabNewFiles()
         # If managing changes, consider all files
         if MANAGE_CHANGES:
+            logging.warning('MANAGED_CHANGES is True. Reviewing allMedia.')
             changedMedia = allMedia
         # If not, then get just the new and missing files
         else:
+            logging.warning('MANAGED_CHANGES is False. Reviewing only '
+                            'changedMedia.')
             con = lite.connect(DB_PATH)
             with con:
                 cur = con.cursor()
@@ -614,27 +619,31 @@ class Uploadr:
         changedMedia_count = len(changedMedia)
         niceprint('Found ' + str(changedMedia_count) + ' files to upload.')
 
+        # running in multi processing mode
         if (args.processes and args.processes > 0):
-            if LOGGING_LEVEL <= logging.DEBUG:
-                logging.debug('Running Pool of [{!s}] processes...'.
-                                format(args.processes))
-                logging.debug('__name__:[{!s}] to prevent recursive calling)!'.
-                                format(__name__))
+            logging.debug('Running Pool of [{!s}] processes...'.
+                            format(args.processes))
+            logging.debug('__name__:[{!s}] to prevent recursive calling)!'.
+                            format(__name__))
 
             # To prevent recursive calling, check if __name__ == '__main__'
             if __name__ == '__main__':
                 l = multiprocessing.Lock()
 
+                logging.debug('===Multiprocessing=== Setting up logger!')
                 multiprocessing.log_to_stderr()
                 logger = multiprocessing.get_logger()
                 logger.setLevel(LOGGING_LEVEL)
 
-                if LOGGING_LEVEL <= logging.DEBUG:
-                    logging.debug('===Multiprocessing=== Lock defined!')
+                logging.debug('===Multiprocessing=== Lock defined!')
 
                 from itertools import islice
                 def chunk(it, size):
                     it = iter(it)
+                    # lambda: creates a returning expression function
+                    # whic returns slices
+                    # iter, with the second argument () stops creating
+                    # iterators when it reaches the end
                     return iter(lambda: tuple(islice(it, size)), ())
 
                 uploadPool = []
@@ -655,8 +664,9 @@ class Uploadr:
 
                 # Split the Media in chunks to distribute accross Processes
                 for nuChangeMedia in chunk(changedMedia, sz):
-                    logging.info('===Chunk size: [{!s}]'.
-                                    format(sz))
+                    logging.info('===Actual/Planned Chunk size: [{!s}]/[{!s}]'.
+                                    format(len(nuChangeMedia), sz))
+                    logging.debug(type(nuChangeMedia))
 
                     logging.debug('===Job/Task Process: Creating...')
                     uploadTask = multiprocessing.Process(
@@ -709,14 +719,13 @@ class Uploadr:
             # else:
             #     pool = ThreadPool(processes=int(args.processes))
             #     pool.map(self.uploadFile, changedMedia)
+        # running in single processing mode
         else:
             count = 0
             for i, file in enumerate(changedMedia):
-                if LOGGING_LEVEL <= logging.INFO:
-                    logging.info('file:[{!s}] type(file):[{!s}]'.
-                                    format(file,
-                                            type(file)))
-                #print u'file.type' + str(type(file)).encode('utf-8')
+                logging.debug('file:[{!s}] type(file):[{!s}]'.
+                                format(file,
+                                       type(file)))
                 # lock parameter not used (set to None) under single processing
                 success = self.uploadFile(None, file)
                 if args.drip_feed and success and i != changedMedia_count - 1:
@@ -814,8 +823,15 @@ class Uploadr:
 
         niceprint('*****Completed converting files*****')
 
+    #--------------------------------------------------------------------------
+    # grabNewFiles
+    #
     def grabNewFiles(self):
         """ grabNewFiles
+        
+            Select files from FILES_DIR taking into consideration
+            EXCLUDED_FOLDERS and IGNORED_REGEX filenames.
+            Returns sorted file list.
         """
 
         files = []
@@ -873,12 +889,13 @@ class Uploadr:
     #
     def uploadFileX(self, lock, filelist):
         """ uploadFileX
-        
+
             Wrapper function for multiprocessing support to call uploadFile
             with a chunk of the files.
         """
 
         for f in filelist:
+            logging.debug('===First element of Chunk: [{!s}]'.format(f))
             self.uploadFile(lock, f)
 
 
@@ -910,10 +927,10 @@ class Uploadr:
             if LOGGING_LEVEL <= logging.DEBUG:
                 logging.debug('Output for {!s}:'.format('uploadFILE SELECT'))
                 logging.debug('{!s}: {!s}'.format('SELECT rowid,files_id,path,'
-                                                 'set_id,md5,tagged,'
-                                                 'last_modified FROM '
-                                                 'files WHERE path = ?',
-                                                 file))
+                                                  'set_id,md5,tagged,'
+                                                  'last_modified FROM '
+                                                  'files WHERE path = ?',
+                                                  file))
 
             cur.execute('SELECT rowid,files_id,path,set_id,md5,tagged,'
                         'last_modified FROM files WHERE path = ?', (file,))
@@ -921,6 +938,7 @@ class Uploadr:
             if LOGGING_LEVEL <= logging.DEBUG:
                 logging.debug('row {!s}:'.format(row))
 
+            # use file modified timestamp to check for changes
             last_modified = os.stat(file).st_mtime;
             if row is None:
                 niceprint(u'Uploading ' + file.encode('utf-8') + u'...'
@@ -1148,13 +1166,15 @@ class Uploadr:
                                         'out.lock.release')
 
                     # Update Date/Time on Flickr for Video files
-                    import mimetypes
+                    # import mimetypes
                     # import time
-                    filetype = mimetypes.guess_type(file)
-                    if LOGGING_LEVEL <= logging.INFO:
-                        logging.info('filetype:[{!s}]:'.format(filetype))
 
-                    if 'video' in filetype[0]:
+                    filetype = mimetypes.guess_type(file)
+                    logging.info('filetype:[{!s}]:'.format(filetype[0])) \
+                                if not (filetype[0] is None) \
+                                else ('filetype is None!!!')
+
+                    if (not filetype[0] is None) and ('video' in filetype[0]):
                         res_set_date = None
                         video_date = nutime.strftime(
                                         '%Y-%m-%d %H:%M:%S',
@@ -1201,15 +1221,55 @@ class Uploadr:
                     return False
 
             elif (MANAGE_CHANGES):
-                if (row[6] == None):
-                    cur.execute('UPDATE files SET last_modified = ? '
-                                'WHERE files_id = ?', (last_modified, row[1]))
-                    con.commit()
-                if (row[6] != last_modified):
-                    fileMd5 = self.md5Checksum(file)
-                    if (fileMd5 != str(row[4])):
-                        self.replacePhoto(lock, file, row[1], row[4],
-                                          fileMd5, last_modified, cur, con);
+                # we have a file from disk which is found on the database also
+                # row[6] is last_modified date/timestamp
+                # row[1] is files_id
+                # row[4] is md5
+                #   if DB/last_modified is None update it with current
+                #   file/last_modified value and do nothing else
+                #
+                #   if DB/lastmodified is different from file/lastmodified
+                #   then: if md5 has changed then perform replacePhoto
+                #   operation on Flickr
+                try:
+                    if (row[6] == None):
+                        # Update db the last_modified time of file
+
+                        # Control for when running multiprocessing set locking
+                        if (args.processes and args.processes > 0):
+                            logging.debug('===Multiprocessing=== in.lock.acquire')
+                            lock.acquire()
+                            logging.warning('===Multiprocessing=== '
+                                            'out.lock.acquire')
+
+                        cur.execute('UPDATE files SET last_modified = ? '
+                                    'WHERE files_id = ?', (last_modified, row[1]))
+                        con.commit()
+
+                        # Control for when running multiprocessing release locking
+                        if (args.processes and args.processes > 0):
+                            logging.debug('===Multiprocessing=== in.lock.release')
+                            lock.release()
+                            logging.warning('===Multiprocessing=== '
+                                            'out.lock.release')
+                    if (row[6] != last_modified):
+                        # Update db both the new file/md5 and the
+                        # last_modified time of file by by calling replacePhoto
+
+                        fileMd5 = self.md5Checksum(file)
+                        if (fileMd5 != str(row[4])):
+                            self.replacePhoto(lock, file, row[1], row[4],
+                                              fileMd5, last_modified, cur, con);
+                except lite.Error as e:
+                    print "A DB error occurred:", e.args[0]
+                    if (args.processes and args.processes > 0):
+                        logging.debug('===Multiprocessing==='
+                                      'lock.release (in Error)')
+                        lock.release()
+                        logging.debug('===Multiprocessing==='
+                                      'lock.release (in Error)')
+
+
         # Closing DB connection
         if con != None:
             con.close()
@@ -1246,7 +1306,7 @@ class Uploadr:
         cur             = current cursor for updating Database
         con             = current DB connection
         """
-        
+
         global nuflickr
 
         if args.dry_run :
@@ -1256,10 +1316,9 @@ class Uploadr:
             return True
 
         success = False
-        print(u'Replacing the file: ' + file.encode('utf-8') + u'...') if isThisStringUnicode(file) else ("Replacing the file: " + file + "...")
         niceprint(u'Replacing the file: ' + file.encode('utf-8') + u'...')\
-                 if isThisStringUnicode(file)\
-                else ("Replacing the file: " + file + "...")
+                  if isThisStringUnicode(file)\
+                  else ("Replacing the file: " + file + "...")
 
         try:
             if isThisStringUnicode(file):
@@ -1283,13 +1342,18 @@ class Uploadr:
                                                     replaceResp,
                                                     encoding='utf-8',
                                                     method='xml'))
-                    
+
                     if (self.isGood(replaceResp)):
                         # Update checksum tag at this time.
                         res_add_tag = flick.photos_add_tags(
                                         file_id,
                                         ['checksum:{}'.format(fileMd5)]
                                       )
+                        logging.info('res_add_tag: ')
+                        logging.info( xml.etree.ElementTree.tostring(
+                                                res_add_tag,
+                                                encoding='utf-8',
+                                                method='xml'))
                         if (self.isGood(res_add_tag)):
                             # Gets Flickr file info to obtain all tags
                             # in order to update checksum tag if exists
@@ -1302,7 +1366,7 @@ class Uploadr:
                                                     encoding='utf-8',
                                                     method='xml'))
                             # find tag checksum with oldFileMd5
-                            # later use such tagid to update it with Md5
+                            # later use such tag_id to delete it
                             if (self.isGood(res_get_info)):
                                 tag_id = None
                                 for tag in res_get_info.\
@@ -1311,7 +1375,7 @@ class Uploadr:
                                                 findall('tag'):
                                     if (tag.attrib['raw'] == \
                                            'checksum:{}'.format(oldFileMd5)):
-                                        tag_id = tag.attrib['raw']
+                                        tag_id = tag.attrib['id']
                                         break
                                 if not tag_id:
                                     niceprint('Can\'t find tag [{!s}]'
@@ -1320,7 +1384,9 @@ class Uploadr:
                                     # break from attempting to update tag_id
                                     break
                                 else:
-                                    # updated tag_id with new Md5
+                                    # update tag_id with new Md5
+                                    logging.info('Will remove tag_id:[{!s}]'.
+                                                    format(tag_id))
                                     remtagResp = self.photos_remove_tag(tag_id)
                                     logging.info('remtagResp: ')
                                     logging.info(xml.etree.ElementTree.tostring(
@@ -1331,7 +1397,7 @@ class Uploadr:
                                         niceprint('Tag removed.')
                                     else:
                                         niceprint('Tag Not removed.')
-                    
+
                     # if res.documentElement.attributes['stat'].value == "ok":
                     #     res_add_tag = self.photos_add_tags(file_id, ['checksum:{}'.format(fileMd5)])
                     #     if res_add_tag['stat'] == 'ok':
@@ -1384,10 +1450,10 @@ class Uploadr:
 
             # if res.documentElement.attributes['stat'].value != "ok":
             #     raise IOError(str(res.toxml()))
-            # 
+            #
             # if res_add_tag['stat'] != 'ok':
             #     raise IOError(res_add_tag)
-            # 
+            #
             # if res_get_info['stat'] != 'ok':
             #     raise IOError(res_get_info)
 
@@ -1404,30 +1470,33 @@ class Uploadr:
                 lock.acquire()
                 logging.warning('===Multiprocessing=== '
                                 'out.lock.acquire')
-                
+
             cur.execute('UPDATE files SET md5 = ?,last_modified = ? '
                         'WHERE files_id = ?',
                         (fileMd5, last_modified, file_id))
             con.commit()
-            
+
             # Control for when running multiprocessing release locking
             if (args.processes and args.processes > 0):
                 logging.debug('===Multiprocessing=== in.lock.release')
                 lock.release()
                 logging.warning('===Multiprocessing=== '
-                                'out.lock.release')            
-            
-            
+                                'out.lock.release')
+
             # Update Date/Time on Flickr for Video files
             # MSP: mimetypes already imported is it required?
             # import mimetypes
             # import time
             filetype = mimetypes.guess_type(file)
-            if 'video' in filetype[0]:
+            logging.info('filetype:[{!s}]:'.format(filetype[0])) \
+                        if not (filetype[0] is None) \
+                        else ('filetype is None!!!')
+
+            if (not filetype[0] is None) and ('video' in filetype[0]):
                 video_date = nutime.strftime('%Y-%m-%d %H:%M:%S',
                                              nutime.localtime(last_modified))
                 logging.info('video_date:[{!s}]'.format(video_date))
-                
+
                 try:
                     res_set_date = flick.photos_set_dates(file_id, video_date)
                     if self.isGood(res_set_date):
@@ -1447,7 +1516,7 @@ class Uploadr:
                                 file +
                                 ' date:' +
                                 video_date)
-            
+
             success = True
         # MSP: Do I need this generic except? Maybe after flickr and SQLite3?
         # except:
@@ -1554,18 +1623,18 @@ class Uploadr:
     # def build_request(self, theurl, fields, files, txheaders=None):
     #     """
     #     build_request/encode_multipart_formdata code is from www.voidspace.org.uk/atlantibots/pythonutils.html
-    # 
+    #
     #     Given the fields to set and the files to encode it returns a fully formed urllib2.Request object.
     #     You can optionally pass in additional headers to encode into the opject. (Content-type and Content-length will be overridden if they are set).
     #     fields is a sequence of (name, value) elements for regular form fields - or a dictionary.
     #     files is a sequence of (name, filename, value) elements for data to be uploaded as files.
     #     """
-    # 
+    #
     #     content_type, body = self.encode_multipart_formdata(fields, files)
     #     if not txheaders: txheaders = {}
     #     txheaders['Content-type'] = content_type
     #     txheaders['Content-length'] = str(len(body))
-    # 
+    #
     #     return urllib2.Request(theurl, body, txheaders)
 
     # MSP: May be removed after migration to flickrapi
@@ -1576,7 +1645,7 @@ class Uploadr:
     #     Return (content_type, body) ready for urllib2.Request instance
     #     You can optionally pass in a boundary string to use or we'll let mimetools provide one.
     #     """
-    # 
+    #
     #     CRLF = '\r\n'
     #     L = []
     #     if isinstance(fields, dict):
@@ -2041,7 +2110,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                     foundSets = cur.fetchone()
                     if LOGGING_LEVEL <= logging.INFO:
                         logging.info('Output for {!s}:'.format('foundSets'))
-                        print foundSets
+                        logging.info(foundSets)
 
                     if foundSets == None:
                         niceprint(u'Adding set ['.encode('utf-8') +
@@ -2160,7 +2229,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
         photos_add_tagsResp = nuflickr.photos.addTags(photo_id=photo_id,
                                                       tags=tags)
         return photos_add_tagsResp
-    
+
     #--------------------------------------------------------------------------
     # photos_get_info
     #
@@ -2170,11 +2239,11 @@ set0 = sets.find('photosets').findall('photoset')[0]
         """
         Local Wrapper for Flickr photos.getInfo
         """
-        
+
         global nuflickr
 
         photos_get_infoResp = nuflickr.photos.getInfo(photo_id=photo_id)
-        
+
         return photos_get_infoResp
 
     #--------------------------------------------------------------------------
@@ -2187,17 +2256,17 @@ set0 = sets.find('photosets').findall('photoset')[0]
     def photos_remove_tag(self, tag_id):
         """
         Local Wrapper for Flickr photos.removeTag
-        
+
         The tag to remove from the photo. This parameter should contain
         a tag id, as returned by flickr.photos.getInfo.
         """
-        
+
         global nuflickr
 
         removeTagResp = nuflickr.photos.removeTag(tag_id=tag_id)
-        
+
         return removeTagResp
-        
+
     #--------------------------------------------------------------------------
     # photos_set_dates
     #
