@@ -189,9 +189,9 @@ cron entry (runs at the top of every hour)
 ## Recognition
 --------------
 Inspired by:
-    https://github.com/sybrenstuvel/flickrapi
-    http://micampe.it/things/flickruploadr
-    https://github.com/joelmx/flickrUploadr/blob/master/python3/uploadr.py
+* https://github.com/sybrenstuvel/flickrapi
+* http://micampe.it/things/flickruploadr
+* https://github.com/joelmx/flickrUploadr/blob/master/python3/uploadr.py
 
 ## Final remarks
 ---------------
