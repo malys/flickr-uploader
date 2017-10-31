@@ -1,7 +1,6 @@
-flickr-uploader
-===============
+# flickr-uploader
+----------------
 by oPromessa, 2017, V2.02
-
 
 ## IMPORTANT NOTE: WORK IN PROGRESS...
 * Being updated to use sybrenstuvel's flickrapi and OAuth...
@@ -10,51 +9,63 @@ by oPromessa, 2017, V2.02
 ## Description
 --------------
 * flickr-uploader designed for Synology Devices.
-* Upload a directory of media to Flickr to use as a backup to your local storage.
+* Upload a directory of media to Flickr to use as a backup to your
+local storage.
 * Check Features, Requirements and Setup remarks.
 
-##Features
-----------
+## Features
+-----------
 * Uploads both images and movies (JPG, PNG, GIF, AVI, MOV, 3GP files)
    * Personnaly I avoid PNG files which do not support EXIF info
 * Stores image information locally using a simple SQLite database
-* Creates "Sets" based on the folder name the media is in (getting existing sets from Flickr is managed also)
-* Ignores unwanted directories (like ".picasabackup" for Picasa users or "@eaDir" for Synology NAS users) and you can easily add/configure more yourself. Check uploadr.ini config file.
+* Creates "Sets" based on the folder name the media is in
+  (getting existing sets from Flickr is managed also)
+* Ignores unwanted directories (like ".picasabackup" for Picasa users or
+  "@eaDir" for Synology NAS users) and you can easily add/configure more
+  yourself. Check uploadr.ini config file.
 * Allows specific files to be ignored (via regular expressions)
 * Reuploads modified images
-* Automatically removes images from Flickr when they are removed from your local hard drive
+* Automatically removes images from Flickr when they are removed from your
+  local hard drive
 * Convert RAW files (with an external tool). Check Known issues section.
-    
-THIS SCRIPT IS PROVIDED WITH NO WARRANTY WHATSOEVER. PLEASE REVIEW THE SOURCE CODE TO MAKE SURE IT WILL WORK FOR YOUR NEEDS. IF YOU FIND A BUG, PLEASE REPORT IT.
+
+THIS SCRIPT IS PROVIDED WITH NO WARRANTY WHATSOEVER.
+PLEASE REVIEW THE SOURCE CODE TO MAKE SURE IT WILL WORK FOR YOUR NEEDS.
+IF YOU FIND A BUG, PLEASE REPORT IT.
 
 ## Requirements
 ---------------
 * Python 2.7+ (should work on DSM from Synology (v6.1), Windows and MAC)
-* flicrkapi module. May need to install get-pip.py. (Instructions for Synology DSM below.)
+* flicrkapi module. May need to install get-pip.py. (Instructions for
+  Synology DSM below.)
 * File write access (for the token and local database)
 * Flickr API key (free)
 
-##Setup on Synology
--------------------
+## Setup on Synology
+--------------------
 Might work on other platforms like Windows also.
 *Side note:* don't be overwhelmed with this setup. They are quite
 straitghtforward.
 
-# Enable and access your Synology DSM via SSH with an admin user.
-# *Avoid the use of root for security reasons*
-#
-# To create a local install define and export PYTHONPATH variable:
-$ cd
-$ mkdir ~apps
-$ mkdir ~/apps/Python
-$ export PYTHONPATH=~/apps/Python/lib/python2.7/site-packages
+Enable and access your Synology DSM via SSH with an admin user.
+Avoid the use of root for security reasons
 
-# Download get-pip.py and install
+To create a local install define and export PYTHONPATH variable:
+```bash
+$ cd
+$ mkdir apps
+$ mkdir apps/Python
+$ export PYTHONPATH=~/apps/Python/lib/python2.7/site-packages
+```
+Download get-pip.py and install
+```bash        
 $ cd
 $ mkdir dev
 $ cd dev
-# Download get-pip.py and extract here to run setup
-# Make sure to use the --prefix parameter
+```
+Download get-pip.py and extract here to run setup
+Make sure to use the --prefix parameter
+```bash
 $ python get-pip.py --prefix=~/apps/Python
 Collecting pip
     Downloading pip-9.0.1-py2.py3-none-any.whl (1.3MB)
@@ -67,9 +78,10 @@ Collecting wheel
         100%  51kB 4.1MB/s
 Installing collected packages: pip, setuptools, wheel
     Successfully installed pip setuptools wheel
-
-# Download flickrapi-2.3.tar.gz and extract here to run setup
-# Make sure to use the --prefix parameter
+```
+Download flickrapi-2.3.tar.gz and extract here to run setup
+Make sure to use the --prefix parameter
+```bash
 $ python setup.py install --prefix=~/apps/Python
 python setup.py install --prefix=~/apps/Python
 running install
@@ -85,45 +97,50 @@ Installing chardetect script to /xxx/xxx/xxx/apps/Python/bin
 
 Installed /xxx/xxx/xxx/apps/Python/lib/python2.7/site-packages/chardet-3.0.4-py2.7.egg
 Finished processing dependencies for flickrapi==2.3
-
+```
 ## Configuration
 ----------------
-Go to http://www.flickr.com/services/apps/create/apply and apply for an API key
-Edit at least the following variables in the uploadr.ini:
+Go to http://www.flickr.com/services/apps/create/apply and apply for an API
+key Edit the following variables in the uploadr.ini
 
-    * FILES_DIR = "YourDir"
-    * FLICKR = {
-            "title"                 : "",
-            "description"           : "",
-            "tags"                  : "auto-upload",
-            "is_public"             : "0",
-            "is_friend"             : "0",
-            "is_family"             : "0",
-            "api_key"               : "Yourkey",
-            "secret"                : "YourSecret"
-            }
-    * FLICKR["api_key"] = ""
-    * FLICKR["secret"] = ""
-    * EXCLUDED_FOLDERS = ["@eaDir","#recycle"]
-    * IGNORED_REGEX = ['*[Ii][Gg][Nn][Oo][Rr][Ee]*', 'Private*']
-    * ALLOWED_EXT = ["jpg","png","avi","mov","mpg","mp4","3gp"]
-    * MANAGE_CHANGES = True
-    * FULL_SET_NAME = False
+* FILES_DIR = "YourDir"
+* FLICKR = {
+        "title"                 : "",
+        "description"           : "",
+        "tags"                  : "auto-upload",
+        "is_public"             : "0",
+        "is_friend"             : "0",
+        "is_family"             : "0",
+        "api_key"               : "Yourkey",
+        "secret"                : "YourSecret"
+        }
+* FLICKR["api_key"] = ""
+* FLICKR["secret"] = ""
+* EXCLUDED_FOLDERS = ["@eaDir","#recycle"]
+* IGNORED_REGEX = ['*[Ii][Gg][Nn][Oo][Rr][Ee]*', 'Private*']
+* ALLOWED_EXT = ["jpg","png","avi","mov","mpg","mp4","3gp"]
+* MANAGE_CHANGES = True
+* FULL_SET_NAME = False
 
-Refer to https://www.flickr.com/services/api/upload.api.html for what each of the
-upload arguments above correspond to for Flickr's API.
+Refer to https://www.flickr.com/services/api/upload.api.html for what each
+of the upload arguments above correspond to for Flickr's API.
 
 ## Usage/Arguments/Options
 --------------------------
 Place the file uploadr.py in any directory and run via ssh
 (execution privs required).
-It will crawl through all the files from the FILES_DIR directory and begin the upload process.
+It will crawl through all the files from the FILES_DIR directory and begin
+the upload process.
+```bash
 $ ./uploadr.py
-
-To check what files uploadr.py would upload and delete you can run the script withe option --dry-run:
+```
+To check what files uploadr.py would upload and delete you can run the
+script withe option --dry-run:
+```bash
 $ ./uploadr.py --dry-run
-
+```
 Run ./uploadrd.py --help for up to the minute information or arguments:
+```bash
 $ ./uploadr.py --help
 
 usage: uploadr.py [-h] [-v] [-n] [-i TITLE] [-e DESCRIPTION] [-t TAGS] [-r]
@@ -159,13 +176,15 @@ optional arguments:
   -b, --bad-files       Save on database bad files to prevent continuous
                         uploading attempts. Bad files are files in your
                         Library that flickr does not recognize (Error 5).
+```
 
 ## Task Scheduler (cron)
 ------------------------
 Optionally run with crontab/Task Scheduler (Synology/Control Panel)
-
+```bash
 cron entry (runs at the top of every hour)
 0  *  *  *  * /full/path/to/uploadr.py > /dev/null 2>&1
+```
 
 ## Recognition
 --------------
@@ -180,6 +199,7 @@ You may use this code however you see fit in any form whatsoever.
 And enjoy!!!
 
 ## Q&A
+------
 * Q: Who is this script designed for?
 * A: Those people comfortable with the command line that want to backup their media on Flickr in full resolution.
 
