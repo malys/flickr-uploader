@@ -999,9 +999,9 @@ class Uploadr:
                             else:
                                 flag = "JpgFromRaw"
 
-                            command = RAW_TOOL_PATH + "exiftool -b -" + flag +
-                                      " -w .JPG -ext " + ext + " -r '" +
-                                      dirpath + "/" +
+                            command = RAW_TOOL_PATH + "exiftool -b -" + flag +\
+                                      " -w .JPG -ext " + ext + " -r '" +\
+                                      dirpath + "/" +\
                                       filename + "." + fileExt + "'"
                             logging.info(command)
 
@@ -1035,10 +1035,10 @@ class Uploadr:
                                       f +
                                       " to JPG.")
 
-                            command = RAW_TOOL_PATH +
-                                      "exiftool -tagsfromfile '" +
-                                      dirpath + "/" + f +
-                                      "' -r -all:all -ext JPG '" +
+                            command = RAW_TOOL_PATH +\
+                                      "exiftool -tagsfromfile '" +\
+                                      dirpath + "/" + f +\
+                                      "' -r -all:all -ext JPG '" +\
                                       dirpath + "/" + filename + ".JPG'"
                             logging.info(command)
 
@@ -1066,7 +1066,7 @@ class Uploadr:
         """
 
         files = []
-        for dirpath, dirnames, filenames in
+        for dirpath, dirnames, filenames in\
             os.walk(unicode(FILES_DIR, 'utf-8'), followlinks=True):
             for f in filenames:
                 filePath = os.path.join(dirpath, f)
@@ -1299,8 +1299,8 @@ class Uploadr:
                             # confirm loaded
                             search_result = None
                             if LOGGING_LEVEL <= logging.DEBUG:
-                                search_result = self.
-                                                photos_search(file_checksum)
+                                search_result = self.photos_search(
+                                                            file_checksum)
                                 if self.isGood(search_result):
                                     logging.info('search_result:OK')
                                 else:
