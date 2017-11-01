@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-    by oPromessa, 2017, V2.03
+    by oPromessa, 2017, V2.3.0
 
     THIS SCRIPT IS PROVIDED WITH NO WARRANTY WHATSOEVER.
     PLEASE REVIEW THE SOURCE CODE TO MAKE SURE IT WILL WORK FOR YOUR NEEDS.
@@ -30,7 +30,7 @@
     * converRawFiles is not tested. Also requires an exif tool to be installed
       and configured as RAW_TOOL_PATH in INI file. Make sure to leave
       CONVERT_RAW_FILES = False in INI file or use at your own risk.
-    * Consider using python module exiftool
+    * Consider using python module exiftool?
     * If one changes the FILES_DIR folder and do not DELETE all from flickr,
       uploadr WILL not delete the files.
     * Would be nice to update ALL tags on replacePhoto and not only the
@@ -155,7 +155,7 @@ class UPLDRConstants:
     """
 
     TimeFormat = '%Y.%m.%d %H:%M:%S'
-    Version = '2.03'
+    Version = '2.3.0'
 
     def __init__(self):
         """ Constructor
@@ -1979,8 +1979,7 @@ class Uploadr:
             # [1] = with last_modified column
             # [2] = badfiles table added
             cur = con.cursor()
-            cur.execute('PRAGMA user_version')
-            row = cur.fetchone()
+            cur.execute('PRAGMA user_version'); row = cur.fetchone()
             if (row[0] == 0):
                 # Database version 1
                 niceprint('Adding last_modified column to database')
@@ -1988,7 +1987,10 @@ class Uploadr:
                 cur.execute('PRAGMA user_version="1"')
                 cur.execute('ALTER TABLE files ADD COLUMN last_modified REAL')
                 con.commit()
-            elif (row[0] == 1):
+                # obtain new version to continue updating database
+                cur = con.cursor()
+                cur.execute('PRAGMA user_version'); row = cur.fetchone()                
+            if (row[0] == 1):
                 # Database version 2
                 # Cater for badfiles
                 niceprint('Adding table badfiles to database')
@@ -1999,7 +2001,13 @@ class Uploadr:
                             'last_modified REAL)')
                 cur.execute('CREATE UNIQUE INDEX IF NOT EXISTS badfileindex '
                             'ON badfiles (path)')
-                con.commit()
+                con.commit(); 
+                cur = con.cursor()
+                cur.execute('PRAGMA user_version'); row = cur.fetchone()
+            if (row[0] == 2):
+                niceprint('Database version: [{!s}]'.format(row[0]))
+                # Database version 3
+                # ...for future use!
             # Closing DB connection
             if con is not None:
                 con.close()
