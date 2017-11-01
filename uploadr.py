@@ -2389,6 +2389,18 @@ set0 = sets.find('photosets').findall('photoset')[0]
     #
     # Searchs for image with on tag:checksum (calls Flickr photos.search)
     #
+    # Will return searchResp and if isgood(searchResp) will provide also
+    # searchtotal and id of first photo
+    
+    # Sample response:
+    # <photos page="2" pages="89" perpage="10" total="881">
+    #     <photo id="2636" owner="47058503995@N01" 
+    #             secret="a123456" server="2" title="test_04"
+    #             ispublic="1" isfriend="0" isfamily="0" />
+    #     <photo id="2635" owner="47058503995@N01"
+    #         secret="b123456" server="2" title="test_03"
+    #         ispublic="0" isfriend="1" isfamily="1" />
+    # </photos>
     def photos_search(self, checksum):
         """
             photos_search
@@ -2397,10 +2409,19 @@ set0 = sets.find('photosets').findall('photoset')[0]
 
         global nuflickr
 
-        logging.info('FORMAT checksum:{!s}:'.format(checksum))
+        logging.info('checksum:{!s}:'.format(checksum))
 
         searchResp = nuflickr.photos.search(tags='checksum:{}'
                                             .format(checksum))
+        
+        tot = None
+        id = None
+        if self.isGood(search_result):
+            if int(search_result.find('photos').attrib['total']) == 0:
+                tot = int(search_result.find('photos').attrib['total'])
+                if int(search_result.find('photos').attrib['total']) == 1:
+                    id = search_result.find('photos').findall('photo')[0].attrib['id']
+
         # Debug
         logging.debug('Search Results SearchResp:')
         logging.debug(xml.etree.ElementTree.tostring(
@@ -2408,7 +2429,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                             encoding='utf-8',
                                             method='xml'))
 
-        return searchResp
+        return (searchResp, tot, id)
 
     #--------------------------------------------------------------------------
     # people_get_photos
