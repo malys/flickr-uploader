@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
 """
-    by oPromessa, 2017, V2.3.0
+    by oPromessa, 2017
+    Published on https://github.com/oPromessa/flickr-uploader/
 
     THIS SCRIPT IS PROVIDED WITH NO WARRANTY WHATSOEVER.
     PLEASE REVIEW THE SOURCE CODE TO MAKE SURE IT WILL WORK FOR YOUR NEEDS.
@@ -27,6 +28,14 @@
 
     ## Pending improvements/Known issues
     ------------------------------------
+    * AVOID using uploadr when performing massive delete operations on flicr.
+      While deleting many files on flickr some of the function calls return
+      values like the title of a Set as empty(None). This prompts printing
+      information to fail with TypeError: cannot concatenate 'str' and
+      'NoneType' objects. Added specific control on function upload:
+      setName if setName is not None else 'None'
+      BUT worst than that is that one will be saving on the local database
+      sets with name (title) empty which will cause other functions to fail.    
     * converRawFiles is not tested. Also requires an exif tool to be installed
       and configured as RAW_TOOL_PATH in INI file. Make sure to leave
       CONVERT_RAW_FILES = False in INI file or use at your own risk.
@@ -48,18 +57,8 @@
     * Add multiprocessing.Value to control loaded files.
     * Arguments not fully tested:
         -n
-        -i (should work)
-        -e (should work)
-        -t
         -r (should work)
         -d (should work)
-        -b
-    * Add control for 'Error 5' loaded files... track on a db table badfiles.
-    cur.execute('CREATE TABLE IF NOT EXISTS badfiles (
-        files_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        path TEXT, set_id INT, md5 TEXT, tagged INT, last_modified REAL)')
-    cur.execute('CREATE UNIQUE INDEX IF NOT EXISTS badfileindex
-                ON badfiles (path)')
 
     ## Programming Remarks
     ----------------------
@@ -155,7 +154,7 @@ class UPLDRConstants:
     """
 
     TimeFormat = '%Y.%m.%d %H:%M:%S'
-    Version = '2.3.0'
+    Version = '2.4.1'
 
     def __init__(self):
         """ Constructor
@@ -167,12 +166,13 @@ class UPLDRConstants:
 #   nutime      = for working with time module (import time)
 #   nuflickr    = object for flickr API module (import flickrapi)
 #   nulockDB    = multiprocessing Lock for access to Database
-#   nulockcount = multiprocessing mutex to control access to value nucount
-#   nucount     = multiprocessing Value nucount to count processed photos
+#   numutex     = multiprocessing mutex to control access to value nurunning
+#   nurunning   = multiprocessing Value to count processed photos
 nutime = time
 nuflickr = None
 nulockDB = None
-nucount = 0
+numutex = None
+nurunning = None
 
 # -----------------------------------------------------------------------------
 # isThisStringUnicode
@@ -388,6 +388,32 @@ class Uploadr:
         self.token = self.getCachedToken()
 
     # -------------------------------------------------------------------------
+    # niceprocessedfiles
+    #
+    # Nicely print number of processed files
+    #
+    def niceprocessedfiles(self, count, total):
+        """
+        niceprocessedfiles
+
+        count = Nicely print number of processed files rounded to 100's
+        total = if true shows the total (to be used at the end of processing)
+        """
+        
+        if not total:
+            if (count % 100 == 0):
+                niceprint('\t' +
+                          str(count) +
+                          ' files processed (uploaded, md5ed '
+                          'or timestamp checked)')
+        else:
+            if (count % 100 > 0):
+                niceprint('\t' +
+                          str(count) +
+                          ' files processed (uploaded, md5ed '
+                          'or timestamp checked)')
+
+    # -------------------------------------------------------------------------
     # authenticate
     #
     # Authenticates via flickrapi on flickr.com
@@ -586,6 +612,8 @@ class Uploadr:
         """
 
         global nulockDB
+        global numutex
+        global nurunning
 
         niceprint("*****Uploading files*****")
 
@@ -663,6 +691,8 @@ class Uploadr:
 
                 uploadPool = []
                 nulockDB = multiprocessing.Lock()
+                nurunning = multiprocessing.Value('i', 0)
+                numutex = multiprocessing.Lock()
 
                 # for i in range(int(args.processes)):
 
@@ -686,7 +716,10 @@ class Uploadr:
                     logging.debug('===Job/Task Process: Creating...')
                     uploadTask = multiprocessing.Process(
                                         target=self.uploadFileX,
-                                        args=(nulockDB, nuChangeMedia,))
+                                        args=(nulockDB,
+                                              nurunning,
+                                              numutex,
+                                              nuChangeMedia,))
                     uploadPool.append(uploadTask)
                     logging.debug('===Job/Task Process: Starting...')
                     uploadTask.start()
@@ -729,9 +762,16 @@ class Uploadr:
                     j.join()
                     niceprint('===%s (is alive: %s).exitcode = %s' %
                               (j.name, j.is_alive(), j.exitcode))
-                if LOGGING_LEVEL <= logging.WARNING:
-                    logging.warning('===Multiprocessing=== pool joined!'
-                                    'All processes finished.')
+
+                logging.warning('===Multiprocessing=== pool joined!'
+                                'All processes finished.')
+                
+                # Show number of total files processed
+                logging.debug('===Multiprocessing=== in.mutex.acquire(r)')
+                mutex.acquire()
+                self.niceprocessedfiles(running.value, True)
+                mutex.release()
+                logging.warning('===Multiprocessing=== out.mutex.release(r)')
             else:
                 niceprint('Pool not in __main__ process. '
                           'Windows or recursive?'
@@ -743,23 +783,25 @@ class Uploadr:
                 logging.debug('file:[{!s}] type(file):[{!s}]'
                               .format(file, type(file)))
                 # lock parameter not used (set to None) under single processing
-                success = self.uploadFile(None, file)
+                success = self.uploadFile(lock=None, file=file)
                 if args.drip_feed and success and i != changedMedia_count - 1:
                     print("Waiting " +
                           str(DRIP_TIME) +
                           " seconds before next upload")
                     nutime.sleep(DRIP_TIME)
                 count = count + 1
-                if (count % 100 == 0):
-                    niceprint('\t' +
-                              str(count) +
-                              ' files processed (uploaded, md5ed '
-                              'or timestamp checked)')
-            if (count % 100 > 0):
-                niceprint('\t' +
-                          str(count) +
-                          ' files processed (uploaded, md5ed '
-                          'or timestamp checked)')
+                self.niceprocessedfiles(count, False)
+                # if (count % 100 == 0):
+                #     niceprint('\t' +
+                #               str(count) +
+                #               ' files processed (uploaded, md5ed '
+                #               'or timestamp checked)')
+            self.niceprocessedfiles(count, True)
+            # if (count % 100 > 0):
+            #     niceprint('\t' +
+            #               str(count) +
+            #               ' files processed (uploaded, md5ed '
+            #               'or timestamp checked)')
 
         niceprint("*****Completed uploading files*****")
 
@@ -900,14 +942,12 @@ class Uploadr:
             for f in filenames:
                 filePath = os.path.join(dirpath, f)
                 if self.isFileIgnored(filePath):
-                    if LOGGING_LEVEL <= logging.DEBUG:
-                        logging.debug('File {!s} in EXCLUDED_FOLDERS:'
-                                      .format(filePath.encode('utf-8')))
+                    logging.info('File {!s} in EXCLUDED_FOLDERS:'
+                                  .format(filePath.encode('utf-8')))
                     continue
                 if any(ignored.search(f) for ignored in IGNORED_REGEX):
-                    if LOGGING_LEVEL <= logging.DEBUG:
-                        logging.debug('File {!s} in IGNORED_REGEX:'
-                                      .format(filePath.encode('utf-8')))
+                    logging.info('File {!s} in IGNORED_REGEX:'
+                                  .format(filePath.encode('utf-8')))
                     continue
                 ext = os.path.splitext(os.path.basename(f))[1][1:].lower()
                 if ext in ALLOWED_EXT:
@@ -949,16 +989,35 @@ class Uploadr:
     #
     # uploadFile wrapper for multiprocessing purposes
     #
-    def uploadFileX(self, lock, filelist):
+    def uploadFileX(self, lock, running, mutex, filelist):
         """ uploadFileX
 
             Wrapper function for multiprocessing support to call uploadFile
             with a chunk of the files.
+            lock = for database access control in multiprocessing
+            running = shared value to count processed files in multiprocessing
+            mutex = for running access control in multiprocessing
         """
 
         for f in filelist:
-            logging.debug('===First element of Chunk: [{!s}]'.format(f))
+            logging.info('===Current element of Chunk: [{!s}]'.format(f))
             self.uploadFile(lock, f)
+            
+            # no need to check for
+            # (args.processes and args.processes > 0):
+            # as uploadFileX is already multiprocessing
+
+            logging.debug('===Multiprocessing=== in.mutex.acquire(w)')
+            mutex.acquire()
+            running.value += 1
+            xcount = running.value
+            mutex.release()
+            logging.warning('===Multiprocessing=== out.mutex.release(w)')
+            
+            self.niceprocessedfiles(xcount, False)
+            
+            
+            
 
     #--------------------------------------------------------------------------
     # uploadFile
@@ -970,7 +1029,15 @@ class Uploadr:
     #
     def uploadFile(self, lock, file):
         """ uploadFile
-        upload file into flickr
+        uploads file into flickr
+        
+        May run in single or multiprocessing mode
+        
+        lock = parameter for multiprocessing control of access to DB.
+               (if args.processes = 0 then lock can be None as it is not used)
+        running = counter of number of processed files in multiprocessing
+        mutex = multiprocessing control of access to running.
+        file = fie to be uploaded
         """
 
         global nuflickr
@@ -1028,8 +1095,12 @@ class Uploadr:
                         FLICKR["title"] = args.title
                     if args.description:  # Replace
                         FLICKR["description"] = args.description
-                    if args.tags:  # Append
+                    if args.tags:  # Append a space to later add -t TAGS
                         FLICKR["tags"] += " "
+                        if args.verbose:
+                            niceprint('TAGS:[{} {}]'
+                                      .format(FLICKR["tags"],
+                                             args.tags).replace(',', ''))
 
                     # if FLICKR["title"] is empty...
                     # if filename's exif title is empty...
@@ -1044,24 +1115,21 @@ class Uploadr:
                     # Worked around it by forcing the title to filename
                     if FLICKR["title"] == "":
                         path_filename, title_filename = os.path.split(file)
-                        if LOGGING_LEVEL <= logging.WARNING:
-                            logging.warning('path:[{!s}] '
-                                            'filename:[{!s}] '
-                                            'ext=[{!s}]'.format(
-                                                path_filename,
-                                                title_filename,
-                                                os.path.splitext(
-                                                        title_filename)[1]))
+                        logging.info('path:[{!s}] '
+                                        'filename:[{!s}] '
+                                        'ext=[{!s}]'.format(
+                                            path_filename,
+                                            title_filename,
+                                            os.path.splitext(
+                                                    title_filename)[1]))
                         title_filename = os.path.splitext(title_filename)[0]
-                        if LOGGING_LEVEL <= logging.WARNING:
-                            logging.warning('title_name:[{!s}] '
-                                            .format(title_filename))
+                        logging.warning('title_name:[{!s}] '
+                                        .format(title_filename))
                     else:
                         title_filename = FLICKR["title"]
-                        if LOGGING_LEVEL <= logging.WARNING:
-                            logging.warning('title '
-                                            'from INI file:[{!s}]'.format(
-                                                title_filename))
+                        logging.warning('title '
+                                        'from INI file:[{!s}]'
+                                        .format(title_filename))
 
                     file_checksum = self.md5Checksum(file)
 
@@ -1079,7 +1147,6 @@ class Uploadr:
                                           u'...') \
                                           if isThisStringUnicode(file) \
                                           else ('Reuploading ' + file + '...')
-
                             if FLICKR["title"] == "":
                                 # replace commas from tags and checksum tags
                                 # to avoid tags conflicts
@@ -1089,10 +1156,13 @@ class Uploadr:
                                                                  callback),
                                         title=title_filename,
                                         description=str(FLICKR["description"]),
-                                        tags='{} checksum:{}'
+                                        tags='{} checksum:{} {}'
                                              .format(
                                                     FLICKR["tags"],
-                                                    file_checksum
+                                                    file_checksum,
+                                                    args.tags \
+                                                    if args.tags \
+                                                    else ''
                                                     ).replace(',', ''),
                                         is_public=str(FLICKR["is_public"]),
                                         is_family=str(FLICKR["is_family"]),
@@ -1105,10 +1175,14 @@ class Uploadr:
                                                                  callback),
                                         title=str(FLICKR["title"]),
                                         description=str(FLICKR["description"]),
-                                        tags='{} checksum:{}'
-                                             .format(FLICKR["tags"],
-                                                     file_checksum)
-                                             .replace(',', ''),
+                                        tags='{} checksum:{} {}'
+                                             .format(
+                                                    FLICKR["tags"],
+                                                    file_checksum,
+                                                    args.tags \
+                                                    if args.tags \
+                                                    else ''
+                                                    ).replace(',', ''),
                                         is_public=str(FLICKR["is_public"]),
                                         is_family=str(FLICKR["is_family"]),
                                         is_friend=str(FLICKR["is_friend"])
@@ -2210,17 +2284,28 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                   setId.encode('utf-8') +
                                   u'] '.encode('utf-8') +
                                   u'setName=['.encode('utf-8') +
-                                  setName +
+                                  setName if setName is not None else 'None' +
                                   u'] '.encode('utf-8') +
                                   u'primaryPhotoId=['.encode('utf-8') +
                                   primaryPhotoId.encode('utf-8') +
                                   u']'.encode('utf-8'))
-                    logging.info('Searching on DB for setId:[{!s}] '
-                                 'setName:[{!s}] '
-                                 'primaryPhotoId:[{!s}]'
-                                 .format(setId,
-                                         setName.encode('utf-8'),
-                                         primaryPhotoId))
+
+                    # Control for when flickr return a setName (title) as None
+                    # Occurred while simultaneously performing massive delete
+                    # operation on flickr.
+                    if setName is not None:
+                        logging.info('Searching on DB for setId:[{!s}] '
+                                     'setName:[{!s}] '
+                                     'primaryPhotoId:[{!s}]'
+                                     .format(setId,
+                                             setName.encode('utf-8'),
+                                             primaryPhotoId))
+                    else:
+                        logging.info('Searching on DB for setId:[{!s}] '
+                                     'setName:[None] '
+                                     'primaryPhotoId:[{!s}]'
+                                     .format(setId,
+                                             primaryPhotoId))
 
                     logging.info("SELECT set_id FROM sets WHERE set_id = '" +
                                  setId + "'")
@@ -2236,7 +2321,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                         niceprint(u'Adding set ['.encode('utf-8') +
                                   setId.encode('utf-8') +
                                   u'] ('.encode('utf-8') +
-                                  setName +
+                                  setName if setName is not None else 'None' +
                                   u') '.encode('utf-8') +
                                   u'with primary photo '.encode('utf-8') +
                                   primaryPhotoId.encode('utf-8') +
@@ -2552,7 +2637,7 @@ if __name__ == "__main__":
                         help='Description for uploaded files'
                              'Overwrites description from INI config file. ')
     parser.add_argument('-t', '--tags', action='store',
-                        help='Space-separated tags for uploaded files.'
+                        help='Space-separated tags for uploaded files. '
                              'It appends to the tags defined in INI file.')
     parser.add_argument('-r', '--drip-feed', action='store_true',
                         help='Wait a bit between uploading individual files')
