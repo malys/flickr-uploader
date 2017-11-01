@@ -59,6 +59,10 @@
         -n
         -r (should work)
         -d (should work)
+    * Regular Output needs to align to include
+        successfull uploads
+        successfull updaate of date/time in videos
+        successful replacement of photos
 
     ## Programming Remarks
     ----------------------
