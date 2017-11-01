@@ -35,10 +35,6 @@
     * Would be nice to update ALL tags on replacePhoto and not only the
       mandatory checksum tag.
     * Does not Re-upload pictures removed from flickr.
-    * If local flickrdb is deleted it will re-upload entire local Library.
-      It would be interesting to attempt to rebuild local database. With the
-      exception of tags (would require use of exiftool) almos all other
-      information could be obtained.
     * In multiprocessing mode, when uploading additional files to your library
       the work is divided into sorted chunks by each process and it may occur
       that some processes have more work than others defeating the purpose
@@ -1066,9 +1062,6 @@ class Uploadr:
                     search_result = None
                     for x in range(0, MAX_UPLOAD_ATTEMPTS):
                         try:
-                            logging.debug('Uploading/Reuploading '
-                                          '[{!s}/{!s} attempts].'
-                                          .format(x, MAX_UPLOAD_ATTEMPTS))
                             if (x > 0):
                                 niceprint(u'Reuploading ' +
                                           file.encode('utf-8') +
@@ -2232,11 +2225,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                     'primary_photo_id) VALUES (?,?,?)',
                                     (setId, setName, primaryPhotoId))
                     else:
-                        logging.info('Flickr Set/Album already on '
-                                     'local database.')
-                        if (args.verbose):
-                            niceprint('Flickr Set/Album already on '
-                                      'local database.')
+                        niceprint('Flickr Set/Album already on local database.')
 
                 con.commit()
                 # niceprint('Sleep...3...to allow Commit... TO BE REMOVED?')

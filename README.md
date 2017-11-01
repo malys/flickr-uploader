@@ -12,7 +12,6 @@ Upload a directory of media to Flickr to use as a backup to your local storage.
 * Reuploads modified images
 * Removes images from Flickr when they are removed from your local hard drive
 * Uploads videos (AVI, MOV, MPG, MP4, 3GP...)
-* Skips files that are over a configured size
 * Stores image information locally using a simple SQLite database
 * Creates "Sets" based on the folder name the media is in (getting existing sets from Flickr is managed also)
 * Ignores unwanted directories (like ".picasabackup" for Picasa users)
