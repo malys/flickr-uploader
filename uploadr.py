@@ -11,6 +11,7 @@
     Some giberish. Please ignore!
     -----------------------------
     Area for my personal notes on on-going work! Please ignore!
+    * replace 'utf-8' by a constant?
 
     ## Update History
     -----------------
@@ -115,16 +116,6 @@ import mimetools
 import mimetypes
 import os
 import time
-# Check if it is still required
-# COMMENTED import urllib
-# Check if it is still required
-# COMMENTED import urllib2
-# Check if it is still required
-# COMMENTED import webbrowser
-# Check if it is still required
-# COMMENTED import json
-# Check if it is still required
-# COMMENTED: from xml.dom.minidom import parse
 import sqlite3 as lite
 import hashlib
 import fcntl
@@ -139,7 +130,10 @@ import os.path
 import logging
 import pprint
 
-# ----------------------------------------------------------------------------
+
+#==============================================================================
+# Init code
+#
 # Python version must be greater than 2.7 for this script to run
 #
 if sys.version_info < (2, 7):
@@ -147,6 +141,10 @@ if sys.version_info < (2, 7):
     sys.stderr.write("Current version: " + sys.version + "\n")
     sys.stderr.flush()
     sys.exit(1)
+else:
+    #Define LOGGING_LEVEL to allow logging even if everything's else is wrong!
+    LOGGING_LEVEL = logging.WARNING
+    sys.stderr.write('--------- '  + 'Init: ' + ' ---------\n')
 
 # ----------------------------------------------------------------------------
 # Constants class
@@ -158,7 +156,9 @@ class UPLDRConstants:
     """
 
     TimeFormat = '%Y.%m.%d %H:%M:%S'
-    Version = '2.4.1'
+    # For future use...
+    # UTF = 'utf-8'
+    Version = '2.5.1'
 
     def __init__(self):
         """ Constructor
@@ -198,7 +198,7 @@ def isThisStringUnicode(s):
     else:
         return False
 
-# -------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # niceprint
 #
 # Print a message with the format:
@@ -216,14 +216,21 @@ def niceprint(s):
             'PRINT',
             'uploadr',
             s.encode('utf-8') if isThisStringUnicode(s) else s))
-# ----------------------------------------------------------------------------
+
+#==============================================================================
 # Read Config from config.ini file
-#
 # Obtain configuration from uploadr.ini
 # Refer to contents of uploadr.ini for explanation on configuration parameters
-#
 config = ConfigParser.ConfigParser()
-config.read(os.path.join(os.path.dirname(sys.argv[0]), "uploadr.ini"))
+INIFiles = config.read(os.path.join(os.path.dirname(sys.argv[0]), "uploadr.ini"))
+if not INIFiles:
+    sys.stderr.write('[{!s}]:[{!s}][ERROR   ]:[uploadr] '
+                     'INI file: [{!s}] not found!.\n'
+                     .format(nutime.strftime(UPLDRConstants.TimeFormat),
+                             os.getpid(),
+                             os.path.join(os.path.dirname(sys.argv[0]),
+                                          'uploadr.ini')))
+    sys.exit()
 if config.has_option('Config', 'FILES_DIR'):
     FILES_DIR = eval(config.get('Config', 'FILES_DIR'))
 else:
@@ -232,7 +239,21 @@ FLICKR = eval(config.get('Config', 'FLICKR'))
 SLEEP_TIME = eval(config.get('Config', 'SLEEP_TIME'))
 DRIP_TIME = eval(config.get('Config', 'DRIP_TIME'))
 DB_PATH = eval(config.get('Config', 'DB_PATH'))
-TOKEN_CACHE = eval(config.get('Config', 'TOKEN_CACHE'))
+try:
+    TOKEN_CACHE = eval(config.get('Config', 'TOKEN_CACHE'))
+# CODING: Should extend this control to other parameters (Enhancement #7)
+except (ConfigParser.NoOptionError, ConfigParser.NoOptionError), err:
+    sys.stderr.write('[{!s}]:[{!s}][WARNING ]:[uploadr] ({!s}) TOKEN_CACHE '
+                     'not defined or incorrect on INI file: [{!s}]. '
+                     'Assuming default value [{!s}].\n'
+                     .format(nutime.strftime(UPLDRConstants.TimeFormat),
+                             os.getpid(),
+                             str(err),
+                             os.path.join(os.path.dirname(sys.argv[0]),
+                                          "uploadr.ini"),
+                             os.path.join(os.path.dirname(sys.argv[0]),
+                                          "token")))
+    TOKEN_CACHE = os.path.join(os.path.dirname(sys.argv[0]), "token")
 LOCK_PATH = eval(config.get('Config', 'LOCK_PATH'))
 TOKEN_PATH = eval(config.get('Config', 'TOKEN_PATH'))
 EXCLUDED_FOLDERS = eval(config.get('Config', 'EXCLUDED_FOLDERS'))
@@ -252,7 +273,7 @@ LOGGING_LEVEL = (config.get('Config', 'LOGGING_LEVEL')
                  if config.has_option('Config', 'LOGGING_LEVEL')
                  else logging.WARNING)
 
-# ----------------------------------------------------------------------------
+#==============================================================================
 # Logging
 #
 # Obtain configuration level from Configuration file.
@@ -295,8 +316,7 @@ logging.basicConfig(stream=sys.stderr,
                     datefmt=UPLDRConstants.TimeFormat,
                     format='[%(asctime)s]:[%(processName)s][%(levelname)-8s]'
                            ':[%(name)s] %(message)s')
-
-# ----------------------------------------------------------------------------
+#==============================================================================
 # Test section for logging.
 # CODING: Uncomment for testing.
 #   Only applicable if LOGGING_LEVEL is INFO or below (DEBUG, NOTSET)
@@ -315,27 +335,12 @@ logging.basicConfig(stream=sys.stderr,
 #         logging.info('Message with {!s}'.format(
 #                                     'INFO UNDER min WARNING LEVEL'))
 if LOGGING_LEVEL <= logging.INFO:
-    logging.info('Pretty Print for {!s}'.format(
-                                'FLICKR Configuration:'))
     niceprint('Pretty Print for {!s}'.format(
                                 'FLICKR Configuration:'))
     pprint.pprint(FLICKR)
 
-# ----------------------------------------------------------------------------
-# APIConstants class
-#
-# To be removed.
-#
-class APIConstants:
-    """ APIConstants class
-    """
-
-    def __init__(self):
-        """ Constructor
-        """
-        pass
-
-api = APIConstants()
+#==============================================================================
+# CODING: Search 'Main code' section for code continuation after definitions
 
 # ----------------------------------------------------------------------------
 # FileWithCallback class
@@ -374,7 +379,7 @@ def callback(progress):
             print(progress)
 
 # ----------------------------------------------------------------------------
-# Uploadr
+# Uploadr class
 #
 #   Main class for uploading of files.
 #
@@ -468,8 +473,8 @@ class Uploadr:
         """
         global nuflickr
 
-        if LOGGING_LEVEL <= logging.INFO:
-            logging.info('Obtaining Cached tokens')
+        logging.info('Obtaining Cached token')
+        logging.debug('TOKEN_CACHE:[{!s}]'.format(TOKEN_CACHE))
         nuflickr = flickrapi.FlickrAPI(FLICKR["api_key"],
                                        FLICKR["secret"],
                                        token_cache_location=TOKEN_CACHE)
@@ -479,12 +484,11 @@ class Uploadr:
             # if permissions are correct?
             if nuflickr.token_valid(perms='delete'):
                 if LOGGING_LEVEL <= logging.INFO:
-                    logging.info('Cached token obtained: {!s}'.format(
-                                        nuflickr.token_cache.token))
+                    logging.info('Cached token obtained: {!s}'
+                                 .format(nuflickr.token_cache.token))
                 return nuflickr.token_cache.token
             else:
-                if LOGGING_LEVEL <= logging.INFO:
-                    logging.info('Token Non-Existant.')
+                logging.info('Token Non-Existant.')
                 return None
         except:
             niceprint('Unexpected error:' + sys.exc_info()[0])
@@ -507,9 +511,8 @@ class Uploadr:
         """
         global nuflickr
 
-        if LOGGING_LEVEL <= logging.WARNING:
-            logging.warning('checkToken is (self.token is None):[{!s}]'
-                            .format(self.token is None))
+        logging.warning('checkToken is (self.token is None):[{!s}]'
+                        .format(self.token is None))
 
         if (self.token is None):
             return False
@@ -771,11 +774,7 @@ class Uploadr:
                                 'All processes finished.')
                 
                 # Show number of total files processed
-                logging.debug('===Multiprocessing=== in.mutex.acquire(r)')
-                mutex.acquire()
                 self.niceprocessedfiles(running.value, True)
-                mutex.release()
-                logging.warning('===Multiprocessing=== out.mutex.release(r)')
             else:
                 niceprint('Pool not in __main__ process. '
                           'Windows or recursive?'
@@ -795,17 +794,7 @@ class Uploadr:
                     nutime.sleep(DRIP_TIME)
                 count = count + 1
                 self.niceprocessedfiles(count, False)
-                # if (count % 100 == 0):
-                #     niceprint('\t' +
-                #               str(count) +
-                #               ' files processed (uploaded, md5ed '
-                #               'or timestamp checked)')
             self.niceprocessedfiles(count, True)
-            # if (count % 100 > 0):
-            #     niceprint('\t' +
-            #               str(count) +
-            #               ' files processed (uploaded, md5ed '
-            #               'or timestamp checked)')
 
         niceprint("*****Completed uploading files*****")
 
@@ -1309,14 +1298,13 @@ class Uploadr:
                                         'out.lock.release')
 
                     # Update Date/Time on Flickr for Video files
-                    # import mimetypes
-                    # import time
-
                     filetype = mimetypes.guess_type(file)
                     logging.info('filetype:[{!s}]:'.format(filetype[0])) \
                                 if not (filetype[0] is None) \
                                 else ('filetype is None!!!')
 
+                    # update video date/time TAKEN has Flickr does not read it
+                    # correctly from the video file itself.
                     if (not filetype[0] is None) and ('video' in filetype[0]):
                         res_set_date = None
                         video_date = nutime.strftime(
@@ -1653,12 +1641,24 @@ class Uploadr:
                     res_set_date = flick.photos_set_dates(file_id, video_date)
                     if self.isGood(res_set_date):
                         niceprint("Set date ok")
+                        niceprint(u'Successfully set date for pic: ' +
+                                  file.encode('utf-8') +
+                                  u' date:' +
+                                  video_date.encode('utf-8')) \
+                                  if isThisStringUnicode(file) \
+                                  else ('Successfully set date for pic '
+                                        'number: ' +
+                                        file +
+                                        ' date:' +
+                                        video_date)
                 except (IOError, ValueError, httplib.HTTPException):
                     print(str(sys.exc_info()))
                     print("Error setting date")
 
                 if not self.isGood(res_set_date):
                     raise IOError(res_set_date)
+                
+                logging.debug()
                 niceprint(u'Successfully set date for pic number: ' +
                           file.encode('utf-8') + u' date:' + video_date) \
                           if isThisStringUnicode(file) \
@@ -2602,10 +2602,10 @@ set0 = sets.find('photosets').findall('photoset')[0]
             niceprint('*****Completed Listing Photos not in a set '
                       'in Flickr******')
 
-#------------------------------------------------------------------------------
+#==============================================================================
 # Main code
 #
-nutime = time
+# nutime = time
 
 niceprint('--------- (V' + UPLDRConstants.Version + ') Start time: ' +
           nutime.strftime(UPLDRConstants.TimeFormat) +
@@ -2688,13 +2688,15 @@ if __name__ == "__main__":
 
     logging.warning('FILES_DIR: [{!s}]'.format(FILES_DIR))
     if FILES_DIR == "":
-        niceprint('Please configure the name of the folder in the script '
+        niceprint('Please configure the name of the folder [FILES_DIR] '
+                  'in the INI file [normally uploadr.ini], '
                   'with media available to sync with Flickr.')
         sys.exit()
     else:
         if not os.path.isdir(FILES_DIR):
-            niceprint('Please configure the name of an existant folder in the '
-                      'script with media available to sync with Flickr.')
+            niceprint('Please configure the name of an existant folder '
+                      'in the INI file [normally uploadr.ini] '
+                      'with media available to sync with Flickr.')
             sys.exit()
 
     if FLICKR["api_key"] == "" or FLICKR["secret"] == "":
@@ -2703,6 +2705,7 @@ if __name__ == "__main__":
         sys.exit()
 
     # Instantiate class Uploadr
+    logging.debug('Instantiating the Main class flick = Uploadr()')
     flick = Uploadr()
 
     # Setup the database
