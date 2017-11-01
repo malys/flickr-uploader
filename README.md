@@ -24,6 +24,7 @@ local storage.
   "@eaDir" for Synology NAS users) and you can easily add/configure more
   yourself. Check uploadr.ini config file.
 * Allows specific files to be ignored (via regular expressions)
+* Skips files that are over a configurable size (max flickr size is about 900MB)
 * Reuploads modified images
 * Automatically removes images from Flickr when they are removed from your
   local hard drive
