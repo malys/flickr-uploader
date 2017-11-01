@@ -36,7 +36,7 @@
       'NoneType' objects. Added specific control on function upload:
       setName if setName is not None else 'None'
       BUT worst than that is that one will be saving on the local database
-      sets with name (title) empty which will cause other functions to fail.    
+      sets with name (title) empty which will cause other functions to fail.
     * converRawFiles is not tested. Also requires an exif tool to be installed
       and configured as RAW_TOOL_PATH in INI file. Make sure to leave
       CONVERT_RAW_FILES = False in INI file or use at your own risk.
@@ -60,9 +60,9 @@
         -n
         -r (should work)
         -d (should work)
-    * Regular Output needs to align to include
-        successfull uploads
-        successfull updaate of date/time in videos
+    * Regular Output needs to be aligned to include
+        successful uploads
+        successful updaate of date/time in videos
         successful replacement of photos
 
     ## Programming Remarks
@@ -77,7 +77,7 @@
     * Prefix coding for some output messages:
         *****   Section informative
         ===     Multiprocessing related
-        +++     Exceptions handling related
+       ++     Exceptions handling related
     * As far as my testing goes :) the following errors are handled:
             Flickr reports file not loaded due to error: 5
                 [flickr:Error: 5: Filetype was not recognised]
@@ -222,7 +222,8 @@ def niceprint(s):
 # Obtain configuration from uploadr.ini
 # Refer to contents of uploadr.ini for explanation on configuration parameters
 config = ConfigParser.ConfigParser()
-INIFiles = config.read(os.path.join(os.path.dirname(sys.argv[0]), "uploadr.ini"))
+INIFiles = config.read(os.path.join(os.path.dirname(sys.argv[0]),
+                                    "uploadr.ini"))
 if not INIFiles:
     sys.stderr.write('[{!s}]:[{!s}][ERROR   ]:[uploadr] '
                      'INI file: [{!s}] not found!.\n'
@@ -408,7 +409,7 @@ class Uploadr:
         count = Nicely print number of processed files rounded to 100's
         total = if true shows the total (to be used at the end of processing)
         """
-        
+
         if not total:
             if (count % 100 == 0):
                 niceprint('\t' +
@@ -657,8 +658,8 @@ class Uploadr:
                 logging.debug('len(badMedia)'.format(len(badMedia)))
 
             changedMedia_count = len(changedMedia)
-            niceprint('Removing badfiles Found ' + str(changedMedia_count) +
-                      ' files to upload.')
+            niceprint('Removing ' + len(badMedia) + ' badfiles. Found ' +
+                      str(changedMedia_count) + ' files to upload.')
 
         # running in multi processing mode
         if (args.processes and args.processes > 0):
@@ -772,9 +773,6 @@ class Uploadr:
 
                 logging.warning('===Multiprocessing=== pool joined!'
                                 'All processes finished.')
-                
-                # Show number of total files processed
-                self.niceprocessedfiles(running.value, True)
             else:
                 niceprint('Pool not in __main__ process. '
                           'Windows or recursive?'
@@ -992,10 +990,11 @@ class Uploadr:
             mutex = for running access control in multiprocessing
         """
 
-        for f in filelist:
-            logging.info('===Current element of Chunk: [{!s}]'.format(f))
+        for i, f in enumerate(filelist):
+            logging.warning('===Current element of Chunk: [{!s}][{!s}]'
+                            .format(i, f))
             self.uploadFile(lock, f)
-            
+
             # no need to check for
             # (args.processes and args.processes > 0):
             # as uploadFileX is already multiprocessing
@@ -1006,11 +1005,12 @@ class Uploadr:
             xcount = running.value
             mutex.release()
             logging.warning('===Multiprocessing=== out.mutex.release(w)')
-            
+
+            # Show number of files processed so far
             self.niceprocessedfiles(xcount, False)
             
-            
-            
+        # Show number of total files processed
+        self.niceprocessedfiles(xcount, True)
 
     #--------------------------------------------------------------------------
     # uploadFile
@@ -1023,9 +1023,9 @@ class Uploadr:
     def uploadFile(self, lock, file):
         """ uploadFile
         uploads file into flickr
-        
+
         May run in single or multiprocessing mode
-        
+
         lock = parameter for multiprocessing control of access to DB.
                (if args.processes = 0 then lock can be None as it is not used)
         running = counter of number of processed files in multiprocessing
@@ -1065,9 +1065,9 @@ class Uploadr:
             # use file modified timestamp to check for changes
             last_modified = os.stat(file).st_mtime
             if row is None:
-                niceprint(u'Uploading ' + file.encode('utf-8') + u'...'
-                          if isThisStringUnicode(file)
-                          else ("Uploading " + file + "..."))
+                niceprint(u'Uploading ' + file.encode('utf-8') + u'...') \
+                          if isThisStringUnicode(file) \
+                          else ("Uploading " + file + "...")
 
                 if FULL_SET_NAME:
                     setName = os.path.relpath(os.path.dirname(file),
@@ -1131,15 +1131,16 @@ class Uploadr:
                     search_result = None
                     for x in range(0, MAX_UPLOAD_ATTEMPTS):
                         try:
-                            logging.debug('Uploading/Reuploading '
-                                          '[{!s}/{!s} attempts].'
-                                          .format(x, MAX_UPLOAD_ATTEMPTS))
+                            logging.warning('Uploading/Reuploading '
+                                            '[{!s}/{!s} attempts].'
+                                            .format(x, MAX_UPLOAD_ATTEMPTS))
                             if (x > 0):
                                 niceprint(u'Reuploading ' +
                                           file.encode('utf-8') +
                                           u'...') \
                                           if isThisStringUnicode(file) \
                                           else ('Reuploading ' + file + '...')
+                            # Upload file to Flickr
                             if FLICKR["title"] == "":
                                 # replace commas from tags and checksum tags
                                 # to avoid tags conflicts
@@ -1181,31 +1182,33 @@ class Uploadr:
                                         is_friend=str(FLICKR["is_friend"])
                                         )
 
-                            logging.warning('uploadResp: ')
-                            logging.warning(xml.etree.ElementTree.tostring(
+                            logging.info('uploadResp: ')
+                            logging.info(xml.etree.ElementTree.tostring(
                                                 uploadResp,
                                                 encoding='utf-8',
                                                 method='xml'))
-                            logging.info('search_result:[{!s}]'
-                                         .format(self.isGood(uploadResp)))
-                            if self.isGood(uploadResp):
-                                logging.info('search_result:OK')
-                            else:
-                                logging.info('search_result:NOT OK')
-                            photo_id = uploadResp.findall('photoid')[0].text
-                            logging.warning('uploaded OK. Flickr id='
-                                            '[{!s}]'.format(photo_id))
+                            logging.warning('upload_result:[{!s}]'
+                                            .format(self.isGood(uploadResp)))
 
-                            # Debug search for photo with checksum to
-                            # confirm loaded
+                            # Save photo_id returned from Flickr upload
+                            photo_id = uploadResp.findall('photoid')[0].text
+                            logging.warning('Uploaded photo_id=[{!s}] Ok.'
+                                            'Will check for issues ('
+                                            'duplicates or wrong checksum)'
+                                            .format(photo_id))
+
                             search_result = None
-                            if LOGGING_LEVEL <= logging.DEBUG:
-                                search_result = self.photos_search(
-                                                            file_checksum)
-                                logging.info('search_result:[{!s}]'
-                                             .format(self
-                                                     .isGood(search_result)))
                             break
+
+                            # Perform search for photo with checksum to
+                            # confirm loaded was fully okay
+                            # SEARCH DUPLICATED!!!
+                            # if LOGGING_LEVEL <= logging.DEBUG:
+                            #     search_result = self.photos_search(
+                            #                                 file_checksum)
+                            #     logging.info('search_result:[{!s}]'
+                            #                  .format(self
+                            #                          .isGood(search_result)))
 
                         # Exceptions for flickr.upload function call...
                         except (IOError, httplib.HTTPException):
@@ -1246,7 +1249,7 @@ class Uploadr:
                                 niceprint('Found, continuing with next image.')
                                 break
 
-                    # Error on upload and search for photo return empty
+                    # Error on upload and search for photo not performed/empty
                     if not search_result and not self.isGood(uploadResp):
                         niceprint('A problem occurred while attempting to '
                                     'upload the file: ' +
@@ -1258,24 +1261,36 @@ class Uploadr:
                         raise IOError(uploadResp)
 
                     # Successful update
-                    niceprint(u'Successfully uploaded the file: ' +
+                    niceprint(u'Successfully uploaded the file ' +
                               file.encode('utf-8')) \
                               if isThisStringUnicode(file) \
-                              else ('Successfully uploaded file: ' + file)
-                    # Unsuccessful update given that search_result is not None
+                              else ("Uploading " + file + "...")
+
+                    # Save file_id... from uploadresp of search_result
                     if search_result:
+                        file_id = search_result.find('photos')\
+                                    .findall('photo')[0].attrib['id']
+                        # file_id = uploadResp.findall('photoid')[0].text
+                        logging.warning('Output for {!s}:'
+                                        .format('seacrh_result'))
+                        logging.warning(xml.etree.ElementTree.tostring(
+                                            search_result,
+                                            encoding='utf-8',
+                                            method='xml'))
+                    else:
+                        # Successful update given that search_result is None
                         file_id = uploadResp.findall('photoid')[0].text
-                        logging.info('Output for {!s}:'.format('uploadResp'))
-                        logging.info(xml.etree.ElementTree.tostring(
+                        # CODING no need for int()???
+                        # file_id = int(str(uploadResp
+                        #                   .findall('photoid')[0].text))
+                        logging.warning('Output for {!s}:'
+                                        .format('uploadResp'))
+                        logging.warning(xml.etree.ElementTree.tostring(
                                             uploadResp,
                                             encoding='utf-8',
                                             method='xml'))
-                        logging.warning('SEARCH_RESULT file_id={!s}'
-                                        .format(file_id))
-                    else:
-                        # Successful update given that search_result is None
-                        file_id = int(str(uploadResp
-                                          .findall('photoid')[0].text))
+
+                    logging.warning('File_id=[{!s}]'.format(file_id))
 
                     # Add to db the file uploaded
                     # Control for when running multiprocessing set locking
@@ -1657,7 +1672,7 @@ class Uploadr:
 
                 if not self.isGood(res_set_date):
                     raise IOError(res_set_date)
-                
+
                 logging.debug()
                 niceprint(u'Successfully set date for pic number: ' +
                           file.encode('utf-8') + u' date:' + video_date) \
@@ -2067,7 +2082,7 @@ class Uploadr:
                 con.commit()
                 # obtain new version to continue updating database
                 cur = con.cursor()
-                cur.execute('PRAGMA user_version'); row = cur.fetchone()                
+                cur.execute('PRAGMA user_version'); row = cur.fetchone()
             if (row[0] == 1):
                 # Database version 2
                 # Cater for badfiles
@@ -2079,7 +2094,7 @@ class Uploadr:
                             'last_modified REAL)')
                 cur.execute('CREATE UNIQUE INDEX IF NOT EXISTS badfileindex '
                             'ON badfiles (path)')
-                con.commit(); 
+                con.commit();
                 cur = con.cursor()
                 cur.execute('PRAGMA user_version'); row = cur.fetchone()
             if (row[0] == 2):
@@ -2226,11 +2241,10 @@ class Uploadr:
         try:
             sets = nuflickr.photosets_getList()
 
-            logging.info('Output for {!s}'.format('photosets_getList:'))
-            logging.info(xml.etree.ElementTree.tostring(
-                                                sets,
-                                                encoding='utf-8',
-                                                method='xml'))
+            logging.debug('Output for {!s}'.format('photosets_getList:'))
+            logging.debug(xml.etree.ElementTree.tostring(sets,
+                                                         encoding='utf-8',
+                                                         method='xml'))
 
             """
 
