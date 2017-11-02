@@ -77,7 +77,7 @@
     * Prefix coding for some output messages:
         *****   Section informative
         ===     Multiprocessing related
-       ++     Exceptions handling related
+        +++     Exceptions handling related
     * As far as my testing goes :) the following errors are handled:
             Flickr reports file not loaded due to error: 5
                 [flickr:Error: 5: Filetype was not recognised]
@@ -593,9 +593,7 @@ class Uploadr:
             for row in rows:
                 if (not os.path.isfile(row[1].decode('utf-8'))):
                     success = self.deleteFile(row, cur)
-                    if LOGGING_LEVEL <= logging.WARNING:
-                        logging.warning('deleteFile result: {!s}'.format(
-                                                    success))
+                    logging.warning('deleteFile result: {!s}'.format(success))
                     count = count + 1
                     if (count % 3 == 0):
                         niceprint('\t' + str(count) + ' files removed...')
@@ -773,6 +771,7 @@ class Uploadr:
 
                 logging.warning('===Multiprocessing=== pool joined!'
                                 'All processes finished.')
+
             else:
                 niceprint('Pool not in __main__ process. '
                           'Windows or recursive?'
@@ -1008,7 +1007,7 @@ class Uploadr:
 
             # Show number of files processed so far
             self.niceprocessedfiles(xcount, False)
-            
+
         # Show number of total files processed
         self.niceprocessedfiles(xcount, True)
 
@@ -1187,7 +1186,7 @@ class Uploadr:
                                                 uploadResp,
                                                 encoding='utf-8',
                                                 method='xml'))
-                            logging.warning('upload_result:[{!s}]'
+                            logging.warning('uploadResp:[{!s}]'
                                             .format(self.isGood(uploadResp)))
 
                             # Save photo_id returned from Flickr upload
@@ -1197,12 +1196,14 @@ class Uploadr:
                                             'duplicates or wrong checksum)'
                                             .format(photo_id))
 
+                            # Debug search for photo with checksum to
+                            # confirm loaded
                             search_result = None
                             break
 
                             # Perform search for photo with checksum to
                             # confirm loaded was fully okay
-                            # SEARCH DUPLICATED!!!
+                            # CODING: THIS SEARCH IS DUPLICATED!!!
                             # if LOGGING_LEVEL <= logging.DEBUG:
                             #     search_result = self.photos_search(
                             #                                 file_checksum)
@@ -1261,36 +1262,36 @@ class Uploadr:
                         raise IOError(uploadResp)
 
                     # Successful update
-                    niceprint(u'Successfully uploaded the file ' +
+                    niceprint(u'Successfully uploaded the file: ' +
                               file.encode('utf-8')) \
                               if isThisStringUnicode(file) \
-                              else ("Uploading " + file + "...")
+                              else ('Successfully uploaded the file: ' + file)
 
-                    # Save file_id... from uploadresp of search_result
+                    # Save file_id... from uploadResp or search_result
                     if search_result:
                         file_id = search_result.find('photos')\
                                     .findall('photo')[0].attrib['id']
                         # file_id = uploadResp.findall('photoid')[0].text
-                        logging.warning('Output for {!s}:'
-                                        .format('seacrh_result'))
-                        logging.warning(xml.etree.ElementTree.tostring(
+                        logging.info('Output for {!s}:'
+                                     .format('search_result'))
+                        logging.info(xml.etree.ElementTree.tostring(
                                             search_result,
                                             encoding='utf-8',
                                             method='xml'))
+                        logging.warning('SEARCH_RESULT file_id={!s}'
+                                        .format(file_id))
                     else:
                         # Successful update given that search_result is None
                         file_id = uploadResp.findall('photoid')[0].text
                         # CODING no need for int()???
                         # file_id = int(str(uploadResp
                         #                   .findall('photoid')[0].text))
-                        logging.warning('Output for {!s}:'
-                                        .format('uploadResp'))
-                        logging.warning(xml.etree.ElementTree.tostring(
+                        logging.info('Output for {!s}:'
+                                     .format('uploadResp'))
+                        logging.info(xml.etree.ElementTree.tostring(
                                             uploadResp,
                                             encoding='utf-8',
                                             method='xml'))
-
-                    logging.warning('File_id=[{!s}]'.format(file_id))
 
                     # Add to db the file uploaded
                     # Control for when running multiprocessing set locking
@@ -2241,10 +2242,11 @@ class Uploadr:
         try:
             sets = nuflickr.photosets_getList()
 
-            logging.debug('Output for {!s}'.format('photosets_getList:'))
-            logging.debug(xml.etree.ElementTree.tostring(sets,
-                                                         encoding='utf-8',
-                                                         method='xml'))
+            logging.info('Output for {!s}'.format('photosets_getList:'))
+            logging.info(xml.etree.ElementTree.tostring(
+                                                sets,
+                                                encoding='utf-8',
+                                                method='xml'))
 
             """
 
@@ -2387,14 +2389,14 @@ set0 = sets.find('photosets').findall('photoset')[0]
     #--------------------------------------------------------------------------
     # photos_search
     #
-    # Searchs for image with on tag:checksum (calls Flickr photos.search)
+    # Searchs for image with tag:checksum (calls Flickr photos.search)
     #
     # Will return searchResp and if isgood(searchResp) will provide also
     # searchtotal and id of first photo
-    
+    #
     # Sample response:
     # <photos page="2" pages="89" perpage="10" total="881">
-    #     <photo id="2636" owner="47058503995@N01" 
+    #     <photo id="2636" owner="47058503995@N01"
     #             secret="a123456" server="2" title="test_04"
     #             ispublic="1" isfriend="0" isfamily="0" />
     #     <photo id="2635" owner="47058503995@N01"
@@ -2409,19 +2411,11 @@ set0 = sets.find('photosets').findall('photoset')[0]
 
         global nuflickr
 
-        logging.info('checksum:{!s}:'.format(checksum))
+        logging.info('FORMAT checksum:{!s}:'.format(checksum))
 
-        searchResp = nuflickr.photos.search(tags='checksum:{}'
+        searchResp = nuflickr.photos.search(user_id="me",
+                                            tags='checksum:{}'
                                             .format(checksum))
-        
-        tot = None
-        id = None
-        if self.isGood(search_result):
-            if int(search_result.find('photos').attrib['total']) == 0:
-                tot = int(search_result.find('photos').attrib['total'])
-                if int(search_result.find('photos').attrib['total']) == 1:
-                    id = search_result.find('photos').findall('photo')[0].attrib['id']
-
         # Debug
         logging.debug('Search Results SearchResp:')
         logging.debug(xml.etree.ElementTree.tostring(
@@ -2429,7 +2423,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                             encoding='utf-8',
                                             method='xml'))
 
-        return (searchResp, tot, id)
+        return searchResp
 
     #--------------------------------------------------------------------------
     # people_get_photos
