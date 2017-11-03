@@ -663,8 +663,9 @@ class Uploadr:
                 logging.debug('len(badMedia)'.format(len(badMedia)))
 
             changedMedia_count = len(changedMedia)
-            niceprint('Removing ' + len(badMedia) + ' badfiles. Found ' +
-                      str(changedMedia_count) + ' files to upload.')
+            niceprint('Removing {!s} badfiles. Found {!s} files to upload.'
+                      .format(len(badMedia),
+                              changedMedia_count))
 
         # running in multi processing mode
         if (args.processes and args.processes > 0):
