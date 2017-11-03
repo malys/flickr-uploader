@@ -12,6 +12,11 @@
     -----------------------------
     Area for my personal notes on on-going work! Please ignore!
     * replace 'utf-8' by a constant?
+    * Need to revise and correct to statements like:
+            niceprint('Checking file:[{!s}]...'.format(
+                                            file.encode('utf-8') \
+                                            if isThisStringUnicode(file) \
+                                            else file))
 
     ## Update History
     -----------------
@@ -44,7 +49,7 @@
     * If one changes the FILES_DIR folder and do not DELETE all from flickr,
       uploadr WILL not delete the files.
     * Would be nice to update ALL tags on replacePhoto and not only the
-      mandatory checksum tag.
+      mandatory checksum tag as FLICKR maintains the tags from the first load.
     * Does not Re-upload pictures removed from flickr.
     * If local flickrdb is deleted it will re-upload entire local Library.
       It would be interesting to attempt to rebuild local database. With the
@@ -343,7 +348,7 @@ if LOGGING_LEVEL <= logging.INFO:
 #==============================================================================
 # CODING: Search 'Main code' section for code continuation after definitions
 
-# ----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # FileWithCallback class
 #
 # For use with flickrapi upload for showing callback progress information
@@ -363,23 +368,23 @@ class FileWithCallback(object):
             self.callback(self.tell() * 100 // self.len)
         return self.file.read(size)
 
-# ----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # callback
 #
 # For use with flickrapi upload for showing callback progress information
 # Check function FileWithCallback definition
-# Uses global args.verbose parameter
+# Uses global args.verbose-progress parameter
 #
 def callback(progress):
     # only print rounded percentages: 0, 10, 20, 30, up to 100
     # adapt as required
     # if ((progress % 10) == 0):
     # if verbose option is set
-    if (args.verbose):
+    if (args.verbose_progress):
         if ((progress % 40) == 0):
             print(progress)
 
-# ----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # Uploadr class
 #
 #   Main class for uploading of files.
@@ -411,17 +416,13 @@ class Uploadr:
         """
 
         if not total:
-            if (count % 100 == 0):
-                niceprint('\t' +
-                          str(count) +
-                          ' files processed (uploaded, md5ed '
-                          'or timestamp checked)')
+            if (int(count) % 100 == 0):
+                niceprint('\t{!s} files processed (uploaded, md5ed '
+                          'or timestamp checked)'.format(count))
         else:
-            if (count % 100 > 0):
-                niceprint('\t' +
-                          str(count) +
-                          ' files processed (uploaded, md5ed '
-                          'or timestamp checked)')
+            if (int(count) % 100 > 0):
+                niceprint('\t{!s} files processed (uploaded, md5ed '
+                          'or timestamp checked)'.format(count))
 
     # -------------------------------------------------------------------------
     # authenticate
@@ -449,8 +450,7 @@ class Uploadr:
         # Prompt for verifier code from the user
         verifier = unicode(raw_input('Verifier code: '))
 
-        if LOGGING_LEVEL <= logging.WARNING:
-            logging.warning('Verifier: {!s}'.format(verifier))
+        logging.warning('Verifier: {!s}'.format(verifier))
 
         # Trade the request token for an access token
         print(nuflickr.get_access_token(verifier))
@@ -484,9 +484,8 @@ class Uploadr:
             # CODING: If token is cached does it make sense to check
             # if permissions are correct?
             if nuflickr.token_valid(perms='delete'):
-                if LOGGING_LEVEL <= logging.INFO:
-                    logging.info('Cached token obtained: {!s}'
-                                 .format(nuflickr.token_cache.token))
+                logging.info('Cached token obtained: {!s}'
+                             .format(nuflickr.token_cache.token))
                 return nuflickr.token_cache.token
             else:
                 logging.info('Token Non-Existant.')
@@ -512,9 +511,17 @@ class Uploadr:
         """
         global nuflickr
 
-        logging.warning('checkToken is (self.token is None):[{!s}]'
+        logging.warning('checkToken:(self.token is None):[{!s}]'
                         .format(self.token is None))
 
+        logging.warning('checkToken:(nuflickr is None):[{!s}]'
+                        .format(nuflickr is None))
+
+        logging.warning('checkToken:(nuflickr.token_cache.token is None):[{!s}]'
+                        .format(nuflickr.token_cache.token is None))
+        
+        # CODING: Reconfirm this code change.
+        # if (nuflickr is None) or (nuflickr.token_cache.token is None):
         if (self.token is None):
             return False
         else:
@@ -715,7 +722,7 @@ class Uploadr:
 
                 # Split the Media in chunks to distribute accross Processes
                 for nuChangeMedia in chunk(changedMedia, sz):
-                    logging.info('===Actual/Planned Chunk size: [{!s}]/[{!s}]'
+                    logging.warning('===Actual/Planned Chunk size: [{!s}]/[{!s}]'
                                  .format(len(nuChangeMedia), sz))
                     logging.debug(type(nuChangeMedia))
 
@@ -771,6 +778,11 @@ class Uploadr:
 
                 logging.warning('===Multiprocessing=== pool joined!'
                                 'All processes finished.')
+                niceprint('===Multiprocessing=== pool joined!'
+                          'All processes finished.')
+                
+                # Show number of total files processed
+                self.niceprocessedfiles(nurunning.value, True)
 
             else:
                 niceprint('Pool not in __main__ process. '
@@ -1009,7 +1021,7 @@ class Uploadr:
             self.niceprocessedfiles(xcount, False)
 
         # Show number of total files processed
-        self.niceprocessedfiles(xcount, True)
+        # self.niceprocessedfiles(xcount, True)
 
     #--------------------------------------------------------------------------
     # uploadFile
@@ -1035,14 +1047,16 @@ class Uploadr:
         global nuflickr
 
         if (args.dry_run is True):
-            print(u'file.type=' + str(type(file)).encode('utf-8'))
-            print(u'Dry Run Uploading ', file, '...')
+            niceprint('Dry Run Uploading' + 
+                  file.encode('utf-8') if isThisStringUnicode(file) else file +
+                  '...')
             return True
 
         if (args.verbose):
-            niceprint(u'Uploading file:[{!s}]...' + file.encode('utf-8')) \
-                if isThisStringUnicode(file) \
-                else ('Uploading file:[{!s}]...' + file)
+            niceprint('Checking file:[{!s}]...'.format(
+                                            file.encode('utf-8') \
+                                            if isThisStringUnicode(file) \
+                                            else file))
 
         success = False
         con = lite.connect(DB_PATH)
@@ -1064,19 +1078,24 @@ class Uploadr:
             # use file modified timestamp to check for changes
             last_modified = os.stat(file).st_mtime
             if row is None:
-                niceprint(u'Uploading ' + file.encode('utf-8') + u'...') \
-                          if isThisStringUnicode(file) \
-                          else ("Uploading " + file + "...")
+                if (args.verbose):
+                    niceprint('Uploading file:[{!s}]...'.format(
+                                                file.encode('utf-8') \
+                                                if isThisStringUnicode(file) \
+                                                else file))
 
                 if FULL_SET_NAME:
                     setName = os.path.relpath(os.path.dirname(file),
                                               unicode(FILES_DIR, 'utf-8'))
                 else:
                     head, setName = os.path.split(os.path.dirname(file))
+
+                if (args.verbose):
+                    niceprint('On Album:[{!s}]...'.format(
+                                            setName.encode('utf-8') \
+                                            if isThisStringUnicode(setName) \
+                                            else setName))
                 try:
-                    niceprint(u'setName: ' + setName.encode('utf-8')) \
-                              if isThisStringUnicode(setName) \
-                              else ('setName: ' + setName)
                     if isThisStringUnicode(file):
                         photo = ('photo', file.encode('utf-8'),
                                  open(file, 'rb').read())
@@ -1108,12 +1127,11 @@ class Uploadr:
                     if FLICKR["title"] == "":
                         path_filename, title_filename = os.path.split(file)
                         logging.info('path:[{!s}] '
-                                        'filename:[{!s}] '
-                                        'ext=[{!s}]'.format(
-                                            path_filename,
-                                            title_filename,
-                                            os.path.splitext(
-                                                    title_filename)[1]))
+                                     'filename:[{!s}] '
+                                     'ext=[{!s}]'.format(
+                                          path_filename,
+                                          title_filename,
+                                          os.path.splitext(title_filename)[1]))
                         title_filename = os.path.splitext(title_filename)[0]
                         logging.warning('title_name:[{!s}] '
                                         .format(title_filename))
@@ -1134,11 +1152,14 @@ class Uploadr:
                                             '[{!s}/{!s} attempts].'
                                             .format(x, MAX_UPLOAD_ATTEMPTS))
                             if (x > 0):
-                                niceprint(u'Reuploading ' +
-                                          file.encode('utf-8') +
-                                          u'...') \
-                                          if isThisStringUnicode(file) \
-                                          else ('Reuploading ' + file + '...')
+                                niceprint('Reuploading:[{!s}]...'
+                                          '[{!s}/{!s} attempts].'.format(
+                                                file.encode('utf-8') \
+                                                if isThisStringUnicode(file) \
+                                                else file,
+                                                x,
+                                                MAX_UPLOAD_ATTEMPTS))
+                                            
                             # Upload file to Flickr
                             if FLICKR["title"] == "":
                                 # replace commas from tags and checksum tags
@@ -1195,21 +1216,14 @@ class Uploadr:
                                             'Will check for issues ('
                                             'duplicates or wrong checksum)'
                                             .format(photo_id))
-
-                            # Debug search for photo with checksum to
-                            # confirm loaded
-                            search_result = None
+                            if (args.verbose):
+                                logging.warning('Uploaded photo_id=[{!s}] Ok.'
+                                            'Will check for issues ('
+                                            'duplicates or wrong checksum)'
+                                            .format(photo_id))
+                            
+                            # Successful upload. Break attempts cycle
                             break
-
-                            # Perform search for photo with checksum to
-                            # confirm loaded was fully okay
-                            # CODING: THIS SEARCH IS DUPLICATED!!!
-                            # if LOGGING_LEVEL <= logging.DEBUG:
-                            #     search_result = self.photos_search(
-                            #                                 file_checksum)
-                            #     logging.info('search_result:[{!s}]'
-                            #                  .format(self
-                            #                          .isGood(search_result)))
 
                         # Exceptions for flickr.upload function call...
                         except (IOError, httplib.HTTPException):
@@ -1262,11 +1276,11 @@ class Uploadr:
                         raise IOError(uploadResp)
 
                     # Successful update
-                    niceprint(u'Successfully uploaded the file: ' +
-                              file.encode('utf-8')) \
-                              if isThisStringUnicode(file) \
-                              else ('Successfully uploaded the file: ' + file)
-
+                    niceprint('Successfully uploaded the file:[{!s}].'
+                              .format(file.encode('utf-8') \
+                                      if isThisStringUnicode(file) \
+                                      else file))
+                    
                     # Save file_id... from uploadResp or search_result
                     if search_result:
                         file_id = search_result.find('photos')\
@@ -1484,17 +1498,19 @@ class Uploadr:
 
         global nuflickr
 
-        if args.dry_run:
-            print(u'Dry Run Replace file ' + file.encode('utf-8') + u'...') \
-                  if isThisStringUnicode(file) \
-                  else ("Dry Run Replace file " + file + "...")
+        if (args.dry_run is True):
+            niceprint('Dry Run Replace file' + 
+                  file.encode('utf-8') if isThisStringUnicode(file) else file +
+                  '...')
             return True
 
-        success = False
-        niceprint(u'Replacing the file: ' + file.encode('utf-8') + u'...') \
-                  if isThisStringUnicode(file) \
-                  else ("Replacing the file: " + file + "...")
+        if (args.verbose):
+            niceprint('Replacing the file:[{!s}]...'.format(
+                                            file.encode('utf-8') \
+                                            if isThisStringUnicode(file) \
+                                            else file))
 
+        success = False
         try:
             if isThisStringUnicode(file):
                 photo = ('photo',
@@ -1510,11 +1526,15 @@ class Uploadr:
             for x in range(0, MAX_UPLOAD_ATTEMPTS):
                 try:
                     if (x > 0):
-                        niceprint(u'Re-replacing ' +
-                                  file.encode('utf-8') +
-                                  u'...') \
-                                  if isThisStringUnicode(file) \
-                                  else ('Re-replacing ' + file + '...')
+                        niceprint('Re-placing:[{!s}]...'
+                                  '[{!s}/{!s} attempts].'.format(
+                                        file.encode('utf-8') \
+                                        if isThisStringUnicode(file) \
+                                        else file,
+                                        x,
+                                        MAX_UPLOAD_ATTEMPTS))
+                        
+                        
                     replaceResp = nuflickr.replace(
                                     filename=file,
                                     fileobj=FileWithCallback(file, callback),
@@ -1525,6 +1545,8 @@ class Uploadr:
                                                     replaceResp,
                                                     encoding='utf-8',
                                                     method='xml'))
+                    logging.warning('replaceResp:[{!s}]'
+                                    .format(self.isGood(replaceResp)))
 
                     if (self.isGood(replaceResp)):
                         # Update checksum tag at this time.
@@ -1600,11 +1622,11 @@ class Uploadr:
             if (not self.isGood(replaceResp)) or \
                    (not self.isGood(res_add_tag)) or \
                    (not self.isGood(res_get_info)):
-                niceprint(u'A problem occurred while attempting to '
-                          'replace the file: ' + file.encode('utf-8')) \
-                          if isThisStringUnicode(file) \
-                          else ('A problem occurred while attempting to '
-                                'replace the file: ' + file)
+                niceprint('A problem occurred while attempting to '
+                          'replace the file:[{!s}]'.format(
+                                file.encode('utf-8') \
+                                if isThisStringUnicode(file) \
+                                else file))
 
             if (not self.isGood(replaceResp)):
                 raise IOError(replaceResp)
@@ -1615,10 +1637,10 @@ class Uploadr:
             if (not self.isGood(res_get_info)):
                 raise IOError(res_get_info)
 
-            niceprint(u'Successfully replaced the file: ' +
-                      file.encode('utf-8')) \
-                      if isThisStringUnicode(file) \
-                      else ("Successfully replaced the file: " + file)
+            niceprint('Successfully replaced the file:[{!s}].'
+                      .format(file.encode('utf-8') \
+                              if isThisStringUnicode(file) \
+                              else file))
 
             # Update the db the file uploaded
             # Control for when running multiprocessing set locking
@@ -1644,10 +1666,11 @@ class Uploadr:
             # CODING: mimetypes already imported is it required?
             # import mimetypes
             filetype = mimetypes.guess_type(file)
-            logging.info('filetype:[{!s}]:'.format(filetype[0])) \
-                        if not (filetype[0] is None) \
-                        else ('filetype is None!!!')
-
+            if filetype is None:
+                logging.info('filetype is None!!!')
+            else:
+                logging.info('filetype:[{!s}]:'.format(filetype[0]))
+                
             if (not filetype[0] is None) and ('video' in filetype[0]):
                 video_date = nutime.strftime('%Y-%m-%d %H:%M:%S',
                                              nutime.localtime(last_modified))
@@ -1655,34 +1678,25 @@ class Uploadr:
 
                 try:
                     res_set_date = flick.photos_set_dates(file_id, video_date)
+                    logging.debug('Output for {!s}:'.format('res_set_date'))
+                    logging.debug(xml.etree.ElementTree.tostring(
+                                                            res_set_date,
+                                                            encoding='utf-8',
+                                                            method='xml'))                    
                     if self.isGood(res_set_date):
-                        niceprint("Set date ok")
-                        niceprint(u'Successfully set date for pic: ' +
-                                  file.encode('utf-8') +
-                                  u' date:' +
-                                  video_date.encode('utf-8')) \
-                                  if isThisStringUnicode(file) \
-                                  else ('Successfully set date for pic '
-                                        'number: ' +
-                                        file +
-                                        ' date:' +
-                                        video_date)
+                        niceprint('Successfully set date [{!s}] '
+                                  'for file:[{!s}].'
+                                  .format(video_date.encode,
+                                          file.encode('utf-8') \
+                                          if isThisStringUnicode(file) \
+                                          else file))
+            
                 except (IOError, ValueError, httplib.HTTPException):
                     print(str(sys.exc_info()))
                     print("Error setting date")
 
                 if not self.isGood(res_set_date):
                     raise IOError(res_set_date)
-
-                logging.debug()
-                niceprint(u'Successfully set date for pic number: ' +
-                          file.encode('utf-8') + u' date:' + video_date) \
-                          if isThisStringUnicode(file) \
-                          else ('Successfully set date for pic '
-                                'number: ' +
-                                file +
-                                ' date:' +
-                                video_date)
 
             success = True
         # CODING: Do I need this generic except?
@@ -1939,13 +1953,10 @@ class Uploadr:
                                                 method='xml'))
 
             if (self.isGood(addPhotoResp)):
-                niceprint(u'Successfully added file ' +
-                          file[1].encode('utf-8') +
-                          u' to its set.') \
+                niceprint('Successfully added file:[{!s}] to its set.'
+                          .format(file[1].encode('utf-8') \
                           if isThisStringUnicode(file[1]) \
-                          else ("Successfully added file " +
-                                file[1] +
-                                " to its set.")
+                          else file[1]))
 
                 cur.execute("UPDATE files SET set_id = ? WHERE files_id = ?",
                             (setId, file[0]))
@@ -2658,6 +2669,10 @@ if __name__ == "__main__":
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='Provides some more verbose output. '
                              'Will provide progress information on upload. '
+                             'See also LOGGING_LEVEL value in INI file.')
+    parser.add_argument('-x', '--verbose-progress', action='store_true',
+                        help='Provides progress indicator on each upload. '
+                             'Normally used in conjunction with -v option'
                              'See also LOGGING_LEVEL value in INI file.')
     parser.add_argument('-n', '--dry-run', action='store_true',
                         help='Dry run')
