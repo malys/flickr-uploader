@@ -11,7 +11,8 @@
     Some giberish. Please ignore!
     -----------------------------
     Area for my personal notes on on-going work! Please ignore!
-    * replace 'utf-8' by a constant?
+    * Replace 'utf-8' by a constant?
+    * Search and eliminate: # CODING check line above and remove next line
     * Need to revise and correct to statements like:
             niceprint('Checking file:[{!s}]...'.format(
                                             file.encode('utf-8') \
@@ -1149,6 +1150,7 @@ class Uploadr:
                     search_result = None
                     for x in range(0, MAX_UPLOAD_ATTEMPTS):
                         try:
+                            search_result = None
                             logging.warning('Uploading/Reuploading '
                                             '[{!s}/{!s} attempts].'
                                             .format(x, MAX_UPLOAD_ATTEMPTS))
@@ -1268,12 +1270,18 @@ class Uploadr:
                     # Error on upload and search for photo not performed/empty
                     if not search_result and not self.isGood(uploadResp):
                         niceprint('A problem occurred while attempting to '
-                                    'upload the file: ' +
-                                    file.encode('utf-8')) \
-                                    if isThisStringUnicode(file) \
-                                    else ('A problem occurred while '
-                                          'attempting to upload the file: ' +
-                                          file)
+                                  'upload the file:[{!s}]'
+                                  .format(file.encode('utf-8') \
+                                          if isThisStringUnicode(file) \
+                                          else file))                        
+                        # CODING Check line above  and then remove next line
+                        # niceprint('A problem occurred while attempting to '
+                        #             'upload the file: ' +
+                        #             file.encode('utf-8')) \
+                        #             if isThisStringUnicode(file) \
+                        #             else ('A problem occurred while '
+                        #                   'attempting to upload the file: ' +
+                        #                   file)
                         raise IOError(uploadResp)
 
                     # Successful update
@@ -1284,6 +1292,10 @@ class Uploadr:
                     
                     # Save file_id... from uploadResp or search_result
                     if search_result:
+                        # CODING: ERROR kills task
+                        # File "./uploadr.py", line 1288, in uploadFile
+                        #     .findall('photo')[0].attrib['id']
+                        # IndexError: list index out of range
                         file_id = search_result.find('photos')\
                                     .findall('photo')[0].attrib['id']
                         # file_id = uploadResp.findall('photoid')[0].text
@@ -1398,7 +1410,7 @@ class Uploadr:
                                             'out.lock.release')
 
                 except lite.Error as e:
-                    print('A DB error occurred: %s' % e.args[0])
+                    print('#DB10 A DB error occurred: %s' % e.args[0])
                     if (args.processes and args.processes > 0):
                         logging.debug('===Multiprocessing==='
                                       'lock.release (in Error)')
@@ -1452,7 +1464,7 @@ class Uploadr:
                                               fileMd5, last_modified,
                                               cur, con);
                 except lite.Error as e:
-                    print "A DB error occurred:", e.args[0]
+                    print "#DB20 A DB error occurred:", e.args[0]
                     if (args.processes and args.processes > 0):
                         logging.debug('===Multiprocessing==='
                                       'lock.release (in Error)')
@@ -1710,7 +1722,7 @@ class Uploadr:
             niceprint('Error code: [{!s}]'.format(ex))
             niceprint(str(sys.exc_info()))
         except lite.Error as e:
-            print "A DB error occurred:", e.args[0]
+            print "#DB30 A DB error occurred:", e.args[0]
             if (args.processes and args.processes > 0):
                 logging.debug('===Multiprocessing=== lock.release (in Error)')
                 lock.release()
@@ -1801,13 +1813,22 @@ class Uploadr:
             niceprint('Adding set: [{!s}] to database log.'.format(setName))
         success = False
 
-        cur.execute('INSERT INTO sets (set_id, name, primary_photo_id) '
-                    'VALUES (?,?,?)',
-                    (setId, setName, primaryPhotoId))
-        cur.execute('UPDATE files SET set_id = ? WHERE files_id = ?',
+        try:
+            cur.execute('INSERT INTO sets (set_id, name, primary_photo_id) '
+                        'VALUES (?,?,?)',
+                        (setId, setName, primaryPhotoId))
+        except lite.Error, e:
+            print("#DB40 A DB error occurred: %s" % e.args[0])
+        
+        try:
+            cur.execute('UPDATE files SET set_id = ? WHERE files_id = ?',
                     (setId, primaryPhotoId))
+        except lite.Error, e:
+            print("#DB41 A DB error occurred: %s" % e.args[0])
         con.commit()
+        
         return True
+
 
     #--------------------------------------------------------------------------
     # isGood
@@ -1896,10 +1917,15 @@ class Uploadr:
                 if set is None:
                     # row[0] = files_id from files table
                     setId = self.createSet(setName, row[0], cur, con)
-                    niceprint(u'Created the set: ' + setName.encode('utf-8')) \
-                              if isThisStringUnicode(setName) \
-                              else ('Created the set: ' + setName)
-                    newSetCreated = True
+                    niceprint('Created the set: [{!s}]'.
+                              format(setName.encode('utf-8') \
+                                     if isThisStringUnicode(file) \
+                                     else setName))
+                    # CODING: Test and remove next line
+                    # niceprint(u'Created the set: ' + setName.encode('utf-8')) \
+                    #           if isThisStringUnicode(setName) \
+                    #           else ('Created the set: ' + setName)
+                    # newSetCreated = True
                 else:
                     # set[0] = set_id from sets table
                     setId = set[0]
@@ -1910,10 +1936,15 @@ class Uploadr:
                 # row[1] = path for the file from table files
                 # row[2] = set_id from files table
                 if row[2] is None and newSetCreated is False:
-                    niceprint(u'adding file to set ' +
-                              row[1].encode('utf-8') + u'...') \
-                              if isThisStringUnicode(row[1]) \
-                              else ("adding file to set " + row[1])
+                    niceprint('adding file to set [{!s}]...'.
+                              format(row[1].encode('utf-8') \
+                                     if isThisStringUnicode(row[1]) \
+                                     else row[1]))
+                    # CODING: Check line above and then remove next line
+                    # niceprint(u'adding file to set ' +
+                    #           row[1].encode('utf-8') + u'...') \
+                    #           if isThisStringUnicode(row[1]) \
+                    #           else ("adding file to set " + row[1])
 
                     self.addFileToSet(setId, row, cur)
 
@@ -1962,7 +1993,6 @@ class Uploadr:
                 cur.execute("UPDATE files SET set_id = ? WHERE files_id = ?",
                             (setId, file[0]))
                 con.commit()
-
             else:
                 if (addPhotoResp['code'] == 1):
                     niceprint('Photoset not found, creating new set...')
@@ -1986,8 +2016,18 @@ class Uploadr:
             #     con.close()
         except flickrapi.exceptions.FlickrError as ex:
             niceprint('+++ #05 Caught flickrapi exception')
+            # Error: 1: Photoset not found
+            if (ex.code == 1):
+                niceprint('Photoset not found, creating new set...')
+                if FULL_SET_NAME:
+                    setName = os.path.relpath(os.path.dirname(file[1]),
+                                              unicode(FILES_DIR, 'utf-8'))
+                else:
+                    head, setName = os.path.split(os.path.dirname(file[1]))
+
+                self.createSet(setName, file[0], cur, con) 
             # Error: 3: Photo Already in set
-            if (ex.code == 3):
+            elif (ex.code == 3):
                 try:
                     niceprint('Photo already in set... updating DB'
                               'set_id=[{!s}] photo_id=[{!s}]'
@@ -1996,13 +2036,13 @@ class Uploadr:
                                 'WHERE files_id = ?', (setId, file[0]))
                     con.commit()
                 except lite.Error, e:
-                    print("+++ #05 A DB error occurred: %s" % e.args[0])
+                    print("+++ #05 #DB50 A DB error occurred: %s" % e.args[0])
             else:
                 niceprint('Error code: [{!s}]'.format(ex.code))
                 niceprint('Error code: [{!s}]'.format(ex))
                 niceprint(str(sys.exc_info()))
         except lite.Error, e:
-            print("A DB error occurred: %s" % e.args[0])
+            print("#DB60 A DB error occurred: %s" % e.args[0])
         except:
             niceprint('+++ #06 Caught an exception')
             print(str(sys.exc_info()))
@@ -2011,8 +2051,10 @@ class Uploadr:
     # createSet
     #
     def createSet(self, setName, primaryPhotoId, cur, con):
-        """
-
+        """ createSet
+    
+        Creates an Album in Flickr.
+        Calls logSetCreation to create Album on local database.
         """
 
         global nuflickr
@@ -2118,7 +2160,7 @@ class Uploadr:
             if con is not None:
                 con.close()
         except lite.Error, e:
-            niceprint("setup DB Error: %s" % e.args[0])
+            niceprint("#DB70 A DB error occurred: Setup DB Error: %s" % e.args[0])
             if con is not None:
                 con.close()
             sys.exit(1)
@@ -2158,7 +2200,7 @@ class Uploadr:
             if con is not None:
                 con.close()
         except lite.Error, e:
-            niceprint("Error: %s" % e.args[0])
+            niceprint("#DB80 A DB error occurred: %s" % e.args[0])
             if con is not None:
                 con.close()
             sys.exit(1)
@@ -2350,14 +2392,24 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                           .format(foundSets))
 
                     if (foundSets is None):
-                        niceprint(u'Adding set ['.encode('utf-8') +
-                                  setId.encode('utf-8') +
-                                  u'] ('.encode('utf-8') +
-                                  setName if setName is not None else 'None' +
-                                  u') '.encode('utf-8') +
-                                  u'with primary photo '.encode('utf-8') +
-                                  primaryPhotoId.encode('utf-8') +
-                                  u'.'.encode('utf-8'))
+                        niceprint('Adding set [{!s}] ({!s}) '
+                                  'with primary photo [{!s}].'
+                                  .format(
+                                        setId.encode('utf-8'),
+                                        setName \
+                                        if setName is not None \
+                                        else 'None',
+                                        primaryPhotoId.encode('utf-8')
+                                        ))
+                        # CODING Check above code and the remove this line
+                        # niceprint(u'Adding set ['.encode('utf-8') +
+                        #           setId.encode('utf-8') +
+                        #           u'] ('.encode('utf-8') +
+                        #           setName if setName is not None else 'None' +
+                        #           u') '.encode('utf-8') +
+                        #           u'with primary photo '.encode('utf-8') +
+                        #           primaryPhotoId.encode('utf-8') +
+                        #           u'.'.encode('utf-8'))
 
                         cur.execute('INSERT INTO sets (set_id, name, '
                                     'primary_photo_id) VALUES (?,?,?)',
