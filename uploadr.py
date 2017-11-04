@@ -1391,18 +1391,19 @@ class Uploadr:
                             print(str(sys.exc_info()))
                             print("Error setting date")
                             raise
+                        
                         if not self.isGood(res_set_date):
                             raise IOError(res_set_date)
-                        niceprint(u'Successfully set date for pic number: ' +
-                                  file.encode('utf-8') +
-                                  u' date:' +
-                                  video_date) \
-                                  if isThisStringUnicode(file) \
-                                  else ('Successfully set date for pic '
-                                        'number: ' +
-                                        file +
-                                        ' date:' +
-                                        video_date)
+
+                        niceprint('Successfully set date [{!s}] for '
+                                  'pic [{!s}]'
+                                  .format(video_date.encode('utf-8')
+                                          if isThisStringUnicode(video_date) \
+                                          else video_date,
+                                          file.encode('utf-8')
+                                          if isThisStringUnicode(file) \
+                                          else file))                        
+
                     success = True
                 except flickrapi.exceptions.FlickrError as ex:
                     niceprint('+++ #02 Caught flickrapi exception')
