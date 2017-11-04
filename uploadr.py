@@ -45,6 +45,7 @@
     * converRawFiles is not tested. Also requires an exif tool to be installed
       and configured as RAW_TOOL_PATH in INI file. Make sure to leave
       CONVERT_RAW_FILES = False in INI file or use at your own risk.
+    * On some systems it may be required to also import xml.etree.ElementTree
     * Consider using python module exiftool?
     * If one changes the FILES_DIR folder and do not DELETE all from flickr,
       uploadr WILL not delete the files.
@@ -131,6 +132,11 @@ import ConfigParser
 import multiprocessing
 import flickrapi
 import xml
+# CODING: For some systems this second import is required. To confirm.
+# Seems to avoid problem
+# logging.info(xml.etree.ElementTree.tostring(
+# AttributeError: 'module' object has no attribute 'etree'
+# import xml.etree.ElementTree
 import os.path
 import logging
 import pprint

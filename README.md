@@ -126,6 +126,13 @@ key Edit the following variables in the uploadr.ini
 Refer to https://www.flickr.com/services/api/upload.api.html for what each
 of the upload arguments above correspond to for Flickr's API.
 
+- Before running uploadr.py make sure you run the command below:
+  - To avoid running this command exerytime you log-in into your system, follow the [notes on this link](https://scipher.wordpress.com/2010/05/10/setting-your-pythonpath-environment-variable-linuxunixosx/) to edit file ~/.bashrc and place this command there.
+```bash
+ $  export PYTHONPATH=~/apps/Python/lib/python2.7/site-packages
+ $ ./uploadr.py -v
+```
+ 
 ## Usage/Arguments/Options
 --------------------------
 Place the file uploadr.py in any directory and run via ssh
@@ -182,9 +189,11 @@ optional arguments:
 ## Task Scheduler (cron)
 ------------------------
 Optionally run with crontab/Task Scheduler (Synology/Control Panel)
+- Use  upload.cron added to the distribution and adapt to your needs.
+
 ```bash
 cron entry (runs at the top of every hour)
-0  *  *  *  * /full/path/to/uploadr.py > /dev/null 2>&1
+0  *  *  *  * /full/path/to/uploadr.cron > /dev/null 2>&1
 ```
 
 ## Recognition
