@@ -11,9 +11,8 @@
     Some giberish. Please ignore!
     -----------------------------
     Area for my personal notes on on-going work! Please ignore!
-    * Replace 'utf-8' by a constant?
     * Search and eliminate: # CODING check line above and remove next line
-    * Need to revise and correct to statements like:
+    * (should be done by now on 2.5.6) Revise and correct to statements like:
             niceprint('Checking file:[{!s}]...'.format(
                                             file.encode('utf-8') \
                                             if isThisStringUnicode(file) \
@@ -166,7 +165,7 @@ class UPLDRConstants:
     TimeFormat = '%Y.%m.%d %H:%M:%S'
     # For future use...
     # UTF = 'utf-8'
-    Version = '2.5.5'
+    Version = '2.5.6'
 
     def __init__(self):
         """ Constructor
@@ -196,8 +195,10 @@ def isThisStringUnicode(s):
     Determines if a string is Unicode (return True) or not (returns False)
     to allow correct print operations.
     Example:
-        print(u'File ' + file.encode('utf-8') + u'...') \
-              if isThisStringUnicode(file) else ("File " + file + "...")
+        niceprint('Checking file:[{!s}]...'.format(
+                                 file.encode('utf-8') \
+                                 if isThisStringUnicode(file) \
+                                 else file))
     """
     if isinstance(s, unicode):
         return True
@@ -833,12 +834,6 @@ class Uploadr:
                       .format(ext.encode('utf-8') 
                               if isThisStringUnicode(ext) \
                               else ext))
-            # CODING if previous like ok, eliminate next line:
-            # print(u'About to convert files with extension: ' +
-            #       ext.encode('utf-8') + u' files.') \
-            #       if isThisStringUnicode(ext) \
-            #       else ("About to convert files with extension: " +
-            #             ext + " files.")
 
             for dirpath, dirnames, filenames in os.walk(
                                                 unicode(FILES_DIR, 'utf-8'),
@@ -899,31 +894,40 @@ class Uploadr:
 
                         if (not os.path.exists(dirpath + "/" +
                                                filename + ".JPG_original")):
-                            if isThisStringUnicode(dirpath):
-                                if isThisStringUnicode(f):
-                                    print(u'About to copy tags from ' +
-                                          dirpath.encode('utf-8') +
-                                          u'/' +
-                                          f.encode('utf-8') +
-                                          u' to JPG.')
-                                else:
-                                    print(u'About to copy tags from ' +
-                                          dirpath.encode('utf-8') +
-                                          u'/' +
-                                          f +
-                                          " to JPG.")
-                            elif isThisStringUnicode(f):
-                                print("About to copy tags from " +
-                                      dirpath +
-                                      "/" +
-                                      f.encode('utf-8') +
-                                      u' to JPG.')
-                            else:
-                                print("About to copy tags from " +
-                                      dirpath +
-                                      "/" +
-                                      f +
-                                      " to JPG.")
+                                
+                            niceprint('About to copy tags from:[{!s}/{!s}]'
+                                      .format(dirpath.encode('utf-8') \
+                                              if isThisStringUnicode(dirpath) \
+                                              else dirpath,
+                                              f.encode('utf-8') \
+                                              if isThisStringUnicode(f) \
+                                              else f))
+                            # CODING if line above ok remove next lines
+                            # if isThisStringUnicode(dirpath):
+                            #     if isThisStringUnicode(f):
+                            #         print(u'About to copy tags from ' +
+                            #               dirpath.encode('utf-8') +
+                            #               u'/' +
+                            #               f.encode('utf-8') +
+                            #               u' to JPG.')
+                            #     else:
+                            #         print(u'About to copy tags from ' +
+                            #               dirpath.encode('utf-8') +
+                            #               u'/' +
+                            #               f +
+                            #               " to JPG.")
+                            # elif isThisStringUnicode(f):
+                            #     print("About to copy tags from " +
+                            #           dirpath +
+                            #           "/" +
+                            #           f.encode('utf-8') +
+                            #           u' to JPG.')
+                            # else:
+                            #     print("About to copy tags from " +
+                            #           dirpath +
+                            #           "/" +
+                            #           f +
+                            #           " to JPG.")
 
                             command = RAW_TOOL_PATH +\
                                       "exiftool -tagsfromfile '" +\
@@ -936,11 +940,10 @@ class Uploadr:
 
                             print("Finished copying tags.")
 
-            print(u'Finished converting files with extension:' +
-                  ext.encode('utf-8') + u'.') \
-                  if isThisStringUnicode(ext) \
-                  else ("Finished converting files with extension:" +
-                        ext + ".")
+            niceprint('Finished converting files with extension:[{!s}]'
+                      .format(ext.encode('utf-8')
+                              if isThisStringUnicode(ext) \
+                              else ext))
 
         niceprint('*****Completed converting files*****')
 
@@ -1064,9 +1067,10 @@ class Uploadr:
         global nuflickr
 
         if (args.dry_run is True):
-            niceprint('Dry Run Uploading' + 
-                  file.encode('utf-8') if isThisStringUnicode(file) else file +
-                  '...')
+            niceprint('Dry Run Uploading file:[{!s}]...'
+                      .format(file.encode('utf-8') \
+                              if isThisStringUnicode(file) \
+                              else file))            
             return True
 
         if (args.verbose):
@@ -1248,7 +1252,7 @@ class Uploadr:
 
                         # Exceptions for flickr.upload function call...
                         except (IOError, httplib.HTTPException):
-                            niceprint('+++ #01 Caught IOError, HTTP expcetion')
+                            niceprint('+++ #10 Caught IOError, HTTP expcetion')
                             niceprint('Sleep 10 and check if file is '
                                       'already uploaded')
                             nutime.sleep(10)
@@ -1292,14 +1296,6 @@ class Uploadr:
                                   .format(file.encode('utf-8') \
                                           if isThisStringUnicode(file) \
                                           else file))                        
-                        # CODING Check line above  and then remove next line
-                        # niceprint('A problem occurred while attempting to '
-                        #             'upload the file: ' +
-                        #             file.encode('utf-8')) \
-                        #             if isThisStringUnicode(file) \
-                        #             else ('A problem occurred while '
-                        #                   'attempting to upload the file: ' +
-                        #                   file)
                         raise IOError(uploadResp)
 
                     # Successful update
@@ -1310,10 +1306,6 @@ class Uploadr:
                     
                     # Save file_id... from uploadResp or search_result
                     if search_result:
-                        # CODING: ERROR kills task
-                        # File "./uploadr.py", line 1288, in uploadFile
-                        #     .findall('photo')[0].attrib['id']
-                        # IndexError: list index out of range
                         file_id = search_result.find('photos')\
                                     .findall('photo')[0].attrib['id']
                         # file_id = uploadResp.findall('photoid')[0].text
@@ -1388,8 +1380,9 @@ class Uploadr:
                                            if isThisStringUnicode(file) \
                                            else file))
                         except (IOError, ValueError, httplib.HTTPException):
+                            niceprint("Error setting date file_id:[{!s}]"
+                                      .format(file_id))
                             print(str(sys.exc_info()))
-                            print("Error setting date")
                             raise
                         
                         if not self.isGood(res_set_date):
@@ -1406,7 +1399,7 @@ class Uploadr:
 
                     success = True
                 except flickrapi.exceptions.FlickrError as ex:
-                    niceprint('+++ #02 Caught flickrapi exception')
+                    niceprint('+++ #20 Caught flickrapi exception')
                     niceprint('Error code: [{!s}]'.format(ex.code))
                     niceprint('Error code: [{!s}]'.format(ex))
                     niceprint(str(sys.exc_info()))
@@ -1415,6 +1408,8 @@ class Uploadr:
                     if (format(ex.code) == '5') and (args.bad_files):
                         # Add to db the file NOT uploaded
                         # Control for when running multiprocessing set locking
+                        niceprint('Adding to Bad files table:[{!s}]'
+                                  .format(file))
                         logging.info('Bad file:[{!s}]'.format(file))
                         if (args.processes and args.processes > 0):
                             logging.debug('===Multiprocessing=== badfiles'
@@ -1539,9 +1534,10 @@ class Uploadr:
         global nuflickr
 
         if (args.dry_run is True):
-            niceprint('Dry Run Replace file' + 
-                  file.encode('utf-8') if isThisStringUnicode(file) else file +
-                  '...')
+            niceprint('Dry Run Replacing the file:[{!s}]...'.format(
+                                            file.encode('utf-8') \
+                                            if isThisStringUnicode(file) \
+                                            else file))            
             return True
 
         if (args.verbose):
@@ -1565,10 +1561,15 @@ class Uploadr:
             replaceResp = None
 
             for x in range(0, MAX_UPLOAD_ATTEMPTS):
+                # CODING: reset variables on each iteration. CONFIRM
+                res = None
+                res_add_tag = None
+                res_get_info = None
+                replaceResp = None
+                
                 try:
-                    # CODING: Need to reset variables on each iteration?
                     if (x > 0):
-                        niceprint('Re-placing:[{!s}]...'
+                        niceprint('Re-Replacing:[{!s}]...'
                                   '[{!s}/{!s} attempts].'.format(
                                         file.encode('utf-8') \
                                         if isThisStringUnicode(file) \
@@ -1650,7 +1651,7 @@ class Uploadr:
                     break
                 # Exceptions for flickr.upload function call...
                 except (IOError, ValueError, httplib.HTTPException):
-                    niceprint('+++ #03 Caught IOError, ValueError, '
+                    niceprint('+++ #30 Caught IOError, ValueError, '
                               ' HTTP expcetion')
                     niceprint('Sleep 10 and try to replace again.')
                     niceprint(str(sys.exc_info()))
@@ -1705,8 +1706,6 @@ class Uploadr:
                                 'out.lock.release')
 
             # Update Date/Time on Flickr for Video files
-            # CODING: mimetypes already imported is it required?
-            # import mimetypes
             filetype = mimetypes.guess_type(file)
             if filetype is None:
                 logging.info('filetype is None!!!')
@@ -1748,7 +1747,7 @@ class Uploadr:
         # except:
         #     print(str(sys.exc_info()))
         except flickrapi.exceptions.FlickrError as ex:
-            niceprint('+++ #04 Caught flickrapi exception')
+            niceprint('+++ #40 Caught flickrapi exception')
             niceprint('Error code: [{!s}]'.format(ex.code))
             niceprint('Error code: [{!s}]'.format(ex))
             niceprint(str(sys.exc_info()))
@@ -1779,15 +1778,19 @@ class Uploadr:
         global nuflickr
 
         if args.dry_run:
-            print(u'Deleting file: ' + file[1].encode('utf-8')) \
-                  if isThisStringUnicode(file[1]) \
-                  else ("Deleting file: " + file[1])
+            niceprint('Dry Run Deleting file:[{!s}]'
+                      .format(file[1].encode('utf-8') \
+                              if isThisStringUnicode(file[1]) \
+                              else file[1]))
             return True
 
+        niceprint('Deleting file:[{!s}]'
+                  .format(file[1].encode('utf-8') \
+                          if isThisStringUnicode(file[1]) \
+                          else file[1]))
+
         success = False
-        niceprint('Deleting file: ' + file[1].encode('utf-8')) \
-                  if isThisStringUnicode(file[1]) \
-                  else ('Deleting file: ' + file[1])
+        
         try:
             deleteResp = nuflickr.photos.delete(
                                         photo_id=str(file[0]))
@@ -1952,11 +1955,7 @@ class Uploadr:
                               format(setName.encode('utf-8') \
                                      if isThisStringUnicode(file) \
                                      else setName))
-                    # CODING: Test and remove next line
-                    # niceprint(u'Created the set: ' + setName.encode('utf-8')) \
-                    #           if isThisStringUnicode(setName) \
-                    #           else ('Created the set: ' + setName)
-                    # newSetCreated = True
+                    newSetCreated = True
                 else:
                     # set[0] = set_id from sets table
                     setId = set[0]
@@ -1971,11 +1970,6 @@ class Uploadr:
                               format(row[1].encode('utf-8') \
                                      if isThisStringUnicode(row[1]) \
                                      else row[1]))
-                    # CODING: Check line above and then remove next line
-                    # niceprint(u'adding file to set ' +
-                    #           row[1].encode('utf-8') + u'...') \
-                    #           if isThisStringUnicode(row[1]) \
-                    #           else ("adding file to set " + row[1])
 
                     self.addFileToSet(setId, row, cur)
 
@@ -2004,7 +1998,8 @@ class Uploadr:
             logging.info('Calling nuflickr.photosets.addPhoto'
                          'set_id=[{!s}] photo_id=[{!s}]'
                          .format(setId, file[0]))
-            # CODING Result for Error 3 is passed via exception
+            # REMARK Result for Error 3 (Photo already in set)
+            # is passed via exception and so it is handled there
             addPhotoResp = nuflickr.photosets.addPhoto(
                                 photoset_id=str(setId),
                                 photo_id=str(file[0]))
@@ -2046,7 +2041,7 @@ class Uploadr:
             # if con is not None:
             #     con.close()
         except flickrapi.exceptions.FlickrError as ex:
-            niceprint('+++ #05 Caught flickrapi exception')
+            niceprint('+++ #50 Caught flickrapi exception')
             # Error: 1: Photoset not found
             if (ex.code == 1):
                 niceprint('Photoset not found, creating new set...')
@@ -2075,7 +2070,7 @@ class Uploadr:
         except lite.Error, e:
             print("#DB60 A DB error occurred: %s" % e.args[0])
         except:
-            niceprint('+++ #06 Caught an exception')
+            niceprint('+++ #60 Caught an exception')
             print(str(sys.exc_info()))
 
     #--------------------------------------------------------------------------
@@ -2090,9 +2085,15 @@ class Uploadr:
 
         global nuflickr
 
-        logging.debug(u'Creating new set: '.encode('utf-8') + str(setName))
-        niceprint(u'Creating new set: '.encode('utf-8') + str(setName))
-
+        logging.debug('Creating new set:[{!s}]'
+                      .format(setName.encode('utf-8') 
+                             if isThisStringUnicode(setName) \
+                             else setName))
+        niceprint('Creating new set:[{!s}]'
+                  .format(setName.encode('utf-8') 
+                          if isThisStringUnicode(setName) \
+                          else setName))
+        
         if args.dry_run:
             return True
 
@@ -2122,8 +2123,39 @@ class Uploadr:
                                                     encoding='utf-8',
                                                     method='xml'))
                 self.reportError(createResp)
+                
+        except flickrapi.exceptions.FlickrError as ex:
+            niceprint('+++ #70 Caught flickrapi exception')
+            niceprint('Error code: [{!s}]'.format(ex.code))
+            niceprint('Error code: [{!s}]'.format(ex))
+            # Add to db the file NOT uploaded
+            # A set on local DB (with primary photo) failed to be created on
+            # FLickr because Primary Photo is not available.
+            # Sets (possibly from previous runs) exist on local DB but the pics
+            # are not loaded into Flickr.
+            # FlickrError(u'Error: 2: Invalid primary photo id (nnnnnn)
+            if (format(ex.code) == '2'):
+                niceprint('Primary photo [{!s}] for Set [{!s}] '
+                          'does not exist on Flickr'
+                          'Probably deleted from Flickr but still on local db '
+                          'and local file.'
+                          .format(primaryPhotoId,
+                                  setName.encode('utf-8')
+                                  if isThisStringUnicode(setName) \
+                                  else setName))
+                logging.warning(
+                          'Primary photo [{!s}] for Set [{!s}] '
+                          'does not exist on Flickr'
+                          'Probably deleted from Flickr but still on local db '
+                          'and local file.'
+                          .format(setName.encode('utf-8')
+                                  if isThisStringUnicode(setName) \
+                                  else setName,
+                                  primaryPhotoId))
+
         except:
             print(str(sys.exc_info()))
+            
         return False
 
     #--------------------------------------------------------------------------
