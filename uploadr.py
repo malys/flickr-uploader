@@ -164,7 +164,7 @@ class UPLDRConstants:
     TimeFormat = '%Y.%m.%d %H:%M:%S'
     # For future use...
     # UTF = 'utf-8'
-    Version = '2.5.1'
+    Version = '2.5.4'
 
     def __init__(self):
         """ Constructor
@@ -827,11 +827,16 @@ class Uploadr:
 
         niceprint('*****Converting files*****')
         for ext in RAW_EXT:
-            print(u'About to convert files with extension: ' +
-                  ext.encode('utf-8') + u' files.') \
-                  if isThisStringUnicode(ext) \
-                  else ("About to convert files with extension: " +
-                        ext + " files.")
+            niceprint('About to convert files with extension: [{!s}]'
+                      .format(ext.encode('utf-8') 
+                              if isThisStringUnicode(ext) \
+                              else ext))
+            # CODING if previous like ok, eliminate next line:
+            # print(u'About to convert files with extension: ' +
+            #       ext.encode('utf-8') + u' files.') \
+            #       if isThisStringUnicode(ext) \
+            #       else ("About to convert files with extension: " +
+            #             ext + " files.")
 
             for dirpath, dirnames, filenames in os.walk(
                                                 unicode(FILES_DIR, 'utf-8'),
@@ -845,28 +850,36 @@ class Uploadr:
                     fileExt = f.split(".")[-1]
                     filename = f.split(".")[0]
                     if (fileExt.lower() == ext):
-
+                        
                         if (not os.path.exists(dirpath + "/" +
                                                filename + ".JPG")):
-                            if isThisStringUnicode(dirpath):
-                                if isThisStringUnicode(f):
-                                    print(u'About to create JPG from raw ' +
-                                          dirpath.encode('utf-8') +
-                                          u'/' +
-                                          f.encode('utf-8'))
-                                else:
-                                    print(u'About to create JPG from raw ' +
-                                          dirpath.encode('utf-8') +
-                                          u'/' +
-                                          f)
-                            elif isThisStringUnicode(f):
-                                print("About to create JPG from raw " +
-                                      dirpath +
-                                      "/" +
-                                      f.encode('utf-8'))
-                            else:
-                                print("About to create JPG from raw " +
-                                      dirpath + "/" + f)
+                            niceprint('About to create JPG from raw[{!s}/{!s}]'
+                                      .format(dirpath.encode('utf-8') \
+                                              if isThisStringUnicode(dirpath) \
+                                              else dirpath,
+                                              f.encode('utf-8') \
+                                              if isThisStringUnicode(f) \
+                                              else f))
+                            # CODING if previous like ok, eliminate next line:
+                            # if isThisStringUnicode(dirpath):
+                            #     if isThisStringUnicode(f):
+                            #         print(u'About to create JPG from raw ' +
+                            #               dirpath.encode('utf-8') +
+                            #               u'/' +
+                            #               f.encode('utf-8'))
+                            #     else:
+                            #         print(u'About to create JPG from raw ' +
+                            #               dirpath.encode('utf-8') +
+                            #               u'/' +
+                            #               f)
+                            # elif isThisStringUnicode(f):
+                            #     print("About to create JPG from raw " +
+                            #           dirpath +
+                            #           "/" +
+                            #           f.encode('utf-8'))
+                            # else:
+                            #     print("About to create JPG from raw " +
+                            #           dirpath + "/" + f)
 
                             flag = ""
                             if ext is "cr2":
@@ -1146,11 +1159,14 @@ class Uploadr:
                     file_checksum = self.md5Checksum(file)
 
                     # Perform actual upload of the file
-                    res = None
+                    # CODING: res not being used!
+                    # res = None
                     search_result = None
                     for x in range(0, MAX_UPLOAD_ATTEMPTS):
                         try:
+                            # Reset variables on each iteration
                             search_result = None
+                            uploadResp = None
                             logging.warning('Uploading/Reuploading '
                                             '[{!s}/{!s} attempts].'
                                             .format(x, MAX_UPLOAD_ATTEMPTS))
@@ -1535,9 +1551,11 @@ class Uploadr:
             res = None
             res_add_tag = None
             res_get_info = None
+            replaceResp = None
 
             for x in range(0, MAX_UPLOAD_ATTEMPTS):
                 try:
+                    # CODING: Need to reset variables on each iteration?
                     if (x > 0):
                         niceprint('Re-placing:[{!s}]...'
                                   '[{!s}/{!s} attempts].'.format(
