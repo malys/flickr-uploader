@@ -166,7 +166,7 @@ class UPLDRConstants:
     TimeFormat = '%Y.%m.%d %H:%M:%S'
     # For future use...
     # UTF = 'utf-8'
-    Version = '2.5.4'
+    Version = '2.5.5'
 
     def __init__(self):
         """ Constructor
