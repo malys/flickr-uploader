@@ -151,6 +151,8 @@ else:
     #Define LOGGING_LEVEL to allow logging even if everything's else is wrong!
     LOGGING_LEVEL = logging.WARNING
     sys.stderr.write('--------- '  + 'Init: ' + ' ---------\n')
+    sys.stderr.write('Python version on this system: ' + sys.version + '\n')
+    
 
 # ----------------------------------------------------------------------------
 # Constants class
@@ -1376,7 +1378,15 @@ class Uploadr:
                                                 file_id,
                                                 video_date)
                             if self.isGood(res_set_date):
-                                niceprint("Set date ok")
+                                niceprint(
+                                   'Successfully set date [{!s}] '
+                                   'for file:[{!s}].'
+                                   .format(video_date.encode('utf-8') \
+                                           if isThisStringUnicode(video_date) \
+                                           else video_date,
+                                           file.encode('utf-8') \
+                                           if isThisStringUnicode(file) \
+                                           else file))
                         except (IOError, ValueError, httplib.HTTPException):
                             print(str(sys.exc_info()))
                             print("Error setting date")
@@ -1717,7 +1727,9 @@ class Uploadr:
                     if self.isGood(res_set_date):
                         niceprint('Successfully set date [{!s}] '
                                   'for file:[{!s}].'
-                                  .format(video_date.encode,
+                                  .format(video_date.encode('utf-8')
+                                          if isThisStringUnicode(video_date) \
+                                          else video_date,
                                           file.encode('utf-8') \
                                           if isThisStringUnicode(file) \
                                           else file))
@@ -2602,6 +2614,12 @@ set0 = sets.find('photosets').findall('photoset')[0]
         """
         global nuflickr
 
+        if (args.verbose):
+            niceprint('photos_set_date: photo_id=[{!s}] date_taken=[{!s}]'
+                      .format(photo_id,datetxt))
+        logging.warning('photos_set_date photo_id=[{!s}] date_taken=[{!s}]'
+                        .format(photo_id, datetxt))
+        
         respDate = nuflickr.photos.setdates(photo_id=photo_id,
                                             date_taken=datetxt)
         logging.info('Output for {!s}:'.format('respDate'))
