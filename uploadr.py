@@ -17,6 +17,14 @@
                                             file.encode('utf-8') \
                                             if isThisStringUnicode(file) \
                                             else file))
+    * Have to check if actually self.useDBlock dos the trick or not
+      Protect all multiprocessing DB accesses with:
+            # Acquire DB lock if running in multiprocessing mode
+            self.useDBLock( nulockDB, True)
+            cur.execute('SELECT rowid,files_id,path,set_id,md5,tagged,'
+                        'last_modified FROM files WHERE path = ?', (file,))
+            # Release DB lock if running in multiprocessing mode
+            self.useDBLock( nulockDB, False)
 
     ## Update History
     -----------------
@@ -171,7 +179,7 @@ class UPLDRConstants:
     TimeFormat = '%Y.%m.%d %H:%M:%S'
     # For future use...
     # UTF = 'utf-8'
-    Version = '2.5.6'
+    Version = '2.5.9'
 
     def __init__(self):
         """ Constructor
@@ -411,6 +419,81 @@ class Uploadr:
         """ Constructor
         """
         self.token = self.getCachedToken()
+
+    # -------------------------------------------------------------------------
+    # useDBLock
+    #
+    # Control use of DB lock. acquire/release
+    # CODING: Does a lock.release on a released lock give an error?
+    #
+    def useDBLock (self, useDBthisLock, useDBoperation):
+        """ useDBLock
+        
+            useDBthisLock  = lock to be used
+            useDBoperation = True => Lock
+                           = False => Release
+        """
+        
+        useDBLockReturn = False
+        # CODING: Not used for now
+        # useDBLockTimeout = 0.5
+    
+        logging.debug('Entering useDBLock with useDBoperation:[{!s}].'.
+                      format(useDBoperation))
+
+        if useDBthisLock is None:
+            return useDBLockReturn
+
+        if useDBoperation is None:
+            return useDBLockReturn
+
+        if (args.processes is not None) and\
+           (args.processes) and \
+           (args.processes > 0):
+            if useDBoperation:
+            # Control for when running multiprocessing set locking
+                logging.debug('===Multiprocessing=== in.lock.acquire')
+                try:
+                    # CODING: Not used for now
+                    # if lock.acquire(timeout=useDBLockTimeout):
+                    if useDBthisLock.acquire():
+                        useDBLockReturn = True
+                    # CONDIG: not used for now
+                    # else:
+                    #     useDBthisLock.release()
+                    #     logging.warning('===Multiprocessing=== '
+                    #                     'TIMEOUT in.lock.acquire')
+                    #     useDBLockReturn = False
+                except:
+                    niceprint('+++ #01 Caught an exception')
+                    niceprint('lock.acquire.')
+                    niceprint(str(sys.exc_info()))
+                    raise
+                logging.warning('===Multiprocessing=== out.lock.acquire')
+            else:
+                # Control for when running multiprocessing release locking
+                logging.debug('===Multiprocessing=== in.lock.release')
+                try:
+                    useDBthisLock.release()
+                    useDBLockReturn = True
+                except:
+                    niceprint('+++ #02 Caught an exception')
+                    niceprint('lock.release.')
+                    niceprint(str(sys.exc_info()))
+                    raise
+                logging.warning('===Multiprocessing=== out.lock.release')
+                      
+            logging.warning('Exiting useDBLock with useDBoperation:[{!s}]. '
+                            'Result:[{!s}]'
+                            .format(useDBoperation, useDBLockReturn))
+        else:
+            useDBLockReturn = True
+            logging.warning('(No multiprocessing. Nothing to do) '
+                            'Exiting useDBLock with useDBoperation:[{!s}]. '
+                            'Result:[{!s}]'
+                            .format(useDBoperation, useDBLockReturn))
+        
+        return useDBLockReturn
 
     # -------------------------------------------------------------------------
     # niceprocessedfiles
@@ -758,6 +841,7 @@ class Uploadr:
                         niceprint('%s.is_alive = %s' % (j.name, j.is_alive()))
 
                 # Regularly print status of jobs/tasks in the Process Pool
+                # Only prints status if any of the processes has stopped
                 # Exits when all jobs/tasks are done.
                 while (True):
                     if not (any(multiprocessing.active_children())):
@@ -765,6 +849,9 @@ class Uploadr:
                         break
                     for p in multiprocessing.active_children():
                         logging.debug('==={!s}.is_alive = {!s}'
+                                      .format(p.name, p.is_alive()))
+                        if (args.verbose_progress):
+                            niceprint('==={!s}.is_alive = {!s}'
                                       .format(p.name, p.is_alive()))
                         uploadTaskActive = p
                     logging.info('===Will wait for 60 on {!s}.is_alive = {!s}'
@@ -793,6 +880,11 @@ class Uploadr:
                                 'All processes finished.')
                 niceprint('===Multiprocessing=== pool joined!'
                           'All processes finished.')
+                
+                if (args.verbose):
+                    niceprint('===Multiprocessing=== pool joined!'
+                              'What happens to nulockDB is None:[{!s}]?'
+                              .format(nulockDB is None))
                 
                 # Show number of total files processed
                 self.niceprocessedfiles(nurunning.value, True)
@@ -1099,8 +1191,13 @@ class Uploadr:
                                               'files WHERE path = ?',
                                               file))
 
+            # Acquire DB lock if running in multiprocessing mode
+            self.useDBLock( lock, True)
             cur.execute('SELECT rowid,files_id,path,set_id,md5,tagged,'
                         'last_modified FROM files WHERE path = ?', (file,))
+            # Release DB lock if running in multiprocessing mode
+            self.useDBLock( lock, False)
+
             row = cur.fetchone()
             logging.debug('row {!s}:'.format(row))
 
@@ -1250,10 +1347,10 @@ class Uploadr:
                                             'duplicates or wrong checksum)'
                                             .format(photo_id))
                             if (args.verbose):
-                                logging.warning('Uploaded photo_id=[{!s}] Ok.'
-                                            'Will check for issues ('
-                                            'duplicates or wrong checksum)'
-                                            .format(photo_id))
+                                niceprint('Uploaded photo_id=[{!s}] Ok.'
+                                          'Will check for issues ('
+                                          'duplicates or wrong checksum)'
+                                          .format(photo_id))
                             
                             # Successful upload. Break attempts cycle
                             break
@@ -1340,23 +1437,25 @@ class Uploadr:
 
                     # Add to db the file uploaded
                     # Control for when running multiprocessing set locking
-                    if (args.processes and args.processes > 0):
-                        logging.debug('===Multiprocessing=== in.lock.acquire')
-                        lock.acquire()
-                        logging.warning('===Multiprocessing=== '
-                                        'out.lock.acquire')
-
+                    # if (args.processes and args.processes > 0):
+                    #     logging.debug('===Multiprocessing=== in.lock.acquire')
+                    #     lock.acquire()
+                    #     logging.warning('===Multiprocessing=== '
+                    #                     'out.lock.acquire')
+                    
+                    self.useDBLock( lock, True)
                     cur.execute(
                         'INSERT INTO files (files_id, path, md5, '
                         'last_modified, tagged) VALUES (?, ?, ?, ?, 1)',
                         (file_id, file, file_checksum, last_modified))
+                    self.useDBLock( lock, False)
 
                     # Control for when running multiprocessing release locking
-                    if (args.processes and args.processes > 0):
-                        logging.debug('===Multiprocessing=== in.lock.release')
-                        lock.release()
-                        logging.warning('===Multiprocessing=== '
-                                        'out.lock.release')
+                    # if (args.processes and args.processes > 0):
+                    #     logging.debug('===Multiprocessing=== in.lock.release')
+                    #     lock.release()
+                    #     logging.warning('===Multiprocessing=== '
+                    #                     'out.lock.release')
 
                     # Update Date/Time on Flickr for Video files
                     filetype = mimetypes.guess_type(file)
@@ -1419,12 +1518,13 @@ class Uploadr:
                         niceprint('Adding to Bad files table:[{!s}]'
                                   .format(file))
                         logging.info('Bad file:[{!s}]'.format(file))
-                        if (args.processes and args.processes > 0):
-                            logging.debug('===Multiprocessing=== badfiles'
-                                          'in.lock.acquire')
-                            lock.acquire()
-                            logging.warning('===Multiprocessing=== badfiles'
-                                            'out.lock.acquire')
+                        # if (args.processes and args.processes > 0):
+                        #     logging.debug('===Multiprocessing=== badfiles'
+                        #                   'in.lock.acquire')
+                        #     lock.acquire()
+                        #     logging.warning('===Multiprocessing=== badfiles'
+                        #                     'out.lock.acquire')
+                        self.useDBLock( lock, True)
                         # files_id column is autoincrement. No need to specify
                         cur.execute(
                           'INSERT INTO badfiles ( path, md5, '
@@ -1432,12 +1532,13 @@ class Uploadr:
                           (file, file_checksum, last_modified))
                         # Control for when running multiprocessing
                         # release locking
-                        if (args.processes and args.processes > 0):
-                            logging.debug('===Multiprocessing=== badfiles'
-                                          'in.lock.release')
-                            lock.release()
-                            logging.warning('===Multiprocessing=== badfiles'
-                                            'out.lock.release')
+                        self.useDBLock( lock, False)
+                        # if (args.processes and args.processes > 0):
+                        #     logging.debug('===Multiprocessing=== badfiles'
+                        #                   'in.lock.release')
+                        #     lock.release()
+                        #     logging.warning('===Multiprocessing=== badfiles'
+                        #                     'out.lock.release')
 
                 except lite.Error as e:
                     print('#DB10 A DB error occurred: %s' % e.args[0])
@@ -1465,25 +1566,27 @@ class Uploadr:
                         # Update db the last_modified time of file
 
                         # Control for when running multiprocessing set locking
-                        if (args.processes and args.processes > 0):
-                            logging.debug('===Multiprocessing=== '
-                                          'in.lock.acquire')
-                            lock.acquire()
-                            logging.warning('===Multiprocessing=== '
-                                            'out.lock.acquire')
+                        # if (args.processes and args.processes > 0):
+                        #     logging.debug('===Multiprocessing=== '
+                        #                   'in.lock.acquire')
+                        #     lock.acquire()
+                        #     logging.warning('===Multiprocessing=== '
+                        #                     'out.lock.acquire')
 
+                        self.useDBLock( lock, True)
                         cur.execute('UPDATE files SET last_modified = ? '
                                     'WHERE files_id = ?', (last_modified,
                                                            row[1]))
                         con.commit()
+                        self.useDBLock( lock, False)
 
                         # Control when running multiprocessing release locking
-                        if (args.processes and args.processes > 0):
-                            logging.debug('===Multiprocessing=== '
-                                          'in.lock.release')
-                            lock.release()
-                            logging.warning('===Multiprocessing=== '
-                                            'out.lock.release')
+                        # if (args.processes and args.processes > 0):
+                        #     logging.debug('===Multiprocessing=== '
+                        #                   'in.lock.release')
+                        #     lock.release()
+                        #     logging.warning('===Multiprocessing=== '
+                        #                     'out.lock.release')
                     if (row[6] != last_modified):
                         # Update db both the new file/md5 and the
                         # last_modified time of file by by calling replacePhoto
@@ -2071,7 +2174,7 @@ class Uploadr:
                                 'WHERE files_id = ?', (setId, file[0]))
                     con.commit()
                 except lite.Error, e:
-                    print("+++ #05 #DB50 A DB error occurred: %s" % e.args[0])
+                    print("+++ #50 #DB50 A DB error occurred: %s" % e.args[0])
             else:
                 niceprint('Error code: [{!s}]'.format(ex.code))
                 niceprint('Error code: [{!s}]'.format(ex))
@@ -2580,7 +2683,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
 
         global nuflickr
 
-        logging.info('FORMAT checksum:{!s}:'.format(checksum))
+        logging.info('FORMAT:[checksum:{!s}]'.format(checksum))
 
         searchResp = nuflickr.photos.search(user_id="me",
                                             tags='checksum:{}'
@@ -2696,6 +2799,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                         .format(photo_id, datetxt))
         
         for x in range(0, MAX_UPLOAD_ATTEMPTS):
+            respDate = None
             if (x > 0):
                 niceprint('Re-Setting Date:[{!s}]...'
                           '[{!s}/{!s} attempts].'
@@ -2714,33 +2818,29 @@ set0 = sets.find('photosets').findall('photoset')[0]
                 if (args.verbose):
                     niceprint('Set Date Response:[{!s}]'
                               .format(self.isGood(respDate)))
-                    # CODING  EXTREME
-                    print(xml.etree.ElementTree.tostring(
-                                        respDate,
-                                        encoding='utf-8',
-                                        method='xml'))
-                if self.isGood(respDate):
-                    # CODING  EXTREME
-                    print('RESPONSE OK: BREAK')
+
+                if (respDate is not None) and self.isGood(respDate):
+                    logging.debug('Set Date Response: OK: BREAK')
                     break                
 
             except flickrapi.exceptions.FlickrError as ex:
                 niceprint('+++ #72 Caught flickrapi exception')
                 niceprint('Error code: [{!s}]'.format(ex.code))
                 niceprint('Error code: [{!s}]'.format(ex))
+                niceprint('Sleep 10 and try to set date again.')
+                nutime.sleep(10)                
             except (IOError, httplib.HTTPException):
                 niceprint('+++ #73 Caught IOError, HTTP expcetion')
                 niceprint('Sleep 10 and try to set date again.')
                 nutime.sleep(10)
             except:
                 niceprint('+++ #74 Caught IOError, HTTP expcetion')
+                niceprintprint(str(sys.exc_info()))
                 niceprint('Sleep 10 and try to set date again.')
                 nutime.sleep(10)                
-                niceprintprint(str(sys.exc_info()))
                 
-            if self.isGood(respDate):
-                # CODING  EXTREME
-                print('RESPONSE OK: BREAK')
+            if (respDate is not None) and self.isGood(respDate):
+                logging.info('Set Date Response: OK: BREAK')
                 break                
 
         return respDate
