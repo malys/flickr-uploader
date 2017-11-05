@@ -1375,8 +1375,8 @@ class Uploadr:
 
                         try:
                             res_set_date = flick.photos_set_dates(
-                                                file_id,
-                                                video_date)
+                                                        file_id,
+                                                        str(video_date))
                             if self.isGood(res_set_date):
                                 niceprint(
                                    'Successfully set date [{!s}] '
@@ -1726,7 +1726,8 @@ class Uploadr:
                 logging.info('video_date:[{!s}]'.format(video_date))
 
                 try:
-                    res_set_date = flick.photos_set_dates(file_id, video_date)
+                    res_set_date = flick.photos_set_dates(file_id,
+                                                          str(video_date))
                     logging.debug('Output for {!s}:'.format('res_set_date'))
                     logging.debug(xml.etree.ElementTree.tostring(
                                                             res_set_date,
@@ -2699,22 +2700,48 @@ set0 = sets.find('photosets').findall('photoset')[0]
                 niceprint('Re-Setting Date:[{!s}]...'
                           '[{!s}/{!s} attempts].'
                           .format(datetxt, x,MAX_UPLOAD_ATTEMPTS))
+            try:
+                respDate = nuflickr.photos.setdates(
+                                    photo_id=photo_id,
+                                    date_taken='{!s}'.format(datetxt),
+                                    date_taken_granularity=0)
+                logging.info('Output for {!s}:'.format('respDate'))
+                logging.info(xml.etree.ElementTree.tostring(
+                                        respDate,
+                                        encoding='utf-8',
+                                        method='xml'))
+             
+                if (args.verbose):
+                    niceprint('Set Date Response:[{!s}]'
+                              .format(self.isGood(respDate)))
+                    # CODING  EXTREME
+                    print(xml.etree.ElementTree.tostring(
+                                        respDate,
+                                        encoding='utf-8',
+                                        method='xml'))
+                if self.isGood(respDate):
+                    # CODING  EXTREME
+                    print('RESPONSE OK: BREAK')
+                    break                
 
-            respDate = nuflickr.photos.setdates(photo_id=photo_id,
-                                                date_taken=datetxt)
-
-
-            logging.info('Output for {!s}:'.format('respDate'))
-            logging.info(xml.etree.ElementTree.tostring(
-                                    respDate,
-                                    encoding='utf-8',
-                                    method='xml'))
-         
-            if (args.verbose):
-                niceprint('Set Date Response:[{!s}]'
-                          .format(self.isGood(respDate)))   
+            except flickrapi.exceptions.FlickrError as ex:
+                niceprint('+++ #72 Caught flickrapi exception')
+                niceprint('Error code: [{!s}]'.format(ex.code))
+                niceprint('Error code: [{!s}]'.format(ex))
+            except (IOError, httplib.HTTPException):
+                niceprint('+++ #73 Caught IOError, HTTP expcetion')
+                niceprint('Sleep 10 and try to set date again.')
+                nutime.sleep(10)
+            except:
+                niceprint('+++ #74 Caught IOError, HTTP expcetion')
+                niceprint('Sleep 10 and try to set date again.')
+                nutime.sleep(10)                
+                niceprintprint(str(sys.exc_info()))
+                
             if self.isGood(respDate):
-                break
+                # CODING  EXTREME
+                print('RESPONSE OK: BREAK')
+                break                
 
         return respDate
 
