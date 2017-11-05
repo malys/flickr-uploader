@@ -535,14 +535,16 @@ class Uploadr:
         if (self.token is None):
             return False
         else:
-            nuflickr = flickrapi.FlickrAPI(FLICKR["api_key"],
-                                           FLICKR["secret"],
-                                           token_cache_location=TOKEN_CACHE)
-            if nuflickr.token_valid(perms='delete'):
-                return True
-            else:
-                logging.warning('Authentication required.')
-                return False
+            return True
+            # CODING: Check if simply returning True when token is set is OK.
+            # nuflickr = flickrapi.FlickrAPI(FLICKR["api_key"],
+            #                                FLICKR["secret"],
+            #                                token_cache_location=TOKEN_CACHE)
+            # if nuflickr.token_valid(perms='delete'):
+            #     return True
+            # else:
+            #     logging.warning('Authentication required.')
+            #     return False
 
     #--------------------------------------------------------------------------
     # removeIgnoreMedia
@@ -1672,9 +1674,9 @@ class Uploadr:
                    (not self.isGood(res_add_tag)) or \
                    (not self.isGood(res_get_info)):
                 niceprint('A problem occurred while attempting to '
-                          'replace the file:[{!s}]'.format(
-                                file.encode('utf-8') \
-                                if isThisStringUnicode(file) \
+                          'replace the file:[{!s}]'
+                          .format(file.encode('utf-8') \
+                                  if isThisStringUnicode(file) \
                                 else file))
 
             if (not self.isGood(replaceResp)):
@@ -2142,7 +2144,7 @@ class Uploadr:
             # FlickrError(u'Error: 2: Invalid primary photo id (nnnnnn)
             if (format(ex.code) == '2'):
                 niceprint('Primary photo [{!s}] for Set [{!s}] '
-                          'does not exist on Flickr'
+                          'does not exist on Flickr. '
                           'Probably deleted from Flickr but still on local db '
                           'and local file.'
                           .format(primaryPhotoId,
@@ -2423,15 +2425,31 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                           isThisStringUnicode(primaryPhotoId)))
 
                     if (args.verbose):
-                        niceprint(u'id=['.encode('utf-8') +
-                                  setId.encode('utf-8') +
-                                  u'] '.encode('utf-8') +
-                                  u'setName=['.encode('utf-8') +
-                                  setName if setName is not None else 'None' +
-                                  u'] '.encode('utf-8') +
-                                  u'primaryPhotoId=['.encode('utf-8') +
-                                  primaryPhotoId.encode('utf-8') +
-                                  u']'.encode('utf-8'))
+                        if setName is None:
+                            niceprint('setId=[{!s}] '
+                                      'setName=[{!s}] '
+                                      'primaryPhotoId=[{!s}]'
+                                      .format(setId,
+                                              'None',
+                                              primaryPhotoId))
+                        else:
+                            niceprint('setId=[{!s}] '
+                                      'setName=[{!s}] '
+                                      'primaryPhotoId=[{!s}]'
+                                      .format(setId,
+                                              setName.encode('utf-8') \
+                                              if isThisStringUnicode(setName) \
+                                              else setName,
+                                              primaryPhotoId))                        
+                        # niceprint(u'id=['.encode('utf-8') +
+                        #           setId.encode('utf-8') +
+                        #           u'] '.encode('utf-8') +
+                        #           u'setName=['.encode('utf-8') +
+                        #           setName if setName is not None else 'None' +
+                        #           u'] '.encode('utf-8') +
+                        #           u'primaryPhotoId=['.encode('utf-8') +
+                        #           primaryPhotoId.encode('utf-8') +
+                        #           u']'.encode('utf-8'))
 
                     # Control for when flickr return a setName (title) as None
                     # Occurred while simultaneously performing massive delete
@@ -2441,7 +2459,9 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                      'setName:[{!s}] '
                                      'primaryPhotoId:[{!s}]'
                                      .format(setId,
-                                             setName.encode('utf-8'),
+                                             setName.encode('utf-8') \
+                                             if isThisStringUnicode(setName) \
+                                             else setName,
                                              primaryPhotoId))
                     else:
                         logging.info('Searching on DB for setId:[{!s}] '
@@ -2455,21 +2475,36 @@ set0 = sets.find('photosets').findall('photoset')[0]
                     cur.execute("SELECT set_id FROM sets WHERE set_id = '" +
                                 setId + "'")
                     foundSets = cur.fetchone()
-                    logging.info('Output for foundSets is [None]:') \
-                        if (foundSets is None) \
-                        else logging.info('Output for foundSets is [{!s}]:'
-                                          .format(foundSets))
+                    logging.info('Output for foundSets is [{!s}]'
+                                 .format('None'
+                                         if foundSets is None \
+                                         else foundSets))                    
 
                     if (foundSets is None):
-                        niceprint('Adding set [{!s}] ({!s}) '
-                                  'with primary photo [{!s}].'
-                                  .format(
-                                        setId.encode('utf-8'),
-                                        setName \
-                                        if setName is not None \
-                                        else 'None',
-                                        primaryPhotoId.encode('utf-8')
-                                        ))
+                        if setName is None:
+                            logging.info('Adding set [{!s}] ({!s}) '
+                                         'with primary photo [{!s}].'
+                                         .format(setId,
+                                                 'None',
+                                                 primaryPhotoId))
+                        else:
+                            logging.info('Adding set [{!s}] ({!s}) '
+                                         'with primary photo [{!s}].'
+                                         .format(
+                                            setId,
+                                            setName.encode('utf-8') \
+                                            if isThisStringUnicode(setName) \
+                                            else setName,
+                                            primaryPhotoId))
+                        # niceprint('Adding set [{!s}] ({!s}) '
+                        #           'with primary photo [{!s}].'
+                        #           .format(
+                        #                 setId.encode('utf-8'),
+                        #                 setName \
+                        #                 if setName is not None \
+                        #                 else 'None',
+                        #                 primaryPhotoId.encode('utf-8')
+                        #                 ))
                         # CODING Check above code and the remove this line
                         # niceprint(u'Adding set ['.encode('utf-8') +
                         #           setId.encode('utf-8') +
@@ -2659,13 +2694,27 @@ set0 = sets.find('photosets').findall('photoset')[0]
         logging.warning('photos_set_date photo_id=[{!s}] date_taken=[{!s}]'
                         .format(photo_id, datetxt))
         
-        respDate = nuflickr.photos.setdates(photo_id=photo_id,
-                                            date_taken=datetxt)
-        logging.info('Output for {!s}:'.format('respDate'))
-        logging.info(xml.etree.ElementTree.tostring(
-                                respDate,
-                                encoding='utf-8',
-                                method='xml'))
+        for x in range(0, MAX_UPLOAD_ATTEMPTS):
+            if (x > 0):
+                niceprint('Re-Setting Date:[{!s}]...'
+                          '[{!s}/{!s} attempts].'
+                          .format(datetxt, x,MAX_UPLOAD_ATTEMPTS))
+
+            respDate = nuflickr.photos.setdates(photo_id=photo_id,
+                                                date_taken=datetxt)
+
+
+            logging.info('Output for {!s}:'.format('respDate'))
+            logging.info(xml.etree.ElementTree.tostring(
+                                    respDate,
+                                    encoding='utf-8',
+                                    method='xml'))
+         
+            if (args.verbose):
+                niceprint('Set Date Response:[{!s}]'
+                          .format(self.isGood(respDate)))   
+            if self.isGood(respDate):
+                break
 
         return respDate
 
