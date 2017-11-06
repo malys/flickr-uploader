@@ -481,8 +481,10 @@ class Uploadr:
                     #                     'TIMEOUT in.lock.acquire')
                     #     useDBLockReturn = False
                 except:
+                    logging.error('+++ #01 Caught an exception')
                     niceprint('+++ #01 Caught an exception')
                     niceprint('lock.acquire.')
+                    logging.error(str(sys.exc_info()))
                     niceprint(str(sys.exc_info()))
                     raise
                 logging.warning('===Multiprocessing=== out.lock.acquire')
@@ -923,9 +925,8 @@ class Uploadr:
                 # lock parameter not used (set to None) under single processing
                 success = self.uploadFile(lock=None, file=file)
                 if args.drip_feed and success and i != changedMedia_count - 1:
-                    print("Waiting " +
-                          str(DRIP_TIME) +
-                          " seconds before next upload")
+                    niceprint('Waiting [{!s}] seconds before next upload'
+                              .format(str(DRIP_TIME)))
                     nutime.sleep(DRIP_TIME)
                 count = count + 1
                 self.niceprocessedfiles(count, False)
@@ -1059,7 +1060,7 @@ class Uploadr:
 
                             p = subprocess.call(command, shell=True)
 
-                            print("Finished copying tags.")
+                            niceprint('Finished copying tags.')
 
             niceprint('Finished converting files with extension:[{!s}]'
                       .format(ext.encode('utf-8')
@@ -1529,9 +1530,14 @@ class Uploadr:
                                                if isThisStringUnicode(file) \
                                                else file))
                             except (IOError, ValueError, httplib.HTTPException):
+                                logging.error('Error setting date '
+                                              'file_id:[{!s}]'
+                                              .format(file_id))
+                                
                                 niceprint("Error setting date file_id:[{!s}]"
                                           .format(file_id))
-                                print(str(sys.exc_info()))
+                                logging.error(str(sys.exc_info()))
+                                niceprint(str(sys.exc_info()))
                                 raise
                             
                             if not self.isGood(res_set_date):
@@ -1550,6 +1556,7 @@ class Uploadr:
                     else:
                         success = False
                 except flickrapi.exceptions.FlickrError as ex:
+                    logging.error('+++ #20 Caught flickrapi exception')
                     niceprint('+++ #20 Caught flickrapi exception')
                     niceprint('Error code: [{!s}]'.format(ex.code))
                     niceprint('Error code: [{!s}]'.format(ex))
@@ -1574,7 +1581,10 @@ class Uploadr:
                         self.useDBLock( lock, False)
 
                 except lite.Error as e:
-                    print('#DB10 A DB error occurred: %s' % e.args[0])
+                    logging.error('#DB10 A DB error occurred: [{!s}]'
+                                  .format(e.args[0]))
+                    niceprint('#DB10 A DB error occurred: [{!s}]'
+                              .format(e.args[0]))                    
                     if (args.processes and args.processes > 0):
                         logging.debug('===Multiprocessing==='
                                       'lock.release (in Error)')
@@ -1616,7 +1626,10 @@ class Uploadr:
                                               fileMd5, last_modified,
                                               cur, con);
                 except lite.Error as e:
-                    print "#DB20 A DB error occurred:", e.args[0]
+                    logging.error('#DB20 A DB error occurred: [{!s}]'
+                                  .format(e.args[0]))
+                    niceprint('#DB20 A DB error occurred: [{!s}]'
+                              .format(e.args[0]))                         
                     if (args.processes and args.processes > 0):
                         logging.debug('===Multiprocessing==='
                                       'lock.release (in Error)')
@@ -1781,6 +1794,8 @@ class Uploadr:
                     break
                 # Exceptions for flickr.upload function call...
                 except (IOError, ValueError, httplib.HTTPException):
+                    logging.error('+++ #30 Caught IOError, ValueError, '
+                                  ' HTTP expcetion')                    
                     niceprint('+++ #30 Caught IOError, ValueError, '
                               ' HTTP expcetion')
                     niceprint('Sleep 10 and try to replace again.')
@@ -1866,8 +1881,9 @@ class Uploadr:
                                           else file))
             
                 except (IOError, ValueError, httplib.HTTPException):
-                    print(str(sys.exc_info()))
-                    print("Error setting date")
+                    logging.error(str(sys.exc_info()))
+                    logging.error("Error setting date")
+                    niceprint("Error setting date")
 
                 if not self.isGood(res_set_date):
                     raise IOError(res_set_date)
@@ -1878,12 +1894,16 @@ class Uploadr:
         # except:
         #     print(str(sys.exc_info()))
         except flickrapi.exceptions.FlickrError as ex:
+            logging.error('+++ #40 Caught flickrapi exception')
             niceprint('+++ #40 Caught flickrapi exception')
             niceprint('Error code: [{!s}]'.format(ex.code))
             niceprint('Error code: [{!s}]'.format(ex))
             niceprint(str(sys.exc_info()))
         except lite.Error as e:
-            print "#DB30 A DB error occurred:", e.args[0]
+            logging.error('#DB30 A DB error occurred: [{!s}]'
+                          .format(e.args[0]))
+            niceprint('#DB30 A DB error occurred: [{!s}]'
+                      .format(e.args[0]))                        
             if (args.processes and args.processes > 0):
                 logging.debug('===Multiprocessing=== lock.release (in Error)')
                 lock.release()
@@ -1958,7 +1978,7 @@ class Uploadr:
         except:
             # If you get 'attempt to write a readonly database', set 'admin'
             # as owner of the DB file (fickerdb) and 'users' as group
-            print(str(sys.exc_info()))
+            logging.error(str(sys.exc_info()))
         return success
 
     #--------------------------------------------------------------------------
@@ -1983,13 +2003,19 @@ class Uploadr:
                         'VALUES (?,?,?)',
                         (setId, setName, primaryPhotoId))
         except lite.Error, e:
-            print("#DB40 A DB error occurred: %s" % e.args[0])
+            logging.error('#DB40 A DB error occurred: [{!s}]'
+                          .format(e.args[0]))
+            niceprint('#DB40 A DB error occurred: [{!s}]'
+                      .format(e.args[0]))  
         
         try:
             cur.execute('UPDATE files SET set_id = ? WHERE files_id = ?',
                     (setId, primaryPhotoId))
         except lite.Error, e:
-            print("#DB41 A DB error occurred: %s" % e.args[0])
+            logging.error('#DB41 A DB error occurred: [{!s}]'
+                          .format(e.args[0]))
+            niceprint('#DB41 A DB error occurred: [{!s}]'
+                      .format(e.args[0]))  
         con.commit()
         
         return True
@@ -2193,15 +2219,24 @@ class Uploadr:
                                 'WHERE files_id = ?', (setId, file[0]))
                     con.commit()
                 except lite.Error, e:
-                    print("+++ #50 #DB50 A DB error occurred: %s" % e.args[0])
+                    logging.error('#DB50 A DB error occurred: [{!s}]'
+                                  .format(e.args[0]))
+                    niceprint('#DB50 A DB error occurred: [{!s}]'
+                              .format(e.args[0]))   
             else:
                 niceprint('Error code: [{!s}]'.format(ex.code))
                 niceprint('Error code: [{!s}]'.format(ex))
                 niceprint(str(sys.exc_info()))
+                logging.error(str(sys.exc_info()))                
         except lite.Error, e:
-            niceprint("#DB60 A DB error occurred: %s" % e.args[0])
+            logging.error('#DB60 A DB error occurred: [{!s}]'
+                          .format(e.args[0]))
+            niceprint('#DB60 A DB error occurred: [{!s}]'
+                      .format(e.args[0]))  
         except:
+            logging.error('+++ #60 Caught an exception')
             niceprint('+++ #60 Caught an exception')
+            logging.error(str(sys.exc_info()))
             niceprint(str(sys.exc_info()))
 
     #--------------------------------------------------------------------------
@@ -2285,7 +2320,8 @@ class Uploadr:
                                   primaryPhotoId))
 
         except:
-            print(str(sys.exc_info()))
+            logging.error(str(sys.exc_info()))
+            niceprint(str(sys.exc_info()))
             
         return False
 
@@ -2459,7 +2495,9 @@ class Uploadr:
             cur.execute("SELECT set_id, name FROM sets")
             allsets = cur.fetchall()
             for row in allsets:
-                print("Set: " + str(row[0]) + "(" + row[1] + ")")
+                # print("Set: " + str(row[0]) + "(" + row[1] + ")")
+                niceprint('Set: [{!s}] ({!s})'.format(str(row[0]), row[1]))
+
         # Closing DB connection
         if con is not None:
             con.close()
@@ -2663,9 +2701,10 @@ set0 = sets.find('photosets').findall('photoset')[0]
                 self.reportError(sets)
 
         except flickrapi.exceptions.FlickrError as ex:
-            print("Error code: %s" % ex.code)
-            print("Error code:", ex)
-            print(str(sys.exc_info()))
+            niceprint('Error code: [{!s}]'.format(ex.code))
+            niceprint('Error code: [{!s}]'.format(ex))
+            logging.error(str(sys.exc_info()))
+            niceprint(str(sys.exc_info()))            
 
         # except:
         #     print "EXCEPTION"
@@ -2883,7 +2922,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
 
             countlocal = cur.fetchone()[0]
             if LOGGING_LEVEL <= logging.DEBUG:
-                print('Total photos on local: {}'.format(countlocal))
+                niceprint('Total photos on local: {}'.format(countlocal))
 
         # Total FLickr photos count:
         #       find('photos').attrib['total']
