@@ -11,7 +11,10 @@
     Some giberish. Please ignore!
     -----------------------------
     Area for my personal notes on on-going work! Please ignore!
+    * Move this code into a function:
+       if (not filetype[0] is None) and ('video' in filetype[0]):
     * Search and eliminate: # CODING check line above and remove next line
+    * caught also report logging.ERROR...
     * (should be done by now on 2.5.6) Revise and correct to statements like:
             niceprint('Checking file:[{!s}]...'.format(
                                             file.encode('utf-8') \
@@ -103,6 +106,8 @@
         *****   Section informative
         ===     Multiprocessing related
         +++     Exceptions handling related
+        xxx     Error related
+        
     * As far as my testing goes :) the following errors are handled:
             Flickr reports file not loaded due to error: 5
                 [flickr:Error: 5: Filetype was not recognised]
@@ -1196,6 +1201,8 @@ class Uploadr:
                                             else file))
 
         success = False
+        # For tracking bad response from search_photos
+        TraceBackIndexError = False
         con = lite.connect(DB_PATH)
         con.text_factory = str
         with con:
@@ -1378,6 +1385,10 @@ class Uploadr:
 
                         # Exceptions for flickr.upload function call...
                         except (IOError, httplib.HTTPException):
+                            logging.error('+++ #10 Caught IOError, '
+                                          'HTTP expcetion')
+                            logging.error('Sleep 10 and check if file is '
+                                          'already uploaded')                            
                             niceprint('+++ #10 Caught IOError, HTTP expcetion')
                             niceprint('Sleep 10 and check if file is '
                                       'already uploaded')
@@ -1388,8 +1399,13 @@ class Uploadr:
                             search_result = self.photos_search(file_checksum)
                             if not self.isGood(search_result):
                                 raise IOError(search_result)
+                            logging.warning('Output for {!s}:'
+                                            .format('search_result'))
+                            logging.warning(xml.etree.ElementTree.tostring(
+                                                   search_result,
+                                                   encoding='utf-8',
+                                                   method='xml'))
 
-                            # if int(search_result["photos"]["total"]) == 0:
                             if int(search_result.find('photos')
                                    .attrib['total']) == 0:
                                 if x == MAX_UPLOAD_ATTEMPTS - 1:
@@ -1431,18 +1447,36 @@ class Uploadr:
                                       else file))
                     
                     # Save file_id... from uploadResp or search_result
+                    # CODING: Obtained IndexOut of Range error after 1st load
+                    # attempt failed and when search_Result returns 1 entry
                     if search_result:
-                        file_id = search_result.find('photos')\
-                                    .findall('photo')[0].attrib['id']
-                        # file_id = uploadResp.findall('photoid')[0].text
-                        logging.info('Output for {!s}:'
-                                     .format('search_result'))
-                        logging.info(xml.etree.ElementTree.tostring(
-                                            search_result,
-                                            encoding='utf-8',
-                                            method='xml'))
-                        logging.warning('SEARCH_RESULT file_id={!s}'
-                                        .format(file_id))
+                        logging.warning('len(search_result(photos)'
+                                        '.[photo]=[{!s}]'
+                                        .format(len(search_result
+                                                    .find('photos')
+                                                    .findall('photo'))))
+                        if (len(search_result
+                               .find('photos')
+                               .findall('photo')) == 0):
+                            logging.error('xxx #E10 Error: '
+                                          'IndexError: search_result yields'
+                                          'Index out of range.'
+                                          'Mannualy check file:[{!s}]'
+                                          'Continue with next image.'
+                                          .format(file))
+                            TraceBackIndexError = True
+                        else:
+                            file_id = search_result.find('photos')\
+                                        .findall('photo')[0].attrib['id']
+                            # file_id = uploadResp.findall('photoid')[0].text
+                            logging.info('Output for {!s}:'
+                                         .format('search_result'))
+                            logging.info(xml.etree.ElementTree.tostring(
+                                                search_result,
+                                                encoding='utf-8',
+                                                method='xml'))
+                            logging.warning('SEARCH_RESULT file_id={!s}'
+                                            .format(file_id))
                     else:
                         # Successful update given that search_result is None
                         file_id = uploadResp.findall('photoid')[0].text
@@ -1456,76 +1490,65 @@ class Uploadr:
                                             encoding='utf-8',
                                             method='xml'))
 
-                    # Add to db the file uploaded
-                    # Control for when running multiprocessing set locking
-                    # if (args.processes and args.processes > 0):
-                    #     logging.debug('===Multiprocessing=== in.lock.acquire')
-                    #     lock.acquire()
-                    #     logging.warning('===Multiprocessing=== '
-                    #                     'out.lock.acquire')
-                    
-                    self.useDBLock( lock, True)
-                    cur.execute(
-                        'INSERT INTO files (files_id, path, md5, '
-                        'last_modified, tagged) VALUES (?, ?, ?, ?, 1)',
-                        (file_id, file, file_checksum, last_modified))
-                    self.useDBLock( lock, False)
-
-                    # Control for when running multiprocessing release locking
-                    # if (args.processes and args.processes > 0):
-                    #     logging.debug('===Multiprocessing=== in.lock.release')
-                    #     lock.release()
-                    #     logging.warning('===Multiprocessing=== '
-                    #                     'out.lock.release')
-
-                    # Update Date/Time on Flickr for Video files
-                    filetype = mimetypes.guess_type(file)
-                    logging.info('filetype:[{!s}]:'.format(filetype[0])) \
-                                if not (filetype[0] is None) \
-                                else ('filetype is None!!!')
-
-                    # update video date/time TAKEN has Flickr does not read it
-                    # correctly from the video file itself.
-                    if (not filetype[0] is None) and ('video' in filetype[0]):
-                        res_set_date = None
-                        video_date = nutime.strftime(
-                                        '%Y-%m-%d %H:%M:%S',
-                                        nutime.localtime(last_modified))
-                        logging.info('video_date:[{!s}]'.format(video_date))
-
-                        try:
-                            res_set_date = flick.photos_set_dates(
-                                                        file_id,
-                                                        str(video_date))
-                            if self.isGood(res_set_date):
-                                niceprint(
-                                   'Successfully set date [{!s}] '
-                                   'for file:[{!s}].'
-                                   .format(video_date.encode('utf-8') \
-                                           if isThisStringUnicode(video_date) \
-                                           else video_date,
-                                           file.encode('utf-8') \
-                                           if isThisStringUnicode(file) \
-                                           else file))
-                        except (IOError, ValueError, httplib.HTTPException):
-                            niceprint("Error setting date file_id:[{!s}]"
-                                      .format(file_id))
-                            print(str(sys.exc_info()))
-                            raise
-                        
-                        if not self.isGood(res_set_date):
-                            raise IOError(res_set_date)
-
-                        niceprint('Successfully set date [{!s}] for '
-                                  'pic [{!s}]'
-                                  .format(video_date.encode('utf-8')
-                                          if isThisStringUnicode(video_date) \
-                                          else video_date,
-                                          file.encode('utf-8')
-                                          if isThisStringUnicode(file) \
-                                          else file))                        
-
-                    success = True
+                    # For tracking bad response from search_photos
+                    if TraceBackIndexError:
+                        self.useDBLock( lock, True)
+                        cur.execute(
+                            'INSERT INTO files (files_id, path, md5, '
+                            'last_modified, tagged) VALUES (?, ?, ?, ?, 1)',
+                            (file_id, file, file_checksum, last_modified))
+                        self.useDBLock( lock, False)
+    
+                        # Update Date/Time on Flickr for Video files
+                        filetype = mimetypes.guess_type(file)
+                        logging.info('filetype:[{!s}]:'.format(filetype[0])) \
+                                    if not (filetype[0] is None) \
+                                    else ('filetype is None!!!')
+    
+                        # update video date/time TAKEN has Flickr does not read it
+                        # correctly from the video file itself.
+                        if (not filetype[0] is None) and ('video' in filetype[0]):
+                            res_set_date = None
+                            video_date = nutime.strftime(
+                                            '%Y-%m-%d %H:%M:%S',
+                                            nutime.localtime(last_modified))
+                            logging.info('video_date:[{!s}]'.format(video_date))
+    
+                            try:
+                                res_set_date = flick.photos_set_dates(
+                                                            file_id,
+                                                            str(video_date))
+                                if self.isGood(res_set_date):
+                                    niceprint(
+                                       'Successfully set date [{!s}] '
+                                       'for file:[{!s}].'
+                                       .format(video_date.encode('utf-8') \
+                                               if isThisStringUnicode(video_date) \
+                                               else video_date,
+                                               file.encode('utf-8') \
+                                               if isThisStringUnicode(file) \
+                                               else file))
+                            except (IOError, ValueError, httplib.HTTPException):
+                                niceprint("Error setting date file_id:[{!s}]"
+                                          .format(file_id))
+                                print(str(sys.exc_info()))
+                                raise
+                            
+                            if not self.isGood(res_set_date):
+                                raise IOError(res_set_date)
+    
+                            niceprint('Successfully set date [{!s}] for '
+                                      'pic [{!s}]'
+                                      .format(video_date.encode('utf-8')
+                                              if isThisStringUnicode(video_date) \
+                                              else video_date,
+                                              file.encode('utf-8')
+                                              if isThisStringUnicode(file) \
+                                              else file))                        
+    
+                        success = True
+                    else:
+                        success = False
                 except flickrapi.exceptions.FlickrError as ex:
                     niceprint('+++ #20 Caught flickrapi exception')
                     niceprint('Error code: [{!s}]'.format(ex.code))
@@ -1539,12 +1562,7 @@ class Uploadr:
                         niceprint('Adding to Bad files table:[{!s}]'
                                   .format(file))
                         logging.info('Bad file:[{!s}]'.format(file))
-                        # if (args.processes and args.processes > 0):
-                        #     logging.debug('===Multiprocessing=== badfiles'
-                        #                   'in.lock.acquire')
-                        #     lock.acquire()
-                        #     logging.warning('===Multiprocessing=== badfiles'
-                        #                     'out.lock.acquire')
+
                         self.useDBLock( lock, True)
                         # files_id column is autoincrement. No need to specify
                         cur.execute(
@@ -1554,12 +1572,6 @@ class Uploadr:
                         # Control for when running multiprocessing
                         # release locking
                         self.useDBLock( lock, False)
-                        # if (args.processes and args.processes > 0):
-                        #     logging.debug('===Multiprocessing=== badfiles'
-                        #                   'in.lock.release')
-                        #     lock.release()
-                        #     logging.warning('===Multiprocessing=== badfiles'
-                        #                     'out.lock.release')
 
                 except lite.Error as e:
                     print('#DB10 A DB error occurred: %s' % e.args[0])
@@ -1570,7 +1582,7 @@ class Uploadr:
                         logging.debug('===Multiprocessing==='
                                       'lock.release (in Error)')
                     return False
-
+                
             elif (MANAGE_CHANGES):
                 # we have a file from disk which is found on the database also
                 # row[6] is last_modified date/timestamp
@@ -1587,13 +1599,6 @@ class Uploadr:
                         # Update db the last_modified time of file
 
                         # Control for when running multiprocessing set locking
-                        # if (args.processes and args.processes > 0):
-                        #     logging.debug('===Multiprocessing=== '
-                        #                   'in.lock.acquire')
-                        #     lock.acquire()
-                        #     logging.warning('===Multiprocessing=== '
-                        #                     'out.lock.acquire')
-
                         self.useDBLock( lock, True)
                         cur.execute('UPDATE files SET last_modified = ? '
                                     'WHERE files_id = ?', (last_modified,
@@ -1601,13 +1606,6 @@ class Uploadr:
                         con.commit()
                         self.useDBLock( lock, False)
 
-                        # Control when running multiprocessing release locking
-                        # if (args.processes and args.processes > 0):
-                        #     logging.debug('===Multiprocessing=== '
-                        #                   'in.lock.release')
-                        #     lock.release()
-                        #     logging.warning('===Multiprocessing=== '
-                        #                     'out.lock.release')
                     if (row[6] != last_modified):
                         # Update db both the new file/md5 and the
                         # last_modified time of file by by calling replacePhoto
