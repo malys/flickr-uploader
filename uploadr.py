@@ -25,6 +25,17 @@
                         'last_modified FROM files WHERE path = ?', (file,))
             # Release DB lock if running in multiprocessing mode
             self.useDBLock( nulockDB, False)
+      And even more:
+        try:
+            # Acquire DB lock if running in multiprocessing mode
+            self.useDBLock( lock, True)
+            cur.execute('SELECT rowid,files_id,path,set_id,md5,tagged,'
+                      'last_modified FROM files WHERE path = ?', (file,))
+        except lite.Error as e:
+            niceprint('#DB08 A DB error occurred: %s' % e.args[0])
+        finally:
+            # Release DB lock if running in multiprocessing mode
+            self.useDBLock( lock, False)
 
     ## Update History
     -----------------
@@ -833,6 +844,11 @@ class Uploadr:
                     logging.debug('===Job/Task Process: Starting...')
                     uploadTask.start()
                     logging.debug('===Job/Task Process: Started')
+                    if (args.verbose):
+                        niceprint('===Job/Task Process: [{!s}] Started '
+                                  'with pid:[{!s}]'
+                                  .format(uploadTask.name,
+                                          uploadTask.pid))
 
                 # Check status of jobs/tasks in the Process Pool
                 if LOGGING_LEVEL <= logging.DEBUG:
@@ -841,7 +857,7 @@ class Uploadr:
                         niceprint('%s.is_alive = %s' % (j.name, j.is_alive()))
 
                 # Regularly print status of jobs/tasks in the Process Pool
-                # Only prints status if any of the processes has stopped
+                # Prints status while there are processes active
                 # Exits when all jobs/tasks are done.
                 while (True):
                     if not (any(multiprocessing.active_children())):
@@ -850,7 +866,7 @@ class Uploadr:
                     for p in multiprocessing.active_children():
                         logging.debug('==={!s}.is_alive = {!s}'
                                       .format(p.name, p.is_alive()))
-                        if (args.verbose_progress):
+                        if (args.verbose):
                             niceprint('==={!s}.is_alive = {!s}'
                                       .format(p.name, p.is_alive()))
                         uploadTaskActive = p
@@ -1191,12 +1207,17 @@ class Uploadr:
                                               'files WHERE path = ?',
                                               file))
 
-            # Acquire DB lock if running in multiprocessing mode
-            self.useDBLock( lock, True)
-            cur.execute('SELECT rowid,files_id,path,set_id,md5,tagged,'
-                        'last_modified FROM files WHERE path = ?', (file,))
-            # Release DB lock if running in multiprocessing mode
-            self.useDBLock( lock, False)
+
+            try:
+                # Acquire DB lock if running in multiprocessing mode
+                self.useDBLock( lock, True)
+                cur.execute('SELECT rowid,files_id,path,set_id,md5,tagged,'
+                            'last_modified FROM files WHERE path = ?', (file,))
+            except lite.Error as e:
+                niceprint('#DB08 A DB error occurred: %s' % e.args[0])
+            finally:
+                # Release DB lock if running in multiprocessing mode
+                self.useDBLock( lock, False)
 
             row = cur.fetchone()
             logging.debug('row {!s}:'.format(row))
@@ -2180,10 +2201,10 @@ class Uploadr:
                 niceprint('Error code: [{!s}]'.format(ex))
                 niceprint(str(sys.exc_info()))
         except lite.Error, e:
-            print("#DB60 A DB error occurred: %s" % e.args[0])
+            niceprint("#DB60 A DB error occurred: %s" % e.args[0])
         except:
             niceprint('+++ #60 Caught an exception')
-            print(str(sys.exc_info()))
+            niceprint(str(sys.exc_info()))
 
     #--------------------------------------------------------------------------
     # createSet
