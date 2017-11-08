@@ -11,6 +11,7 @@
     Some giberish. Please ignore!
     -----------------------------
     Area for my personal notes on on-going work! Please ignore!
+    * improve count... total found - bad files = loaded + notloaded (!)) and the ones not in set
     * Move this code into a function:
        if (not filetype[0] is None) and ('video' in filetype[0]):
     * Search and eliminate: # CODING check line above and remove next line
@@ -296,7 +297,15 @@ except (ConfigParser.NoOptionError, ConfigParser.NoOptionError), err:
     TOKEN_CACHE = os.path.join(os.path.dirname(sys.argv[0]), "token")
 LOCK_PATH = eval(config.get('Config', 'LOCK_PATH'))
 TOKEN_PATH = eval(config.get('Config', 'TOKEN_PATH'))
-EXCLUDED_FOLDERS = eval(config.get('Config', 'EXCLUDED_FOLDERS'))
+#Read EXCLUDED_FOLDERS and convert them into Unicode
+inEXCLUDED_FOLDERS = eval(config.get('Config', 'EXCLUDED_FOLDERS'))
+EXCLUDED_FOLDERS = []
+for a in inEXCLUDED_FOLDERS:
+    EXCLUDED_FOLDERS.append(unicode(a,'utf-8'))
+    # logging.debug('EXCLUDED_FOLDERS[a]:[!{}]'.format(a.encode('utf-8') \
+    #                                                  if isThisStringUnicode(a) \
+    #                                                  else a))
+
 IGNORED_REGEX = [re.compile(regex) for regex in \
                  eval(config.get('Config', 'IGNORED_REGEX'))]
 ALLOWED_EXT = eval(config.get('Config', 'ALLOWED_EXT'))
@@ -602,7 +611,7 @@ class Uploadr:
                 logging.info('Token Non-Existant.')
                 return None
         except:
-            niceprint('Unexpected error:' + sys.exc_info()[0])
+            niceprint('Unexpected error:[{!s}]'.format(sys.exc_info()[0]))
             raise
 
     # -------------------------------------------------------------------------
@@ -707,7 +716,8 @@ class Uploadr:
             cur.execute("SELECT files_id, path FROM files")
             rows = cur.fetchall()
 
-            niceprint(str(len(rows)) + ' will be checked for Removal...')
+            niceprint('[{!s}] will be checked for Removal...'
+                      .format(str(len(rows))))
 
             count = 0
             for row in rows:
@@ -716,9 +726,11 @@ class Uploadr:
                     logging.warning('deleteFile result: {!s}'.format(success))
                     count = count + 1
                     if (count % 3 == 0):
-                        niceprint('\t' + str(count) + ' files removed...')
+                        niceprint('\t[{!s}] files removed...'
+                                  .format(str(count)))
             if (count % 100 > 0):
-                niceprint('\t' + str(count) + ' files removed.')
+                niceprint('\t[{!s}] files removed...'
+                          .format(str(count)))
 
         # Closing DB connection
         if con is not None:
@@ -762,7 +774,8 @@ class Uploadr:
                 changedMedia = set(allMedia) - existingMedia
 
         changedMedia_count = len(changedMedia)
-        niceprint('Found ' + str(changedMedia_count) + ' files to upload.')
+        niceprint('Found [{!s}] files to upload.'
+                  .format(str(changedMedia_count)))
 
         if (args.bad_files):
             # Cater for bad files
@@ -1123,6 +1136,21 @@ class Uploadr:
     #
     def isFileIgnored(self, filename):
         for excluded_dir in EXCLUDED_FOLDERS:
+            logging.debug('is excluded_dir unicode?[{!s}]'
+                          .format(isThisStringUnicode(excluded_dir)))
+            logging.debug('is filename unicode?[{!s}]'
+                          .format(isThisStringUnicode(filename)))
+            logging.debug('is os.path.dirname(filename) unicode?[{!s}]'
+                          .format(isThisStringUnicode(os.path.dirname(
+                                                                filename))))
+            logging.debug('excluded_dir:[{!s}] filename:[{!s}]'
+                          .format(excluded_dir.encode('utf-8') \
+                                  if isThisStringUnicode(excluded_dir) \
+                                  else excluded_dir,
+                                  filename.encode('utf-8') \
+                                  if isThisStringUnicode(filename) \
+                                  else filename))
+            # Now everything should be in Unicode
             if excluded_dir in os.path.dirname(filename):
                 return True
 
@@ -1492,13 +1520,20 @@ class Uploadr:
                                             method='xml'))
 
                     # For tracking bad response from search_photos
-                    if TraceBackIndexError:
-                        self.useDBLock( lock, True)
-                        cur.execute(
-                            'INSERT INTO files (files_id, path, md5, '
-                            'last_modified, tagged) VALUES (?, ?, ?, ?, 1)',
-                            (file_id, file, file_checksum, last_modified))
-                        self.useDBLock( lock, False)
+                    if not TraceBackIndexError:
+                        try:
+                            self.useDBLock( lock, True)
+                            cur.execute(
+                                'INSERT INTO files (files_id, path, md5, '
+                                'last_modified, tagged) VALUES (?, ?, ?, ?, 1)',
+                                (file_id, file, file_checksum, last_modified))
+                            self.useDBLock( lock, False)
+                        except lite.Error as e:
+                            logging.error('#DB09 A DB error occurred: [{!s}]'
+                                          .format(e.args[0]))
+                            niceprint('#DB09 A DB error occurred: [{!s}]'   
+                                      .format(e.args[0]))
+                            self.useDBLock( lock, False)
     
                         # Update Date/Time on Flickr for Video files
                         filetype = mimetypes.guess_type(file)
@@ -2064,7 +2099,8 @@ class Uploadr:
                       .format(nutime.strftime(UPLDRConstants.TimeFormat)))
             # run upload
             self.upload()
-            niceprint("Last check: " + str(nutime.asctime(time.localtime())))
+            niceprint('Last check: [{!s}]'
+                      .format(str(nutime.asctime(time.localtime()))))
             logging.warning('Running in Daemon mode. Sleep [{!s}] seconds.'
                             .format(SLEEP_TIME))
             nutime.sleep(SLEEP_TIME)
@@ -2188,7 +2224,8 @@ class Uploadr:
                     self.createSet(setName, file[0], cur, con)
                 elif (addPhotoResp['code'] == 3):
                     niceprint('Photo already in set... updating DB')
-                    niceprint(addPhotoResp['message'] + '... updating DB')
+                    niceprint('[{!s}] ... updating DB'
+                              .format(addPhotoResp['message']))
                     cur.execute('UPDATE files SET set_id = ? '
                                 'WHERE files_id = ?', (setId, file[0]))
                 else:
@@ -2336,7 +2373,8 @@ class Uploadr:
 
             Creates the control database
         """
-        niceprint('Setting up the database: ' + DB_PATH)
+ 
+        niceprint('Setting up the database: [{!s}]'.format(DB_PATH))
         con = None
         try:
             con = lite.connect(DB_PATH)
@@ -2408,7 +2446,8 @@ class Uploadr:
 
             Cleans up (deletes) contents from DB badfiles table
         """
-        niceprint('Cleaning up badfiles table from the database: ' + DB_PATH)
+        niceprint('Cleaning up badfiles table from the database: [{!s}]'
+                  .format(DB_PATH))
         con = None
         try:
             con = lite.connect(DB_PATH)
@@ -2495,7 +2534,6 @@ class Uploadr:
             cur.execute("SELECT set_id, name FROM sets")
             allsets = cur.fetchall()
             for row in allsets:
-                # print("Set: " + str(row[0]) + "(" + row[1] + ")")
                 niceprint('Set: [{!s}] ({!s})'.format(str(row[0]), row[1]))
 
         # Closing DB connection
@@ -3054,7 +3092,7 @@ if __name__ == "__main__":
     parser.add_argument('-p', '--processes',
                         metavar='P', type=int,
                         help='Number of photos to upload simultaneously.')
-    # when you change EXCLUDE_FOLDERS setting
+    # when you change EXCLUDED_FOLDERS setting
     parser.add_argument('-g', '--remove-ignored', action='store_true',
                         help='Remove previously uploaded files, that are '
                              'now being ignored due to change of the INI '
