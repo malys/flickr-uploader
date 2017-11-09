@@ -1265,7 +1265,7 @@ class Uploadr:
                                             else file))
         # CODING: EXTREME Testing
         # Check if file is already loaded
-        isLoaded, isCount = is_photo_already_uploaded(
+        isLoaded, isCount = self.is_photo_already_uploaded(
                                             self.md5Checksum(file))
         niceprint('is_photo_already_uploaded:[{!s}] count:[{!s}]'
                   .format(isLoaded, isCount))
@@ -2888,7 +2888,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                                        .format(checksum),
                                                   extras='tags')
         if not self.isGood(searchIsUploaded):
-            logging.error('searchIsUploadedOK:[{!s}]'.format(searchIsUploaded))
+            logging.error('searchIsUploadedOK:[{!s}]'.format('False'))
             return returnIsPhotoUploaded, returnPhotoUploaded
             # raise IOError(searchIsUploaded)
 
@@ -2900,14 +2900,32 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                             encoding='utf-8',
                                             method='xml'))
         
-        returnPhotoUploaded = int(search_result.find('photos').attrib['total'])
+        returnPhotoUploaded = int(searchIsUploaded
+                                  .find('photos').attrib['total'])
         returnIsPhotoUploaded = not (returnPhotoUploaded == 0)
         
         if returnPhotoUploaded > 1:
-            logging.error('+++ #00 Duplicated images with checksum:[{!s}]'
-                          .format(checksum))
-            niceprint('+++ #00 Duplicated images with checksum:[{!s}]'
-                      .format(checksum))
+            logging.error('+++ #00 Duplicated images with checksum:[{!s}] '
+                          'Count=[{!s}]'
+                          .format(checksum, returnPhotoUploaded))
+            niceprint('+++ #00 Duplicated images with checksum:[{!s}] '
+                      'Count=[{!s}]'
+                      .format(checksum, returnPhotoUploaded))
+            # check titles
+            for p in searchIsUploaded.find('photos').findall('photo'):
+                niceprint('p.id=[{!s}] p.title=[{!s}]'
+                          .format(p.attrib['id'],
+                                  p.attrib['title'],
+                                  p.attrib['tags']))
+                                  
+                # Print sets...
+                resp = nuflickr.photos.getAllContexts(photo_id=p.attrib['id'])
+                if not self.isGood(resp):
+                    logging.error('getAllContexts:[{!s}]'.format('False'))
+                else:
+                    for x in resp.findall('set'):
+                        niceprint('Set title:[{!s}]'
+                                  .format(x.atttrib['title']))
         
         return returnIsPhotoUploaded, returnPhotoUploaded
 
