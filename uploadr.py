@@ -187,14 +187,17 @@ class UPLDRConstants:
     TimeFormat = '%Y.%m.%d %H:%M:%S'
     # For future use...
     # UTF = 'utf-8'
-    Version = '2.5.10'
+    Version = '2.6.0'
 
+    # -------------------------------------------------------------------------
+    # class UPLDRConstants __init__ 
+    #
     def __init__(self):
-        """ Constructor
+        """ class UPLDRConstants __init__ 
         """
         pass
 
-# ----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # Global Variables
 #   nutime       = for working with time module (import time)
 #   nuflickr     = object for flickr API module (import flickrapi)
@@ -393,7 +396,12 @@ if LOGGING_LEVEL <= logging.INFO:
 # Check function callback definition
 #
 class FileWithCallback(object):
+    # -------------------------------------------------------------------------
+    # class FileWithCallback __init__ 
+    #    
     def __init__(self, filename, callback):
+        """ class FileWithCallback __init__ 
+        """        
         self.file = open(filename, 'rb')
         self.callback = callback
         # the following attributes and methods are required
@@ -401,7 +409,14 @@ class FileWithCallback(object):
         self.fileno = self.file.fileno
         self.tell = self.file.tell
 
+    # -------------------------------------------------------------------------
+    # class FileWithCallback read
+    #
     def read(self, size):
+        """ read
+        
+        read file to upload into Flickr with FileWithCallback
+        """
         if self.callback:
             self.callback(self.tell() * 100 // self.len)
         return self.file.read(size)
@@ -414,6 +429,11 @@ class FileWithCallback(object):
 # Uses global args.verbose-progress parameter
 #
 def callback(progress):
+    """ callback
+    
+    Print progress % while uploading into Flickr.
+    Valid only if global variable args.verbose_progress is True
+    """
     # only print rounded percentages: 0, 10, 20, 30, up to 100
     # adapt as required
     # if ((progress % 10) == 0):
@@ -434,9 +454,13 @@ class Uploadr:
     # Flicrk connection authentication token
     token = None
     perms = ""
-
+    # -------------------------------------------------------------------------
+    # class Uploadr __init__ 
+    # 
     def __init__(self):
-        """ Constructor
+        """ class Uploadr __init__
+        
+        get self.token from Cache (getCachedToken)
         """
         self.token = self.getCachedToken()
 
@@ -821,7 +845,6 @@ class Uploadr:
                 # Divides an iterable in slices/chunks of size size
                 #
                 from itertools import islice
-
                 def chunk(it, size):
                     """
                         Divides an iterable in slices/chunks of size size
@@ -837,8 +860,6 @@ class Uploadr:
                 nulockDB = multiprocessing.Lock()
                 nurunning = multiprocessing.Value('i', 0)
                 numutex = multiprocessing.Lock()
-
-                # for i in range(int(args.processes)):
 
                 sz = (len(changedMedia) / int(args.processes)) \
                      if ((len(changedMedia) / int(args.processes)) > 0) \
@@ -957,6 +978,10 @@ class Uploadr:
     # convertRawFiles
     #
     def convertRawFiles(self):
+        """ convertRawFiles
+        
+        CODING: Not converted yet.
+        """
 
         # CODING: Not tested. Not in use at this time. I do not use RAW Files.
         # Also you need Image-ExifTool-9.69 or similar installed.
@@ -1141,6 +1166,10 @@ class Uploadr:
     #   false = if filename's folder not on one of the EXCLUDED_FOLDERS
     #
     def isFileIgnored(self, filename):
+        """ isFileIgnored
+        
+        Returns True if a file is within an EXCLUDED_FOLDERS directory/folder
+        """
         for excluded_dir in EXCLUDED_FOLDERS:
             logging.debug('is excluded_dir unicode?[{!s}]'
                           .format(isThisStringUnicode(excluded_dir)))
@@ -1234,6 +1263,12 @@ class Uploadr:
                                             file.encode('utf-8') \
                                             if isThisStringUnicode(file) \
                                             else file))
+        # CODING: EXTREME Testing
+        # Check if file is already loaded
+        isLoaded, isCount = is_photo_already_uploaded(
+                                            self.md5Checksum(file))
+        niceprint('is_photo_already_uploaded:[{!s}] count:[{!s}]'
+                  .format(isLoaded, isCount))
 
         success = False
         # For tracking bad response from search_photos
@@ -1333,6 +1368,13 @@ class Uploadr:
 
                     file_checksum = self.md5Checksum(file)
 
+                    # CODING: Requires Testing...
+                    # Check if file is already loaded
+                    isLoaded, isCount = is_photo_already_uploaded(
+                                                        file_checksum)
+                    niceprint('is_photo_already_uploaded:[{!s}] count:[{!s}]'
+                              .format(isLoaded, isCount))
+                    
                     # Perform actual upload of the file
                     # CODING: res not being used!
                     # res = None
@@ -1973,6 +2015,7 @@ class Uploadr:
     #
     def deleteFile(self, file, cur):
         """ deleteFile
+        
         delete file from flickr
         cur represents the control dabase cursor to allow, for example,
             deleting empty sets
@@ -2040,7 +2083,8 @@ class Uploadr:
     #   Creates on flickrdb local database a SetName(Album)
     #
     def logSetCreation(self, setId, setName, primaryPhotoId, cur, con):
-        """
+        """ logSetCreation
+        
         Creates on flickrdb local database a SetName(Album)
         """
 
@@ -2094,11 +2138,41 @@ class Uploadr:
     def reportError(self, res):
         """ reportError
         """
-
+        
         try:
             print("ReportError: " + str(res['code'] + " " + res['message']))
         except:
             print("ReportError: " + str(res))
+
+        # CODING enhance this function to
+        #   Caught = True/False
+        #   CaughtCode
+                # 71
+        #   CaughtMsg
+                # Caught flickrapi exception
+        #   NicePrint = True/False
+        #   DBCaught = True/False
+        #   DBCaughtCode
+        #   DBCaughtMsg
+        #   exceptCode
+        #   exceptMsg
+        #   exceptSysInfo = True/False
+        #
+        # logging.error('+++ #{!s}: {!s}'.format(CaughtCode, CaughtMsg) \
+        #               if Caught is not None and Caugth \
+        #               else '')
+        # niceprint('+++ #71 Caught flickrapi exception')
+        # niceprint('Error code: [{!s}]'.format(ex.code))
+        # niceprint('Error code: [{!s}]'.format(ex))
+        # logging.error(str(sys.exc_info()))
+        # niceprint(str(sys.exc_info()))
+        #     
+        #     logging.error('+++ #71 Caught flickrapi exception')
+        #     niceprint('+++ #71 Caught flickrapi exception')
+        #     niceprint('Error code: [{!s}]'.format(ex.code))
+        #     niceprint('Error code: [{!s}]'.format(ex))
+        #     logging.error(str(sys.exc_info()))
+        #     niceprint(str(sys.exc_info()))
 
     #--------------------------------------------------------------------------
     # run
@@ -2192,8 +2266,12 @@ class Uploadr:
     # addFiletoSet
     #
     def addFileToSet(self, setId, file, cur):
-        """
+        """ addFileToSet
+        
             adds a file to set...
+            setID = set
+            file = file
+            cur = cursor for updating local DB
         """
 
         global nuflickr
@@ -2502,7 +2580,8 @@ class Uploadr:
     # md5Checksum
     #
     def md5Checksum(self, filePath):
-        """
+        """ md5Checksum
+        
             Calculates the MD5 checksum for filePath
         """
         with open(filePath, 'rb') as fh:
@@ -2518,6 +2597,10 @@ class Uploadr:
     # Method to clean unused sets
     #   Sets are Albums.
     def removeUselessSetsTable(self):
+        """ removeUselessSetsTable
+        
+        Remove unused Sets (Sets not listed on Flickr) form local DB
+        """
         niceprint('*****Removing empty Sets from DB*****')
         if args.dry_run:
                 return True
@@ -2548,7 +2631,12 @@ class Uploadr:
     # -------------------------------------------------------------------------
     # Display Sets
     #
+    # CODING: Not being used!
     def displaySets(self):
+        """ displaySets
+        
+        Prints the list of sets/albums recorded on the local database
+        """
         con = lite.connect(DB_PATH)
         con.text_factory = str
         with con:
@@ -2738,10 +2826,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                       'local database.')
 
                 con.commit()
-                # niceprint('Sleep...3...to allow Commit... TO BE REMOVED?')
-                # nutime.sleep(3)
-                # niceprint('After Sleep...3...to allow Commit')
-                # Closing DB connection
+
                 if con is not None:
                     con.close()
             else:
@@ -2765,11 +2850,100 @@ set0 = sets.find('photosets').findall('photoset')[0]
         niceprint('*****Completed adding Flickr Sets to DB*****')
 
     #--------------------------------------------------------------------------
+    # is_photo_already_uploaded
+    #
+    # Checks if image is already loaded with tag:checksum
+    # (calls Flickr photos.search)
+    #
+    def is_photo_already_uploaded(self, checksum):
+        """
+            is_photo_already_loaded
+            Searchs for image with on tag:checksum
+            
+            returns True (already loaded)/False(not loaded) and count of found pics
+        """
+    # CODING: Logic
+    # search photos with tag...
+    # checksum if TITLE is the same.
+    # IF so iter  isinstance the same.
+    #
+    # CODING: Sample code...
+    # def is_photo_already_uploaded(self, photo_name, photoset_name):
+    #     for ps in self.get_photoset_list(force=False)['photosets']['photoset']:
+    #         if ps['title']['_content'] == photoset_name:
+    #             for photo in self.get_photoset_photos(ps['id'],
+    #                             force=False)['photoset']['photo']:
+    #                 if photo['title'] == photo_name[:-4]:
+    #                     return True
+    #             return False
+    #     return False
+        global nuflickr
+        returnIsPhotoUploaded = False
+        returnPhotoUploaded = 0
+
+        logging.info('Is Already Uploaded:[checksum:{!s}]'.format(checksum))
+
+        searchIsUploaded = nuflickr.photos.search(user_id="me",
+                                                  tags='checksum:{}'
+                                                       .format(checksum),
+                                                  extras='tags')
+        if not self.isGood(searchIsUploaded):
+            logging.error('searchIsUploadedOK:[{!s}]'.format(searchIsUploaded))
+            return returnIsPhotoUploaded, returnPhotoUploaded
+            # raise IOError(searchIsUploaded)
+
+        # CODING: Change from nicepring to logging.debug afterwards
+        
+        niceprint('Search Results SearchResp:')
+        niceprint(xml.etree.ElementTree.tostring(
+                                            searchIsUploaded,
+                                            encoding='utf-8',
+                                            method='xml'))
+        
+        returnPhotoUploaded = int(search_result.find('photos').attrib['total'])
+        returnIsPhotoUploaded = not (returnPhotoUploaded == 0)
+        
+        if returnPhotoUploaded > 1:
+            logging.error('+++ #00 Duplicated images with checksum:[{!s}]'
+                          .format(checksum))
+            niceprint('+++ #00 Duplicated images with checksum:[{!s}]'
+                      .format(checksum))
+        
+        return returnIsPhotoUploaded, returnPhotoUploaded
+
+        # CODING: Future case to list duplicated pics!!!
+        # Althout nicepring(xml.etree) already lists them 
+        # if returnPhotoUploaded == 0:
+        #     returnIsPhotoUploaded = False
+        # elif returnPhotoUploaded == 1:
+        #     returnIsPhotoUploaded = True
+        # elif returnPhotoUploaded > 1:
+        #     returnIsPhotoUploaded = True
+        # 
+        # return returnIsPhotoUploaded, returnPhotoUploaded
+            
+# <?xml version="1.0" encoding="utf-8" ?>
+# <rsp stat="ok">
+#   <photos page="1" pages="1" perpage="100" total="2">
+#     <photo id="37564183184" owner="146995488@N03" secret="5390570f1c" server="4540" farm="5" title="DSC01397" ispublic="0" isfriend="0" isfamily="0" tags="autoupload checksum1133825cea9d605f332d04b40a44a6d6" />
+#     <photo id="38210659646" owner="146995488@N03" secret="2786b173f4" server="4536" farm="5" title="DSC01397" ispublic="0" isfriend="0" isfamily="0" tags="autoupload checksum1133825cea9d605f332d04b40a44a6d6" />
+#   </photos>
+# </rsp>
+# CAREFULL... flickrapi on occassion indicates total=2 but the list only brings 1
+#             
+# <?xml version="1.0" encoding="utf-8" ?>
+# <rsp stat="ok">
+#   <photos page="1" pages="1" perpage="100" total="2">
+#     <photo id="26486922439" owner="146995488@N03" secret="7657801015" server="4532" farm="5" title="017_17a-5" ispublic="0" isfriend="0" isfamily="0" tags="autoupload checksum0449d770558cfac7a6786e468f917b9c joana" />
+#   </photos>
+# </rsp>
+
+    #--------------------------------------------------------------------------
     # photos_search
     #
     # Searchs for image with tag:checksum (calls Flickr photos.search)
     #
-    # Will return searchResp and if isgood(searchResp) will provide also
+    # CODING: Will return searchResp and if isgood(searchResp) will provide also
     # searchtotal and id of first photo
     #
     # Sample response:
@@ -2786,14 +2960,13 @@ set0 = sets.find('photosets').findall('photoset')[0]
             photos_search
             Searchs for image with on tag:checksum
         """
-
         global nuflickr
 
         logging.info('FORMAT:[checksum:{!s}]'.format(checksum))
 
         searchResp = nuflickr.photos.search(user_id="me",
                                             tags='checksum:{}'
-                                            .format(checksum))
+                                                 .format(checksum))
         # Debug
         logging.debug('Search Results SearchResp:')
         logging.debug(xml.etree.ElementTree.tostring(
