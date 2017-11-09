@@ -295,10 +295,10 @@ inEXCLUDED_FOLDERS = eval(config.get('Config', 'EXCLUDED_FOLDERS'))
 EXCLUDED_FOLDERS = []
 for a in inEXCLUDED_FOLDERS:
     EXCLUDED_FOLDERS.append(unicode(a, 'utf-8'))
-    logging.debug('a from EXCLUDED_FOLDERS:[{!s}]'
-                   .format(a.encode('utf-8') \
-                   if isThisStringUnicode(a) \
-                   else a))
+    niceprint('a from EXCLUDED_FOLDERS:[{!s}]'
+              .format(a.encode('utf-8') \
+                      if isThisStringUnicode(a) \
+                      else a))
 del inEXCLUDED_FOLDERS
 
 IGNORED_REGEX = [re.compile(regex) for regex in \
@@ -679,7 +679,7 @@ class Uploadr:
             rows = cur.fetchall()
 
             for row in rows:
-                # row[1] is par
+                # row[1] is photo_id
                 if (self.isFileIgnored(row[1].decode('utf-8'))):
                     success = self.deleteFile(row, cur)
 
@@ -1536,7 +1536,6 @@ class Uploadr:
                                 '(files_id, path, md5, last_modified, tagged) '
                                 'VALUES (?, ?, ?, ?, 1)',
                                 (file_id, file, file_checksum, last_modified))
-                            self.useDBLock(lock, False)
                         except lite.Error as e:
                             logging.error('#DB09 A DB error occurred: [{!s}]'
                                           .format(e.args[0]))
