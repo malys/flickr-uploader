@@ -175,6 +175,7 @@ else:
     LOGGING_LEVEL = logging.WARNING
     sys.stderr.write('--------- ' + 'Init: ' + ' ---------\n')
     sys.stderr.write('Python version on this system: ' + sys.version + '\n')
+    sys.stderr.flush()
 
 # ----------------------------------------------------------------------------
 # Constants class
@@ -296,6 +297,10 @@ def reportError2(Caught=False, CaughtPrefix='', CaughtCode=0, CaughtMsg='',
         if NicePrint is not None and NicePrint:
             niceprint(str(sys.exc_info()))
             
+    sys.stderr.flush()
+    if NicePrint is not None and NicePrint:
+        sys.stdout.flush()
+
     # # CODING: Examples
     # reportError2(Caught=True,
     #                    CaughtPrefix='+++',
@@ -358,12 +363,16 @@ TOKEN_PATH = eval(config.get('Config', 'TOKEN_PATH'))
 #Read EXCLUDED_FOLDERS and convert them into Unicode folders
 inEXCLUDED_FOLDERS = eval(config.get('Config', 'EXCLUDED_FOLDERS'))
 EXCLUDED_FOLDERS = []
-for a in inEXCLUDED_FOLDERS:
-    EXCLUDED_FOLDERS.append(unicode(a, 'utf-8'))
-    niceprint('a from EXCLUDED_FOLDERS:[{!s}]'
-              .format(a.encode('utf-8') \
-                      if isThisStringUnicode(a) \
-                      else a))
+for folder in inEXCLUDED_FOLDERS:
+    EXCLUDED_FOLDERS.append(unicode(folder, 'utf-8'))
+    if __debug__:
+        sys.stderr.write('[{!s}]:[{!s}][WARNING ]:[uploadr] '
+                         'folder from EXCLUDED_FOLDERS:[{!s}]\n'
+                         .format(nutime.strftime(UPLDRConstants.TimeFormat),
+                                 os.getpid(),
+                                 folder.encode('utf-8') \
+                                 if isThisStringUnicode(folder) \
+                                 else folder))
 del inEXCLUDED_FOLDERS
 
 IGNORED_REGEX = [re.compile(regex) for regex in \
@@ -570,10 +579,16 @@ class Uploadr:
                     #                     'TIMEOUT in.lock.acquire')
                     #     useDBLockReturn = False
                 except:
-                    logging.error('+++ #01 Caught an exception lock.acquire')
-                    niceprint('+++ #01 Caught an exception lock.acquire')
-                    logging.error(str(sys.exc_info()))
-                    niceprint(str(sys.exc_info()))
+                    reportError2(Caught=True,
+                                 CaughtPrefix='+++ ',
+                                 CaughtCode='#01',
+                                 CaughtMsg='Caught an exception lock.acquire',
+                                 NicePrint=True,
+                                 exceptSysInfo=True)                    
+                    # logging.error('+++ #01 Caught an exception lock.acquire')
+                    # niceprint('+++ #01 Caught an exception lock.acquire')
+                    # logging.error(str(sys.exc_info()))
+                    # niceprint(str(sys.exc_info()))
                     raise
                 logging.info('===Multiprocessing=== out.lock.acquire')
             else:
@@ -583,10 +598,16 @@ class Uploadr:
                     useDBthisLock.release()
                     useDBLockReturn = True
                 except:
-                    logging.error('+++ #02 Caught an exception lock.release')
-                    niceprint('+++ #02 Caught an exception lock.release')
-                    logging.error(str(sys.exc_info()))
-                    niceprint(str(sys.exc_info()))
+                    reportError2(Caught=True,
+                                 CaughtPrefix='+++ ',
+                                 CaughtCode='#02',
+                                 CaughtMsg='Caught an exception lock.release',
+                                 NicePrint=True,
+                                 exceptSysInfo=True)
+                    # logging.error('+++ #02 Caught an exception lock.release')
+                    # niceprint('+++ #02 Caught an exception lock.release')
+                    # logging.error(str(sys.exc_info()))
+                    # niceprint(str(sys.exc_info()))
                     raise
                 logging.info('===Multiprocessing=== out.lock.release')
 
@@ -1337,7 +1358,8 @@ class Uploadr:
                                             setName)
         niceprint('is_photo_already_uploaded:[{!s}] count:[{!s}]'
                   .format(isLoaded, isCount))
-
+        if isLoaded:
+            niceprint('##### ALREADY LOADED DO NOT PERFORM ANYTHING ELSE')
         success = False
         # For tracking bad response from search_photos
         TraceBackIndexError = False
@@ -1430,8 +1452,10 @@ class Uploadr:
 
                     # CODING: Requires Testing...
                     # Check if file is already loaded
-                    isLoaded, isCount = is_photo_already_uploaded(
-                                                        file_checksum)
+                    isLoaded, isCount = self.is_photo_already_uploaded(
+                                                        file,
+                                                        self.md5Checksum(file),
+                                                        setName)
                     niceprint('is_photo_already_uploaded:[{!s}] count:[{!s}]'
                               .format(isLoaded, isCount))
                     
@@ -1599,7 +1623,7 @@ class Uploadr:
                             logging.error('xxx #E10 Error: '
                                           'IndexError: search_result yields'
                                           'Index out of range.'
-                                          'Mannualy check file:[{!s}]'
+                                          'Manually check file:[{!s}]'
                                           'Continue with next image.'
                                           .format(file))
                             TraceBackIndexError = True
@@ -1783,10 +1807,18 @@ class Uploadr:
                                               fileMd5, last_modified,
                                               cur, con)
                 except lite.Error as e:
-                    logging.error('#DB20 A DB error occurred: [{!s}]'
-                                  .format(e.args[0]))
-                    niceprint('#DB20 A DB error occurred: [{!s}]'
-                              .format(e.args[0]))
+                    reportError2(Caught=True,
+                                 CaughtPrefix='+++ DB',
+                                 CaughtCode=20,
+                                 CaughtMsg='Error: UPDATE files '
+                                           'SET last_modified: [{!s}]'
+                                           .format(e.args[0]),
+                                 NicePrint=True)
+                    # logging.error('#DB20 A DB error occurred: [{!s}]'
+                    #               .format(e.args[0]))
+                    # niceprint('#DB20 A DB error occurred: [{!s}]'
+                    #           .format(e.args[0]))
+                    self.useDBLock(lock, False)
                     if (args.processes and args.processes > 0):
                         logging.debug('===Multiprocessing==='
                                       'lock.release (in Error)')
@@ -2889,28 +2921,21 @@ set0 = sets.find('photosets').findall('photoset')[0]
     def is_photo_already_uploaded(self, xfile, xchecksum, xsetName):
         """ is_photo_already_loaded
             
-            Searchs for image with tag:xchecksum, title and SetName.
+            Searchs for image with same:
+                title(file without extension)
+                tag:checksum
+                SetName.
             
             returnIsPhotoUploaded = True (already loaded)/False(not loaded)
             returnPhotoUploaded = Number of found Images
         """
-    # XXX
     # CODING: Logic
-    # search photos with tag...
-    # checksum if TITLE is the same.
-    # Confirm if setname is the same.
-    # IF so iter  isinstance the same.
-    #
-    # CODING: Sample code...
-    # def is_photo_already_uploaded(self, photo_name, photoset_name):
-    #     for ps in self.get_photoset_list(force=False)['photosets']['photoset']:
-    #         if ps['title']['_content'] == photoset_name:
-    #             for photo in self.get_photoset_photos(ps['id'],
-    #                             force=False)['photoset']['photo']:
-    #                 if photo['title'] == photo_name[:-4]:
-    #                     return True
-    #             return False
-    #     return False
+    #   Search photos with ta checksum
+    #   Verify if title is filename's (without extension)
+    #         not comaptible with  use the -i optionchecksum
+    #   Confirm if setname is the same.
+    #   THEN yes found loaded.
+    # Note: There could be more entries due to errors. To be checked manually
     
         global nuflickr
         returnIsPhotoUploaded = False
@@ -2949,9 +2974,10 @@ set0 = sets.find('photosets').findall('photoset')[0]
                               .format('None' \
                                       if searchIsUploaded is None \
                                       else self.isGood(searchIsUploaded)))
+                # CODING: how to indicate an error... different from False?
+                # Possibly raising an error?
                 return returnIsPhotoUploaded, returnPhotoUploaded
             
-        # CODING: Change from niceprint to logging.debug afterwards
         logging.debug('searchIsUploaded:')
         logging.debug(xml.etree.ElementTree.tostring(searchIsUploaded,
                                                      encoding='utf-8',
@@ -2959,31 +2985,33 @@ set0 = sets.find('photosets').findall('photoset')[0]
         
         returnPhotoUploaded = int(searchIsUploaded
                                   .find('photos').attrib['total'])
-        # CODING: Do I need to double check the SetNAme prior to go True on this?
-        returnIsPhotoUploaded = not (returnPhotoUploaded == 0)
 
-        xpath_filename, xtitle_filename = os.path.split(xfile)
-        xtitle_filename = os.path.splitext(xtitle_filename)[0]
-        
-        if returnPhotoUploaded >= 1:
-            logging.error('+++ #00 Found images with checksum:[{!s}] '
-                          'Count=[{!s}]'
-                          .format(xchecksum, returnPhotoUploaded))
-            niceprint('+++ #00 Found images with checksum:[{!s}] '
-                      'Count=[{!s}]'
-                      .format(xchecksum, returnPhotoUploaded))
-            # check titles
-            for p in searchIsUploaded.find('photos').findall('photo'):
-                logging.error('p.id=[{!s}] p.title=[{!s}] p.tags=[{!s}]'
-                              .format(p.attrib['id'],
-                                      p.attrib['tags'].encode('utf-8') \
-                                      if isThisStringUnicode(p.attrib['title']) \
-                                      else p.attrib['title'],
-                                      p.attrib['tags'].encode('utf-8') \
-                                      if isThisStringUnicode(p.attrib['tags']) \
-                                      else p.attrib['tags']))
+        if returnPhotoUploaded == 0:
+            returnIsPhotoUploaded = False
+        elif returnPhotoUploaded >= 1:
+            reportError2(Caught=True,
+                         CaughtPrefix='+++',
+                         CaughtMsg='Found images with checksum:[{!s}] '
+                                   'Count=[{!s}]'
+                                   .format(xchecksum, returnPhotoUploaded),
+                         NicePrint=True)
+            # Get title from filepath as filename without extension 
+            xpath_filename, xtitle_filename = os.path.split(xfile)
+            xtitle_filename = os.path.splitext(xtitle_filename)[0]
+            # Check Titles
+            for pic in searchIsUploaded.find('photos').findall('photo'):
+                if args.verbose is not None and args.verbose:
+                    niceprint(
+                        'pic.id=[{!s}] pic.title=[{!s}] pic.tags=[{!s}]'
+                        .format(pic.attrib['id'],
+                                pic.attrib['title'].encode('utf-8') \
+                                if isThisStringUnicode(pic.attrib['title']) \
+                                else pic.attrib['title'],
+                                pic.attrib['tags'].encode('utf-8') \
+                                if isThisStringUnicode(pic.attrib['tags']) \
+                                else pic.attrib['tags']))
 
-                # Print sets...
+                # Check SetNames to which this pic belongs to.
                 try:
                     resp = None
                     resp = nuflickr.photos.getAllContexts(
@@ -3016,15 +3044,16 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                                if resp is None \
                                                else self.isGood(resp)))
                         return returnIsPhotoUploaded, returnPhotoUploaded
-                
-                logging.debug('resp:')
-                logging.debug(xml.etree.ElementTree.tostring(resp,
-                                                             encoding='utf-8',
-                                                             method='xml'))                
-                for x in resp.findall('set'):
-                    logging.debug('x:')
+                    logging.debug('resp:')
                     logging.debug(xml.etree.ElementTree.tostring(
-                                                        x,
+                                                        resp,
+                                                        encoding='utf-8',
+                                                        method='xml'))                
+                
+                for setinlist in resp.findall('set'):
+                    logging.debug('setinlist:')
+                    logging.debug(xml.etree.ElementTree.tostring(
+                                                        setinlist,
                                                         encoding='utf-8',
                                                         method='xml'))
                     
@@ -3032,7 +3061,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                               'Check : Title:[{!s}] Set:[{!s}]\n'
                               'Flickr: Title:[{!s}] Set:[{!s}] Tags:[{!s}]'
                               .format(
-                                    p.attrib['id'],
+                                    pic.attrib['id'],
                                     xfile.encode('utf-8') \
                                     if isThisStringUnicode(xfile) \
                                     else xfile,
@@ -3042,34 +3071,26 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                     xsetName.encode('utf-8') \
                                     if isThisStringUnicode(xsetName) \
                                     else xsetName,
-                                    p.attrib['title'].encode('utf-8') \
-                                    if isThisStringUnicode(p.attrib['title']) \
-                                    else p.attrib['title'],                                    
-                                    x.attrib['title'].encode('utf-8') \
-                                    if isThisStringUnicode(x.attrib['title']) \
-                                    else x.attrib['title'],
-                                    p.attrib['tags'].encode('utf-8') \
-                                    if isThisStringUnicode(p.attrib['tags']) \
-                                    else p.attrib['tags']))
+                                    pic.attrib['title'].encode('utf-8') \
+                                    if isThisStringUnicode(
+                                                    pic.attrib['title']) \
+                                    else pic.attrib['title'],                                    
+                                    setinlist.attrib['title'].encode('utf-8')\
+                                    if isThisStringUnicode(
+                                                    setinlist.attrib['title'])\
+                                    else setinlist.attrib['title'],
+                                    pic.attrib['tags'].encode('utf-8') \
+                                    if isThisStringUnicode(
+                                                    pic.attrib['tags']) \
+                                    else pic.attrib['tags']))
                     
                     if ((xtitle_filename == p.attrib['title']) and 
                         (xsetName == x.attrib['title'])):
                         niceprint('##### IS PHOTO UPLOADED = TRUE')
                         returnIsPhotoUploaded = True
+                        return returnIsPhotoUploaded, returnPhotoUploaded
 
         return returnIsPhotoUploaded, returnPhotoUploaded
-
-        # CODING: Future case to list duplicated pics!!!
-        # Althout nicepring(xml.etree) already lists them 
-        # if returnPhotoUploaded == 0:
-        #     returnIsPhotoUploaded = False
-        # elif returnPhotoUploaded == 1:
-        #     returnIsPhotoUploaded = True
-        # elif returnPhotoUploaded > 1:
-        #     returnIsPhotoUploaded = True
-        # 
-        # return returnIsPhotoUploaded, returnPhotoUploaded
-            
 # <?xml version="1.0" encoding="utf-8" ?>
 # <rsp stat="ok">
 #   <photos page="1" pages="1" perpage="100" total="2">
