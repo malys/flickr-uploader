@@ -100,6 +100,7 @@
         *****   Section informative
         ===     Multiprocessing related
         +++     Exceptions handling related
+        +++ DB  Database Exceptions handling related
         xxx     Error related
 
     * As far as my testing goes :) the following errors are handled:
@@ -252,6 +253,67 @@ def niceprint(s):
             'PRINT',
             'uploadr',
             s.encode('utf-8') if isThisStringUnicode(s) else s))
+
+#--------------------------------------------------------------------------
+# reportError2
+#
+def reportError2(Caught=False, CaughtPrefix='', CaughtCode=0, CaughtMsg='',
+                 NicePrint=False,
+                 exceptUse=False, exceptCode=0, exceptMsg='',
+                 exceptSysInfo=''):
+    """ reportError
+
+      Caught = True/False
+      CaughtPrefix
+        ===     Multiprocessing related
+        +++     Exceptions handling related
+        +++ DB  Database Exceptions handling related
+        xxx     Error related
+      CaughtCode = 10
+      CaughtMsg = 'Caught flickrapi exception'/'DB Error INSERT'
+      NicePrint = True/False
+      exceptUse = True/False
+      exceptCode = ex.code
+      exceptMsg = ex
+      exceptSysInfo = True/False
+    """
+    if Caught is not None and Caught:
+        logging.error('{!s}#{!s}: {!s}'.format(CaughtPrefix,
+                                               CaughtCode,
+                                               CaughtMsg))
+        if NicePrint is not None and NicePrint:
+            niceprint('{!s}#{!s}: {!s}'.format(CaughtPrefix,
+                                               CaughtCode,
+                                               CaughtMsg))
+    if exceptUse is not None and exceptUse:
+        logging.error('Error code: [{!s}]'.format(exceptCode))
+        logging.error('Error code: [{!s}]'.format(exceptMsg))
+        if NicePrint is not None and NicePrint:
+            niceprint('Error code: [{!s}]'.format(exceptCode))
+            niceprint('Error code: [{!s}]'.format(exceptMsg))
+    if exceptSysInfo is not None and exceptSysInfo:
+        logging.error(str(sys.exc_info()))
+        if NicePrint is not None and NicePrint:
+            niceprint(str(sys.exc_info()))
+            
+    # # CODING: Examples
+    # reportError2(Caught=True,
+    #                    CaughtPrefix='+++',
+    #                    CaughtCode=2000,
+    #                    CaughtMsg='Caught flickrapi exception',
+    #                    NicePrint=True,
+    #                    exceptUse=True,
+    #                    exceptCode=2001,
+    #                    exceptMsg='ex')
+    # reportError2(Caught=True,
+    #              CaughtPrefix='+++ DB',
+    #              CaughtCode=3000,
+    #              CaughtMsg='DB Error on INSERT',
+    #              NicePrint=True)
+    # reportError2(Caught=True,
+    #                    CaughtCode=4444,
+    #                    CaughtMsg='One text')
+    # reportError2(exceptSysInfo='SysInfo')
 
 #==============================================================================
 # Read Config from config.ini file
@@ -729,9 +791,6 @@ class Uploadr:
 
         niceprint('*****Removing deleted files*****')
 
-        # XXX MSP Changed from self to flick
-        # if (not self.checkToken()):
-        #     self.authenticate()
         if (not flick.checkToken()):
             flick.authenticate()
         con = lite.connect(DB_PATH)
@@ -1234,7 +1293,7 @@ class Uploadr:
     # uploads a file into flickr
     #   lock = parameter for multiprocessing control of access to DB.
     #          if args.processes = 0 then lock can be None as it is not used
-    #   file = fie to be uploaded
+    #   file = file to be uploaded
     #
     def uploadFile(self, lock, file):
         """ uploadFile
@@ -1263,10 +1322,19 @@ class Uploadr:
                                             file.encode('utf-8') \
                                             if isThisStringUnicode(file) \
                                             else file))
+            
+        if FULL_SET_NAME:
+            setName = os.path.relpath(os.path.dirname(file),
+                                      unicode(FILES_DIR, 'utf-8'))
+        else:
+            head, setName = os.path.split(os.path.dirname(file))
+
         # CODING: EXTREME Testing
         # Check if file is already loaded
         isLoaded, isCount = self.is_photo_already_uploaded(
-                                            self.md5Checksum(file))
+                                            file,
+                                            self.md5Checksum(file),
+                                            setName)
         niceprint('is_photo_already_uploaded:[{!s}] count:[{!s}]'
                   .format(isLoaded, isCount))
 
@@ -1308,14 +1376,6 @@ class Uploadr:
                                                 file.encode('utf-8') \
                                                 if isThisStringUnicode(file) \
                                                 else file))
-
-                if FULL_SET_NAME:
-                    setName = os.path.relpath(os.path.dirname(file),
-                                              unicode(FILES_DIR, 'utf-8'))
-                else:
-                    head, setName = os.path.split(os.path.dirname(file))
-
-                if (args.verbose):
                     niceprint('On Album:[{!s}]...'.format(
                                             setName.encode('utf-8') \
                                             if isThisStringUnicode(setName) \
@@ -1649,6 +1709,7 @@ class Uploadr:
                     else:
                         success = False
                 except flickrapi.exceptions.FlickrError as ex:
+
                     logging.error('+++ #20 Caught flickrapi exception')
                     niceprint('+++ #20 Caught flickrapi exception')
                     logging.error('Error code: [{!s}]'.format(ex.code))
@@ -2143,36 +2204,6 @@ class Uploadr:
             print("ReportError: " + str(res['code'] + " " + res['message']))
         except:
             print("ReportError: " + str(res))
-
-        # CODING enhance this function to
-        #   Caught = True/False
-        #   CaughtCode
-                # 71
-        #   CaughtMsg
-                # Caught flickrapi exception
-        #   NicePrint = True/False
-        #   DBCaught = True/False
-        #   DBCaughtCode
-        #   DBCaughtMsg
-        #   exceptCode
-        #   exceptMsg
-        #   exceptSysInfo = True/False
-        #
-        # logging.error('+++ #{!s}: {!s}'.format(CaughtCode, CaughtMsg) \
-        #               if Caught is not None and Caugth \
-        #               else '')
-        # niceprint('+++ #71 Caught flickrapi exception')
-        # niceprint('Error code: [{!s}]'.format(ex.code))
-        # niceprint('Error code: [{!s}]'.format(ex))
-        # logging.error(str(sys.exc_info()))
-        # niceprint(str(sys.exc_info()))
-        #     
-        #     logging.error('+++ #71 Caught flickrapi exception')
-        #     niceprint('+++ #71 Caught flickrapi exception')
-        #     niceprint('Error code: [{!s}]'.format(ex.code))
-        #     niceprint('Error code: [{!s}]'.format(ex))
-        #     logging.error(str(sys.exc_info()))
-        #     niceprint(str(sys.exc_info()))
 
     #--------------------------------------------------------------------------
     # run
@@ -2855,16 +2886,19 @@ set0 = sets.find('photosets').findall('photoset')[0]
     # Checks if image is already loaded with tag:checksum
     # (calls Flickr photos.search)
     #
-    def is_photo_already_uploaded(self, checksum):
-        """
-            is_photo_already_loaded
-            Searchs for image with on tag:checksum
+    def is_photo_already_uploaded(self, xfile, xchecksum, xsetName):
+        """ is_photo_already_loaded
             
-            returns True (already loaded)/False(not loaded) and count of found pics
+            Searchs for image with tag:xchecksum, title and SetName.
+            
+            returnIsPhotoUploaded = True (already loaded)/False(not loaded)
+            returnPhotoUploaded = Number of found Images
         """
+    # XXX
     # CODING: Logic
     # search photos with tag...
     # checksum if TITLE is the same.
+    # Confirm if setname is the same.
     # IF so iter  isinstance the same.
     #
     # CODING: Sample code...
@@ -2877,56 +2911,152 @@ set0 = sets.find('photosets').findall('photoset')[0]
     #                     return True
     #             return False
     #     return False
+    
         global nuflickr
         returnIsPhotoUploaded = False
         returnPhotoUploaded = 0
 
-        logging.info('Is Already Uploaded:[checksum:{!s}]'.format(checksum))
-
-        searchIsUploaded = nuflickr.photos.search(user_id="me",
-                                                  tags='checksum:{}'
-                                                       .format(checksum),
-                                                  extras='tags')
-        if not self.isGood(searchIsUploaded):
-            logging.error('searchIsUploadedOK:[{!s}]'.format('False'))
-            return returnIsPhotoUploaded, returnPhotoUploaded
-            # raise IOError(searchIsUploaded)
-
-        # CODING: Change from nicepring to logging.debug afterwards
+        logging.info('Is Already Uploaded:[checksum:{!s}]'.format(xchecksum))
         
-        niceprint('Search Results SearchResp:')
-        niceprint(xml.etree.ElementTree.tostring(
-                                            searchIsUploaded,
-                                            encoding='utf-8',
-                                            method='xml'))
+        try:
+            searchIsUploaded = None
+            searchIsUploaded = nuflickr.photos.search(user_id="me",
+                                                      tags='checksum:{}'
+                                                           .format(xchecksum),
+                                                      extras='tags')
+        except flickrapi.exceptions.FlickrError as ex:
+            reportError2(Caught=True,
+                         CaughtPrefix='+++',
+                         CaughtCode=110,
+                         CaughtMsg='Error in photos.search',
+                         exceptUse=True,
+                         exceptCode=ex.code,
+                         exceptMsg=ex) 
+        except (IOError, httplib.HTTPException):
+            reportError2(Caught=True,
+                         CaughtPrefix='+++',
+                         CaughtCode=111,
+                         CaughtMsg='Caught IO/HTTP Error in photos.search')
+        except:
+            reportError2(Caught=True,
+                         CaughtPrefix='+++',
+                         CaughtCode=112,
+                         CaughtMsg='Caught exception in photos.search',
+                         exceptSysInfo=True)
+        finally:
+            if searchIsUploaded is None or not self.isGood(searchIsUploaded):
+                logging.debug('searchIsUploadedOK:[{!s}]'
+                              .format('None' \
+                                      if searchIsUploaded is None \
+                                      else self.isGood(searchIsUploaded)))
+                return returnIsPhotoUploaded, returnPhotoUploaded
+            
+        # CODING: Change from niceprint to logging.debug afterwards
+        logging.debug('searchIsUploaded:')
+        logging.debug(xml.etree.ElementTree.tostring(searchIsUploaded,
+                                                     encoding='utf-8',
+                                                     method='xml'))
         
         returnPhotoUploaded = int(searchIsUploaded
                                   .find('photos').attrib['total'])
+        # CODING: Do I need to double check the SetNAme prior to go True on this?
         returnIsPhotoUploaded = not (returnPhotoUploaded == 0)
+
+        xpath_filename, xtitle_filename = os.path.split(xfile)
+        xtitle_filename = os.path.splitext(xtitle_filename)[0]
         
-        if returnPhotoUploaded > 1:
-            logging.error('+++ #00 Duplicated images with checksum:[{!s}] '
+        if returnPhotoUploaded >= 1:
+            logging.error('+++ #00 Found images with checksum:[{!s}] '
                           'Count=[{!s}]'
-                          .format(checksum, returnPhotoUploaded))
-            niceprint('+++ #00 Duplicated images with checksum:[{!s}] '
+                          .format(xchecksum, returnPhotoUploaded))
+            niceprint('+++ #00 Found images with checksum:[{!s}] '
                       'Count=[{!s}]'
-                      .format(checksum, returnPhotoUploaded))
+                      .format(xchecksum, returnPhotoUploaded))
             # check titles
             for p in searchIsUploaded.find('photos').findall('photo'):
-                niceprint('p.id=[{!s}] p.title=[{!s}]'
-                          .format(p.attrib['id'],
-                                  p.attrib['title'],
-                                  p.attrib['tags']))
-                                  
+                logging.error('p.id=[{!s}] p.title=[{!s}] p.tags=[{!s}]'
+                              .format(p.attrib['id'],
+                                      p.attrib['tags'].encode('utf-8') \
+                                      if isThisStringUnicode(p.attrib['title']) \
+                                      else p.attrib['title'],
+                                      p.attrib['tags'].encode('utf-8') \
+                                      if isThisStringUnicode(p.attrib['tags']) \
+                                      else p.attrib['tags']))
+
                 # Print sets...
-                resp = nuflickr.photos.getAllContexts(photo_id=p.attrib['id'])
-                if not self.isGood(resp):
-                    logging.error('getAllContexts:[{!s}]'.format('False'))
-                else:
-                    for x in resp.findall('set'):
-                        niceprint('Set title:[{!s}]'
-                                  .format(x.atttrib['title']))
-        
+                try:
+                    resp = None
+                    resp = nuflickr.photos.getAllContexts(
+                                                    photo_id=p.attrib['id'])
+                except flickrapi.exceptions.FlickrError as ex:
+                    reportError2(Caught=True,
+                                 CaughtPrefix='+++',
+                                 CaughtCode=115,
+                                 CaughtMsg='Error in getAllContexts',
+                                 exceptUse=True,
+                                 exceptCode=ex.code,
+                                 exceptMsg=ex) 
+                except (IOError, httplib.HTTPException):
+                    reportError2(Caught=True,
+                                 CaughtPrefix='+++',
+                                 CaughtCode=115,
+                                 CaughtMsg='Caught IO/HTTP Error in '
+                                           'getAllContexts')
+                except:
+                    reportError2(Caught=True,
+                                 CaughtPrefix='+++',
+                                 CaughtCode=117,
+                                 CaughtMsg='Caught exception in '
+                                           'getAllContexts',
+                                 exceptSysInfo=True)
+                finally:
+                    if resp is None or not self.isGood(resp):
+                        logging.error('respOK:[{!s}]'
+                                      .format('None' \
+                                               if resp is None \
+                                               else self.isGood(resp)))
+                        return returnIsPhotoUploaded, returnPhotoUploaded
+                
+                logging.debug('resp:')
+                logging.debug(xml.etree.ElementTree.tostring(resp,
+                                                             encoding='utf-8',
+                                                             method='xml'))                
+                for x in resp.findall('set'):
+                    logging.debug('x:')
+                    logging.debug(xml.etree.ElementTree.tostring(
+                                                        x,
+                                                        encoding='utf-8',
+                                                        method='xml'))
+                    
+                    niceprint('Check : id=[{!s}] File=[{!s}]\n'
+                              'Check : Title:[{!s}] Set:[{!s}]\n'
+                              'Flickr: Title:[{!s}] Set:[{!s}] Tags:[{!s}]'
+                              .format(
+                                    p.attrib['id'],
+                                    xfile.encode('utf-8') \
+                                    if isThisStringUnicode(xfile) \
+                                    else xfile,
+                                    xtitle_filename.encode('utf-8') \
+                                    if isThisStringUnicode(xtitle_filename) \
+                                    else xtitle_filename,
+                                    xsetName.encode('utf-8') \
+                                    if isThisStringUnicode(xsetName) \
+                                    else xsetName,
+                                    p.attrib['title'].encode('utf-8') \
+                                    if isThisStringUnicode(p.attrib['title']) \
+                                    else p.attrib['title'],                                    
+                                    x.attrib['title'].encode('utf-8') \
+                                    if isThisStringUnicode(x.attrib['title']) \
+                                    else x.attrib['title'],
+                                    p.attrib['tags'].encode('utf-8') \
+                                    if isThisStringUnicode(p.attrib['tags']) \
+                                    else p.attrib['tags']))
+                    
+                    if ((xtitle_filename == p.attrib['title']) and 
+                        (xsetName == x.attrib['title'])):
+                        niceprint('##### IS PHOTO UPLOADED = TRUE')
+                        returnIsPhotoUploaded = True
+
         return returnIsPhotoUploaded, returnPhotoUploaded
 
         # CODING: Future case to list duplicated pics!!!
@@ -3135,8 +3265,8 @@ set0 = sets.find('photosets').findall('photoset')[0]
                 niceprint('Sleep 10 and try to set date again.')
                 nutime.sleep(10)
             except:
-                logging.error('+++ #74 Caught IOError, HTTP expcetion')
-                niceprint('+++ #74 Caught IOError, HTTP expcetion')
+                logging.error('+++ #74 Caught expcetion')
+                niceprint('+++ #74 Caught expcetion')
                 logging.error(str(sys.exc_info()))
                 niceprint(str(sys.exc_info()))
                 niceprint('Sleep 10 and try to set date again.')
@@ -3149,12 +3279,23 @@ set0 = sets.find('photosets').findall('photoset')[0]
         return respDate
 
     #--------------------------------------------------------------------------
-    # print_stat
+    # searchForDuplicates
     #
     # List Local pics, loaded pics into Flickr, pics not in sets on Flickr
     #
-    def print_stat(self, InitialFoundFiles):
-        """ print_stat
+    # CODING: to be developed. Consider making allMedia (coming from
+    # grabnewfiles from  uploadr) a global variabl to pass onto this function
+    def searchForDuplicates(self):
+
+        pass
+
+    #--------------------------------------------------------------------------
+    # printStat
+    #
+    # List Local pics, loaded pics into Flickr, pics not in sets on Flickr
+    #
+    def printStat(self, InitialFoundFiles):
+        """ printStat
         Shows Total photos and Photos Not in Sets on Flickr
         InitialFoundFiles = shows the Found files prior to processing
         """
@@ -3258,8 +3399,6 @@ set0 = sets.find('photosets').findall('photoset')[0]
 #==============================================================================
 # Main code
 #
-# nutime = time
-
 niceprint('--------- (V{!s}) Start time: {!s} ---------'
           .format(UPLDRConstants.Version,
                   nutime.strftime(UPLDRConstants.TimeFormat)))
@@ -3285,10 +3424,10 @@ if __name__ == "__main__":
                              'See also LOGGING_LEVEL value in INI file.')
     parser.add_argument('-x', '--verbose-progress', action='store_true',
                         help='Provides progress indicator on each upload. '
-                             'Normally used in conjunction with -v option'
+                             'Normally used in conjunction with -v option. '
                              'See also LOGGING_LEVEL value in INI file.')
     parser.add_argument('-n', '--dry-run', action='store_true',
-                        help='Dry run')
+                        help='Dry run.')
     parser.add_argument('-i', '--title', action='store',
                         help='Title for uploaded files. '
                              'Overwrites title from INI config file. '
@@ -3310,7 +3449,7 @@ if __name__ == "__main__":
                         help='Remove previously uploaded files, that are '
                              'now being ignored due to change of the INI '
                              'file configuration EXCLUDED_FOLDERS')
-    # used in print_stat function
+    # used in printStat function
     parser.add_argument('-l', '--list-photos-not-in-set',
                         metavar='N', type=int,
                         help='List as many as N photos not in set. '
@@ -3334,6 +3473,10 @@ if __name__ == "__main__":
                              'uploading attempt for bad files. Bad files are '
                              'files in your Library that flickr does not '
                              'recognize (Error 5). Check also option -b. ')
+    # finds duplicated images (based on checksum, titlename, setName) in Flickr
+    parser.add_argument('-s', '--search-for-duplicates', action='store_true',
+                        help='Lists duplicated files: same checksum, '
+                             'same title, list SetName (if different). ')
 
     # parse arguments
     args = parser.parse_args()
@@ -3380,18 +3523,21 @@ if __name__ == "__main__":
         niceprint("Checking if token is available... if not will authenticate")
         if not flick.checkToken():
             flick.authenticate()
-
+        
         flick.removeUselessSetsTable()
         flick.getFlickrSets()
         flick.convertRawFiles()
         flick.upload()
-
         flick.removeDeletedMedia()
+        
+        if args.search_for_duplicates:
+            flick.searchForDuplicates()
+
         if args.remove_ignored:
             flick.removeIgnoredMedia()
 
         flick.createSets()
-        flick.print_stat(nuMediacount)
+        flick.printStat(nuMediacount)
 
 niceprint('--------- (V{!s}) End time: {!s} ---------'
           .format(UPLDRConstants.Version,
