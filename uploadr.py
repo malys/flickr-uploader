@@ -365,7 +365,7 @@ inEXCLUDED_FOLDERS = eval(config.get('Config', 'EXCLUDED_FOLDERS'))
 EXCLUDED_FOLDERS = []
 for folder in inEXCLUDED_FOLDERS:
     EXCLUDED_FOLDERS.append(unicode(folder, 'utf-8'))
-    if __debug__:
+    if LOGGING_LEVEL <= logging.INFO:
         sys.stderr.write('[{!s}]:[{!s}][WARNING ]:[uploadr] '
                          'folder from EXCLUDED_FOLDERS:[{!s}]\n'
                          .format(nutime.strftime(UPLDRConstants.TimeFormat),
@@ -581,7 +581,7 @@ class Uploadr:
                 except:
                     reportError2(Caught=True,
                                  CaughtPrefix='+++ ',
-                                 CaughtCode='#01',
+                                 CaughtCode='001',
                                  CaughtMsg='Caught an exception lock.acquire',
                                  NicePrint=True,
                                  exceptSysInfo=True)                    
@@ -600,7 +600,7 @@ class Uploadr:
                 except:
                     reportError2(Caught=True,
                                  CaughtPrefix='+++ ',
-                                 CaughtCode='#02',
+                                 CaughtCode='002',
                                  CaughtMsg='Caught an exception lock.release',
                                  NicePrint=True,
                                  exceptSysInfo=True)
@@ -1026,7 +1026,8 @@ class Uploadr:
 
                 if (args.verbose):
                     niceprint('===Multiprocessing=== pool joined!'
-                              'What happens to nulockDB is None:[{!s}]?'
+                              ' What happens to nulockDB is None:[{!s}]?'
+                              ' It seems not, it still has a value!'
                               .format(nulockDB is None))
 
                 # Show number of total files processed
@@ -1350,16 +1351,6 @@ class Uploadr:
         else:
             head, setName = os.path.split(os.path.dirname(file))
 
-        # CODING: EXTREME Testing
-        # Check if file is already loaded
-        isLoaded, isCount = self.is_photo_already_uploaded(
-                                            file,
-                                            self.md5Checksum(file),
-                                            setName)
-        niceprint('is_photo_already_uploaded:[{!s}] count:[{!s}]'
-                  .format(isLoaded, isCount))
-        if isLoaded:
-            niceprint('##### ALREADY LOADED DO NOT PERFORM ANYTHING ELSE')
         success = False
         # For tracking bad response from search_photos
         TraceBackIndexError = False
@@ -1426,7 +1417,7 @@ class Uploadr:
                     # set it to filename OR do not load it up in order to
                     # allow flickr.com itself to set it up
                     # NOTE: an empty title forces flickrapi/auth.py
-                    # code like 280 to encode into utf-8 the filename
+                    # code at line 280 to encode into utf-8 the filename
                     # this causes an error
                     # UnicodeDecodeError: 'ascii' codec can't decode byte 0xc3
                     # in position 11: ordinal not in range(128)
@@ -1458,6 +1449,10 @@ class Uploadr:
                                                         setName)
                     niceprint('is_photo_already_uploaded:[{!s}] count:[{!s}]'
                               .format(isLoaded, isCount))
+
+                    if isLoaded:
+                        niceprint('##### ALREADY LOADED '
+                                  'DO NOT PERFORM ANYTHING ELSE')
                     
                     # Perform actual upload of the file
                     # CODING: res not being used!
@@ -1809,7 +1804,7 @@ class Uploadr:
                 except lite.Error as e:
                     reportError2(Caught=True,
                                  CaughtPrefix='+++ DB',
-                                 CaughtCode=20,
+                                 CaughtCode='120',
                                  CaughtMsg='Error: UPDATE files '
                                            'SET last_modified: [{!s}]'
                                            .format(e.args[0]),
@@ -2159,10 +2154,25 @@ class Uploadr:
             else:
                 if (res['code'] == 1):
                     # File already removed from Flicker
-                    cur.execute("DELETE FROM files WHERE files_id = ?",
-                                (file[0],))
+                    try:
+                        cur.execute("DELETE FROM files WHERE files_id = ?",
+                                    (file[0],))
+                    except lite.Error as e:
+                        reportError2(Caught=True,
+                                     CaughtPrefix='+++ DB',
+                                     CaughtCode='200',
+                                     CaughtMsg='Error: DELETE FROM files',
+                                     NicePrint=True)
                 else:
-                    self.reportError(res)
+                    # self.reportError(res)
+                    reportError2(exceptUse=False,
+                                 exceptCode=res['code'] \
+                                            if 'code' in res \
+                                            else res,
+                                 exceptMsg=res['message'] \
+                                            if 'message' in res \
+                                            else res,
+                                 NicePrint=True)
         except:
             # If you get 'attempt to write a readonly database', set 'admin'
             # as owner of the DB file (fickerdb) and 'users' as group
@@ -2228,14 +2238,15 @@ class Uploadr:
     #--------------------------------------------------------------------------
     # reportError
     #
-    def reportError(self, res):
-        """ reportError
-        """
-        
-        try:
-            print("ReportError: " + str(res['code'] + " " + res['message']))
-        except:
-            print("ReportError: " + str(res))
+    # CODING: To be removed...
+    # def reportError(self, res):
+    #     """ reportError
+    #     """
+    #     
+    #     try:
+    #         print("ReportError: " + str(res['code'] + " " + res['message']))
+    #     except:
+    #         print("ReportError: " + str(res))
 
     #--------------------------------------------------------------------------
     # run
@@ -2387,8 +2398,16 @@ class Uploadr:
                     cur.execute('UPDATE files SET set_id = ? '
                                 'WHERE files_id = ?', (setId, file[0]))
                 else:
-                    self.reportError(res)
-
+                    # self.reportError(res)
+                    reportError2(exceptUse=False,
+                                 exceptCode=res['code'] \
+                                            if 'code' in res \
+                                            else res,
+                                 exceptMsg=res['message'] \
+                                            if 'message' in res \
+                                            else res,
+                                 NicePrint=True)
+                    
         except flickrapi.exceptions.FlickrError as ex:
             logging.error('+++ #50 Caught flickrapi exception')
             niceprint('+++ #50 Caught flickrapi exception')
@@ -2481,7 +2500,15 @@ class Uploadr:
                                                     createResp,
                                                     encoding='utf-8',
                                                     method='xml'))
-                self.reportError(createResp)
+                # self.reportError(createResp)
+                reportError2(exceptUse=False,
+                             exceptCode=createResp['code'] \
+                                        if 'code' in createResp \
+                                        else createResp,
+                             exceptMsg=createResp['message'] \
+                                       if 'message' in createResp \
+                                       else createResp,
+                             NicePrint=True)                
 
         except flickrapi.exceptions.FlickrError as ex:
             logging.error('+++ #70 Caught flickrapi exception')
@@ -2897,7 +2924,15 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                     sets,
                                     encoding='utf-8',
                                     method='xml'))
-                self.reportError(sets)
+                # self.reportError(sets)
+                reportError2(exceptUse=False,
+                             exceptCode=sets['code'] \
+                                        if 'code' in sets \
+                                        else sets,
+                             exceptMsg=sets['message'] \
+                                       if 'message' in sets \
+                                       else sets,
+                             NicePrint=True)                
 
         except flickrapi.exceptions.FlickrError as ex:
             logging.error('+++ #71 Caught flickrapi exception')
@@ -2917,7 +2952,12 @@ set0 = sets.find('photosets').findall('photoset')[0]
     #
     # Checks if image is already loaded with tag:checksum
     # (calls Flickr photos.search)
-    #
+    # if checksum, title, setName, Count=0 THEN NOT EXISTS => UPLOAD + INSERT
+    # if checksum, title, setName, Count=1 THEN EXISTS => PASS
+    # if checksum, title, other setName, Count=1 THEN NOT EXISTS => UPLOAD + INSERT
+    # if checksum, title, empty setName, Count=1 THEN ASSUME EXISTS => ASSIGN to SETNAME + INSERT/UPLOAD
+    # if checksum, title, setName BUT ALSO checksum, title, other setName => ??
+    # if checksum, title, setName BUT ALSO checksum, title, empty setName => ??
     def is_photo_already_uploaded(self, xfile, xchecksum, xsetName):
         """ is_photo_already_loaded
             
@@ -2952,7 +2992,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
         except flickrapi.exceptions.FlickrError as ex:
             reportError2(Caught=True,
                          CaughtPrefix='+++',
-                         CaughtCode=110,
+                         CaughtCode='110',
                          CaughtMsg='Error in photos.search',
                          exceptUse=True,
                          exceptCode=ex.code,
@@ -2960,12 +3000,12 @@ set0 = sets.find('photosets').findall('photoset')[0]
         except (IOError, httplib.HTTPException):
             reportError2(Caught=True,
                          CaughtPrefix='+++',
-                         CaughtCode=111,
+                         CaughtCode='111',
                          CaughtMsg='Caught IO/HTTP Error in photos.search')
         except:
             reportError2(Caught=True,
                          CaughtPrefix='+++',
-                         CaughtCode=112,
+                         CaughtCode='112',
                          CaughtMsg='Caught exception in photos.search',
                          exceptSysInfo=True)
         finally:
@@ -2991,6 +3031,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
         elif returnPhotoUploaded >= 1:
             reportError2(Caught=True,
                          CaughtPrefix='+++',
+                         CaughtCode='113',
                          CaughtMsg='Found images with checksum:[{!s}] '
                                    'Count=[{!s}]'
                                    .format(xchecksum, returnPhotoUploaded),
@@ -3015,7 +3056,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                 try:
                     resp = None
                     resp = nuflickr.photos.getAllContexts(
-                                                    photo_id=p.attrib['id'])
+                                                    photo_id=pic.attrib['id'])
                 except flickrapi.exceptions.FlickrError as ex:
                     reportError2(Caught=True,
                                  CaughtPrefix='+++',
@@ -3027,7 +3068,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                 except (IOError, httplib.HTTPException):
                     reportError2(Caught=True,
                                  CaughtPrefix='+++',
-                                 CaughtCode=115,
+                                 CaughtCode=116,
                                  CaughtMsg='Caught IO/HTTP Error in '
                                            'getAllContexts')
                 except:
@@ -3084,9 +3125,10 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                                     pic.attrib['tags']) \
                                     else pic.attrib['tags']))
                     
-                    if ((xtitle_filename == p.attrib['title']) and 
-                        (xsetName == x.attrib['title'])):
+                    if ((xtitle_filename == pic.attrib['title']) and 
+                        (xsetName == setinlist.attrib['title'])):
                         niceprint('##### IS PHOTO UPLOADED = TRUE')
+                        logging.error('##### IS PHOTO UPLOADED = TRUE')
                         returnIsPhotoUploaded = True
                         return returnIsPhotoUploaded, returnPhotoUploaded
 
