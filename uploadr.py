@@ -1476,46 +1476,28 @@ class Uploadr:
                                                 MAX_UPLOAD_ATTEMPTS))
 
                             # Upload file to Flickr
-                            if FLICKR["title"] == "":
-                                # replace commas from tags and checksum tags
-                                # to avoid tags conflicts
-                                uploadResp = nuflickr.upload(
-                                        filename=file,
-                                        fileobj=FileWithCallback(file,
-                                                                 callback),
-                                        title=title_filename,
-                                        description=str(FLICKR["description"]),
-                                        tags='{} checksum:{} {}'
-                                             .format(
-                                                    FLICKR["tags"],
-                                                    file_checksum,
-                                                    args.tags \
-                                                    if args.tags \
-                                                    else ''
-                                                    ).replace(',', ''),
-                                        is_public=str(FLICKR["is_public"]),
-                                        is_family=str(FLICKR["is_family"]),
-                                        is_friend=str(FLICKR["is_friend"])
-                                        )
-                            else:
-                                uploadResp = nuflickr.upload(
-                                        filename=file,
-                                        fileobj=FileWithCallback(file,
-                                                                 callback),
-                                        title=str(FLICKR["title"]),
-                                        description=str(FLICKR["description"]),
-                                        tags='{} checksum:{} {}'
-                                             .format(
-                                                    FLICKR["tags"],
-                                                    file_checksum,
-                                                    args.tags \
-                                                    if args.tags \
-                                                    else ''
-                                                    ).replace(',', ''),
-                                        is_public=str(FLICKR["is_public"]),
-                                        is_family=str(FLICKR["is_family"]),
-                                        is_friend=str(FLICKR["is_friend"])
-                                        )
+                            # replace commas from tags and checksum tags
+                            # to avoid tags conflicts
+                            uploadResp = nuflickr.upload(
+                                    filename=file,
+                                    fileobj=FileWithCallback(file,
+                                                             callback),
+                                    title=title_filename \
+                                          if FLICKR["title"] == "" \
+                                          else str(FLICKR["title"]),
+                                    description=str(FLICKR["description"]),
+                                    tags='{} checksum:{} {}'
+                                         .format(
+                                                FLICKR["tags"],
+                                                file_checksum,
+                                                args.tags \
+                                                if args.tags \
+                                                else ''
+                                                ).replace(',', ''),
+                                    is_public=str(FLICKR["is_public"]),
+                                    is_family=str(FLICKR["is_family"]),
+                                    is_friend=str(FLICKR["is_friend"])
+                                    )
 
                             logging.info('uploadResp: ')
                             logging.info(xml.etree.ElementTree.tostring(
@@ -3605,3 +3587,4 @@ if __name__ == "__main__":
 niceprint('--------- (V{!s}) End time: {!s} ---------'
           .format(UPLDRConstants.Version,
                   nutime.strftime(UPLDRConstants.TimeFormat)))
+sys.stderr.write('--------- ' + 'End: ' + ' ---------\n')
