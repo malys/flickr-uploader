@@ -11,6 +11,8 @@
     Some giberish. Please ignore!
     -----------------------------
     Area for my personal notes on on-going work! Please ignore!
+    * Row 1620 on upload...
+            # CODING: NEed to check for flickrapi exceptions also.
     * Change code to inse
     * Search and eliminate: # CODING check line above and remove next line
     * Have to check if actually self.useDBLock dos the trick or not
@@ -1615,6 +1617,7 @@ class Uploadr:
                             # Successful upload. Break attempts cycle
                             break
 
+                        # CODING: NEed to check for flickrapi exceptions also.
                         # Exceptions for flickr.upload function call...
                         except (IOError, httplib.HTTPException):
                             reportError2(Caught=True,
