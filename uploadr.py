@@ -1488,6 +1488,7 @@ class Uploadr:
                                             if isThisStringUnicode(setName) \
                                             else setName))
                 try:
+                    # CODING: Is This sequence/assignment to photo being used?
                     if isThisStringUnicode(file):
                         photo = ('photo', file.encode('utf-8'),
                                  open(file, 'rb').read())
@@ -1870,6 +1871,7 @@ class Uploadr:
         con             = current DB connection
         """
 
+        # CODING: Flickr does not allow to replace videos.
         global nuflickr
 
         if (args.dry_run is True):
@@ -1887,18 +1889,17 @@ class Uploadr:
 
         success = False
         try:
-            if isThisStringUnicode(file):
-                photo = ('photo',
-                         file.encode('utf-8'),
-                         open(file, 'rb').read())
-            else:
-                photo = ('photo', file, open(file, 'rb').read())
-
-            res = None
-            res_add_tag = None
-            res_get_info = None
-            replaceResp = None
-
+            # photo would be a FileObj.
+            # nuflickr.replace accepts both a filename and a file object.
+            # when using filenames wiht unicode characters
+            #    - the flickrapi seems to fail with filename
+            #    - will try with FileObj and filename='dummy'
+            photo = open(file.encode('utf-8'), 'rb')\
+                    if isThisStringUnicode(file)\
+                    else open(file, 'rb')
+            logging.debug('photo:[{!s}] type(photo):[{!s}]'
+                          .format(photo, type(photo)))
+            
             for x in range(0, MAX_UPLOAD_ATTEMPTS):
                 res = None
                 res_add_tag = None
@@ -1915,11 +1916,17 @@ class Uploadr:
                                         x,
                                         MAX_UPLOAD_ATTEMPTS))
 
+                    # Use fileobj.
+                    # replaceResp = nuflickr.replace(
+                    #                 filename=file,
+                    #                 fileobj=FileWithCallback(file, callback),
+                    #                 photo_id=file_id
+                    #                 )                    
                     replaceResp = nuflickr.replace(
-                                    filename=file,
+                                    filename='dummy',
                                     fileobj=FileWithCallback(file, callback),
                                     photo_id=file_id
-                                )
+                                    )
                     logging.info('replaceResp: ')
                     logging.info(xml.etree.ElementTree.tostring(
                                                     replaceResp,
