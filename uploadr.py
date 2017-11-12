@@ -11,17 +11,10 @@
     Some giberish. Please ignore!
     -----------------------------
     Area for my personal notes on on-going work! Please ignore!
-    * Move this code into a function:
-       if (not filetype[0] is None) and ('video' in filetype[0]):
+    * Change code to inse
     * Search and eliminate: # CODING check line above and remove next line
-    * Have to check if actually self.useDBlock dos the trick or not
-      Protect all multiprocessing DB accesses with:
-            # Acquire DB lock if running in multiprocessing mode
-            self.useDBLock( nulockDB, True)
-            cur.execute('SELECT rowid,files_id,path,set_id,md5,tagged,'
-                        'last_modified FROM files WHERE path = ?', (file,))
-            # Release DB lock if running in multiprocessing mode
-            self.useDBLock( nulockDB, False)
+    * Have to check if actually self.useDBLock dos the trick or not
+      Protect all DB access( single processing or multiprocessing) with:
       And even more:
         try:
             # Acquire DB lock if running in multiprocessing mode
@@ -29,7 +22,12 @@
             cur.execute('SELECT rowid,files_id,path,set_id,md5,tagged,'
                       'last_modified FROM files WHERE path = ?', (file,))
         except lite.Error as e:
-            niceprint('#DB08 A DB error occurred: %s' % e.args[0])
+            reportError2(Caught=True,
+                CaughtPrefix='+++ DB',
+                CaughtCode='990',
+                CaughtMsg='DB error on SELECT: [{!s}]'
+                          .format(e.args[0]),
+                NicePrint=True)
         finally:
             # Release DB lock if running in multiprocessing mode
             self.useDBLock( lock, False)
@@ -70,21 +68,21 @@
     * Does not Re-upload pictures removed from flickr.
     * If local flickrdb is deleted it will re-upload entire local Library.
       It would be interesting to attempt to rebuild local database. With the
-      exception of tags (would require use of exiftool) almos all other
+      exception of tags (would require use of exiftool) almost all other
       information could be obtained.
     * In multiprocessing mode, when uploading additional files to your library
       the work is divided into sorted chunks by each process and it may occur
       that some processes have more work than others defeating the purpose
       of multiprocessing. When loading from scratch a big Library it works
       like a charm.
-    * Add multiprocessing.Value to control loaded files.
     * Arguments not fully tested:
         -n
         -r (should work)
         -d (should work)
+        -s (not yet fully developed)
     * Regular Output needs to be aligned to include
         successful uploads
-        successful updaate of date/time in videos
+        successful update of date/time in videos
         successful replacement of photos
 
     ## Programming Remarks
@@ -102,7 +100,6 @@
         +++     Exceptions handling related
         +++ DB  Database Exceptions handling related
         xxx     Error related
-
     * As far as my testing goes :) the following errors are handled:
             Flickr reports file not loaded due to error: 5
                 [flickr:Error: 5: Filetype was not recognised]
@@ -203,16 +200,19 @@ class UPLDRConstants:
 # Global Variables
 #   nutime       = for working with time module (import time)
 #   nuflickr     = object for flickr API module (import flickrapi)
+#   flick        = Class Uploadr (created in the Main code)
 #   nulockDB     = multiprocessing Lock for access to Database
 #   numutex      = multiprocessing mutex to control access to value nurunning
 #   nurunning    = multiprocessing Value to count processed photos
 #   nuMediacount = counter of total files to initially upload
+#   nuBadfiles   = counter of total number of bad files
 nutime = time
 nuflickr = None
 nulockDB = None
 numutex = None
 nurunning = None
 nuMediacount = None
+nuBadfiles = 0
 
 # -----------------------------------------------------------------------------
 # isThisStringUnicode
@@ -255,8 +255,38 @@ def niceprint(s):
             'uploadr',
             s.encode('utf-8') if isThisStringUnicode(s) else s))
 
-#--------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 # reportError2
+#
+# Provides a messaging wrapper for logging.error, niprint & str(sys.exc_info()
+#
+# CODING: Examples of use of reportError2:
+# except flickrapi.exceptions.FlickrError as ex:
+#     reportError2(Caught=True,
+#                  CaughtPrefix='+++',
+#                  CaughtCode='990',
+#                  CaughtMsg='Caught flickrapi exception',
+#                  exceptUse=True,
+#                  exceptCode=ex.code,
+#                  exceptMsg=ex,
+#                  NicePrint=True,
+#                  exceptSysInfo=True)
+# except lite.Error as e:
+#     reportError2(Caught=True,
+#                  CaughtPrefix='+++ DB',
+#                  CaughtCode='991',
+#                  CaughtMsg='DB error on INSERT: [{!s}]'
+#                            .format(e.args[0]),
+#                  NicePrint=True)
+#     # Release the lock on error.
+#     self.useDBLock(lock, False)
+#     success = False
+# except:
+#     reportError2(Caught=True,
+#                  CaughtPrefix='+++',
+#                  CaughtCode='992',
+#                  CaughtMsg='Caught exception in XXXX',
+#                  exceptSysInfo=True)
 #
 def reportError2(Caught=False, CaughtPrefix='', CaughtCode=0, CaughtMsg='',
                  NicePrint=False,
@@ -270,7 +300,7 @@ def reportError2(Caught=False, CaughtPrefix='', CaughtCode=0, CaughtMsg='',
         +++     Exceptions handling related
         +++ DB  Database Exceptions handling related
         xxx     Error related
-      CaughtCode = 10
+      CaughtCode = '010'
       CaughtMsg = 'Caught flickrapi exception'/'DB Error INSERT'
       NicePrint = True/False
       exceptUse = True/False
@@ -278,6 +308,7 @@ def reportError2(Caught=False, CaughtPrefix='', CaughtCode=0, CaughtMsg='',
       exceptMsg = ex
       exceptSysInfo = True/False
     """
+      
     if Caught is not None and Caught:
         logging.error('{!s}#{!s}: {!s}'.format(CaughtPrefix,
                                                CaughtCode,
@@ -300,25 +331,6 @@ def reportError2(Caught=False, CaughtPrefix='', CaughtCode=0, CaughtMsg='',
     sys.stderr.flush()
     if NicePrint is not None and NicePrint:
         sys.stdout.flush()
-
-    # # CODING: Examples
-    # reportError2(Caught=True,
-    #                    CaughtPrefix='+++',
-    #                    CaughtCode=2000,
-    #                    CaughtMsg='Caught flickrapi exception',
-    #                    NicePrint=True,
-    #                    exceptUse=True,
-    #                    exceptCode=2001,
-    #                    exceptMsg='ex')
-    # reportError2(Caught=True,
-    #              CaughtPrefix='+++ DB',
-    #              CaughtCode=3000,
-    #              CaughtMsg='DB Error on INSERT',
-    #              NicePrint=True)
-    # reportError2(Caught=True,
-    #                    CaughtCode=4444,
-    #                    CaughtMsg='One text')
-    # reportError2(exceptSysInfo='SysInfo')
 
 #==============================================================================
 # Read Config from config.ini file
@@ -604,10 +616,7 @@ class Uploadr:
                                  CaughtMsg='Caught an exception lock.release',
                                  NicePrint=True,
                                  exceptSysInfo=True)
-                    # logging.error('+++ #02 Caught an exception lock.release')
-                    # niceprint('+++ #02 Caught an exception lock.release')
-                    # logging.error(str(sys.exc_info()))
-                    # niceprint(str(sys.exc_info()))
+                    # Raise aborts execution
                     raise
                 logging.info('===Multiprocessing=== out.lock.release')
 
@@ -859,6 +868,7 @@ class Uploadr:
         global numutex
         global nurunning
         global nuMediacount
+        global nuBadfiles
 
         niceprint("*****Uploading files*****")
 
@@ -897,6 +907,7 @@ class Uploadr:
                 logging.debug('len(badMedia)'.format(len(badMedia)))
 
             changedMedia_count = len(changedMedia)
+            nuBadfiles = len(badMedia)
             niceprint('Removing {!s} badfiles. Found {!s} files to upload.'
                       .format(len(badMedia),
                               changedMedia_count))
@@ -1014,21 +1025,28 @@ class Uploadr:
 
                 # Wait for join all jobs/tasks in the Process Pool
                 # All should be done by now!
+                # CODING ------------------------------------------------------
+                # Will release (set to None) the nulockDB lock control
+                # this prevents subsequent calls to useDBLock( nuLockDB, False)
+                # to raise exception:
+                #    ValueError('semaphore or lock released too many times
                 for j in uploadPool:
                     j.join()
                     niceprint('==={!s} (is alive: {!s}).exitcode = {!s}'
                               .format(j.name, j.is_alive(), j.exitcode))
 
-                logging.warning('===Multiprocessing=== pool joined!'
+                logging.warning('===Multiprocessing=== pool joined! '
                                 'All processes finished.')
-                niceprint('===Multiprocessing=== pool joined!'
+                niceprint('===Multiprocessing=== pool joined! '
                           'All processes finished.')
 
+                # Will release (set to None) the nulockDB lock control
                 if (args.verbose):
                     niceprint('===Multiprocessing=== pool joined!'
                               ' What happens to nulockDB is None:[{!s}]?'
                               ' It seems not, it still has a value!'
                               .format(nulockDB is None))
+                nulockDB = None
 
                 # Show number of total files processed
                 self.niceprocessedfiles(nurunning.value, True)
@@ -1228,10 +1246,12 @@ class Uploadr:
                                 "/" +
                                 f.encode(' utf-8')).replace("'", "\'"))
                     else:
-                        niceprint('Skipping file due to size restriction: ' +
-                                  (os.path.normpath(dirpath.encode('utf-8') +
-                                                    '/' +
-                                                    f.encode('utf-8'))))
+                        niceprint('Skipping file due to '
+                                  'size restriction: [{!s}]'.format(
+                                        os.path.normpath(
+                                            dirpath.encode('utf-8') +
+                                            '/' +
+                                            f.encode('utf-8'))))
         files.sort()
         if LOGGING_LEVEL <= logging.DEBUG:
             niceprint('Pretty Print Output for {!s}:'.format('files'))
@@ -1271,7 +1291,75 @@ class Uploadr:
                 return True
 
         return False
+    
+    #--------------------------------------------------------------------------
+    # updatedVideoDate
+    #
+    """ updatedVideoDate
+    
+    Update the video date taken based on last_modified time of file
+    """
+    def updatedVideoDate(self, xfile_id, xfile, xlast_modified):
+        
+        # Update Date/Time on Flickr for Video files
+        # Flickr doesn't read it  from the video file itself.
+        filetype = mimetypes.guess_type(xfile)
+        logging.info('filetype is:[{!s}]:'.format('None'\
+                                                  if filetype is None\
+                                                  else filetype[0]))
 
+        # update video date/time TAKEN.
+        # Flickr doesn't read it  from the video file itself.
+        if ((not filetype[0] is None) and ('video' in filetype[0])):
+            res_set_date = None
+            video_date = nutime.strftime('%Y-%m-%d %H:%M:%S',
+                                         nutime.localtime(xlast_modified))
+            logging.info('video_date:[{!s}]'.format(video_date))
+
+            try:
+                res_set_date = flick.photos_set_dates(xfile_id,
+                                                      str(video_date))
+                logging.debug('Output for {!s}:'.format('res_set_date'))
+                logging.debug(xml.etree.ElementTree.tostring(
+                                                       res_set_date,
+                                                       encoding='utf-8',
+                                                       method='xml'))
+                if self.isGood(res_set_date):
+                    niceprint(
+                       'Successfully set date [{!s}] for file:[{!s}].'
+                       .format(video_date.encode('utf-8') \
+                               if isThisStringUnicode(
+                                              video_date) \
+                               else video_date,
+                               xfile.encode('utf-8') \
+                               if isThisStringUnicode(xfile) \
+                               else xfile))
+            except (IOError, ValueError, httplib.HTTPException):
+                reportError2(Caught=True,
+                             CaughtPrefix='+++',
+                             CaughtCode='000',
+                             CaughtMsg='Error setting date '
+                                       'file_id:[{!s}]'
+                                       .format(xfile_id),
+                             NicePrint=True,
+                             exceptSysInfo=True)      
+                raise
+            finally:
+                if not self.isGood(res_set_date):
+                    raise IOError(res_set_date)
+
+            niceprint('Successfully set date [{!s}] for pic [{!s}]'
+                      .format(video_date.encode('utf-8')
+                              if isThisStringUnicode(
+                                             video_date) \
+                              else video_date,
+                              xfile.encode('utf-8')
+                              if isThisStringUnicode(xfile) \
+                              else xfile))
+            return True
+        else:
+            return True
+    
     #--------------------------------------------------------------------------
     # uploadFileX
     #
@@ -1331,6 +1419,7 @@ class Uploadr:
         """
 
         global nuflickr
+        global nuBadfiles
 
         if (args.dry_run is True):
             niceprint('Dry Run Uploading file:[{!s}]...'
@@ -1455,8 +1544,6 @@ class Uploadr:
                                   'DO NOT PERFORM ANYTHING ELSE')
                     
                     # Perform actual upload of the file
-                    # CODING: res not being used!
-                    # res = None
                     search_result = None
                     for x in range(0, MAX_UPLOAD_ATTEMPTS):
                         try:
@@ -1524,11 +1611,13 @@ class Uploadr:
 
                         # Exceptions for flickr.upload function call...
                         except (IOError, httplib.HTTPException):
-                            logging.error('+++ #10 Caught IOError, '
-                                          'HTTP expcetion')
+                            reportError2(Caught=True,
+                                CaughtPrefix='+++',
+                                CaughtCode='010',
+                                CaughtMsg='Caught IOError, HTTP exception',
+                                NicePrint=True)     
                             logging.error('Sleep 10 and check if file is '
                                           'already uploaded')
-                            niceprint('+++ #10 Caught IOError, HTTP expcetion')
                             niceprint('Sleep 10 and check if file is '
                                       'already uploaded')
                             nutime.sleep(10)
@@ -1619,11 +1708,7 @@ class Uploadr:
                     else:
                         # Successful update given that search_result is None
                         file_id = uploadResp.findall('photoid')[0].text
-                        # CODING no need for int()???
-                        # file_id = int(str(uploadResp
-                        #                   .findall('photoid')[0].text))
-                        logging.info('Output for {!s}:'
-                                     .format('uploadResp'))
+                        logging.info('Output for {!s}:'.format('uploadResp'))
                         logging.info(xml.etree.ElementTree.tostring(
                                             uploadResp,
                                             encoding='utf-8',
@@ -1640,83 +1725,32 @@ class Uploadr:
                                 'VALUES (?, ?, ?, ?, 1)',
                                 (file_id, file, file_checksum, last_modified))
                         except lite.Error as e:
-                            logging.error('#DB09 A DB error occurred: [{!s}]'
-                                          .format(e.args[0]))
-                            niceprint('#DB09 A DB error occurred: [{!s}]'
-                                      .format(e.args[0]))
+                            reportError2(Caught=True,
+                                         CaughtPrefix='+++ DB',
+                                         CaughtCode='090',
+                                         CaughtMsg='DB error occurred: [{!s}]'
+                                                    .format(e.args[0]),
+                                         NicePrint=True)
                         finally:
                             # Release DB lock if running in multiprocessing mode
                             self.useDBLock(lock, False)
 
-                        # Update Date/Time on Flickr for Video files
-                        filetype = mimetypes.guess_type(file)
-                        logging.info('filetype:[{!s}]:'.format(filetype[0])) \
-                                    if not (filetype[0] is None) \
-                                    else ('filetype is None!!!')
-
-                        # update video date/time TAKEN.
-                        # Flickr doesn't read it  from the video file itself.
-                        if ((not filetype[0] is None) and
-                            ('video' in filetype[0])):
-                            res_set_date = None
-                            video_date = nutime.strftime(
-                                            '%Y-%m-%d %H:%M:%S',
-                                            nutime.localtime(last_modified))
-                            logging.info('video_date:[{!s}]'
-                                         .format(video_date))
-
-                            try:
-                                res_set_date = flick.photos_set_dates(
-                                                            file_id,
-                                                            str(video_date))
-                                if self.isGood(res_set_date):
-                                    niceprint(
-                                       'Successfully set date [{!s}] '
-                                       'for file:[{!s}].'
-                                       .format(video_date.encode('utf-8') \
-                                               if isThisStringUnicode(
-                                                              video_date) \
-                                               else video_date,
-                                               file.encode('utf-8') \
-                                               if isThisStringUnicode(file) \
-                                               else file))
-                            except (IOError,
-                                    ValueError,
-                                    httplib.HTTPException):
-                                logging.error('Error setting date '
-                                              'file_id:[{!s}]'
-                                              .format(file_id))
-
-                                niceprint("Error setting date file_id:[{!s}]"
-                                          .format(file_id))
-                                logging.error(str(sys.exc_info()))
-                                niceprint(str(sys.exc_info()))
-                                raise
-
-                            if not self.isGood(res_set_date):
-                                raise IOError(res_set_date)
-
-                            niceprint('Successfully set date [{!s}] for '
-                                      'pic [{!s}]'
-                                      .format(video_date.encode('utf-8')
-                                              if isThisStringUnicode(
-                                                             video_date) \
-                                              else video_date,
-                                              file.encode('utf-8')
-                                              if isThisStringUnicode(file) \
-                                              else file))
+                        # Update the Video Date Taken
+                        self.updatedVideoDate(file_id, file, last_modified)
 
                         success = True
                     else:
                         success = False
                 except flickrapi.exceptions.FlickrError as ex:
-
-                    logging.error('+++ #20 Caught flickrapi exception')
-                    niceprint('+++ #20 Caught flickrapi exception')
-                    logging.error('Error code: [{!s}]'.format(ex.code))
-                    logging.error('Error code: [{!s}]'.format(ex))
-                    logging.error(str(sys.exc_info()))
-                    niceprint(str(sys.exc_info()))
+                    reportError2(Caught=True,
+                                 CaughtPrefix='+++',
+                                 CaughtCode='020',
+                                 CaughtMsg='Caught flickrapi exception',
+                                 exceptUse=True,
+                                 exceptCode=ex.code,
+                                 exceptMsg=ex,
+                                 NicePrint=True,
+                                 exceptSysInfo=True)
                     # Error code: [5]
                     # Error code: [Error: 5: Filetype was not recognised]
                     if (format(ex.code) == '5') and (args.bad_files):
@@ -1735,20 +1769,15 @@ class Uploadr:
                         # Control for when running multiprocessing
                         # release locking
                         self.useDBLock(lock, False)
+                        nuBadfiles += 1
 
                 except lite.Error as e:
                     logging.error('#DB10 A DB error occurred: [{!s}]'
                                   .format(e.args[0]))
                     niceprint('#DB10 A DB error occurred: [{!s}]'
                               .format(e.args[0]))
-                    useDBlock(lock, False)
-                    # CODING: REPLACED
-                    # if (args.processes and args.processes > 0):
-                    #     logging.debug('===Multiprocessing==='
-                    #                   'lock.release (in Error)')
-                    #     lock.release()
-                    #     logging.debug('===Multiprocessing==='
-                    #                   'lock.release (in Error)')
+                    self.useDBLock(lock, False)
+
                     return False
 
             elif (MANAGE_CHANGES):
@@ -1958,13 +1987,15 @@ class Uploadr:
                     break
                 # Exceptions for flickr.upload function call...
                 except (IOError, ValueError, httplib.HTTPException):
-                    logging.error('+++ #30 Caught IOError, ValueError, '
-                                  ' HTTP expcetion')
-                    niceprint('+++ #30 Caught IOError, ValueError, '
-                              ' HTTP expcetion')
+                    reportError2(Caught=True,
+                             CaughtPrefix='+++',
+                             CaughtCode='030',
+                             CaughtMsg='Caught IOError, ValueError, '
+                                       'HTTP exception',
+                             NicePrint=True,
+                             exceptSysInfo=True)                      
                     logging.error('Sleep 10 and try to replace again.')
                     niceprint('Sleep 10 and try to replace again.')
-                    niceprint(str(sys.exc_info()))
                     nutime.sleep(10)
 
                     if x == MAX_UPLOAD_ATTEMPTS - 1:
@@ -1997,81 +2028,54 @@ class Uploadr:
 
             # Update the db the file uploaded
             # Control for when running multiprocessing set locking
-            if (args.processes and args.processes > 0):
-                logging.debug('===Multiprocessing=== in.lock.acquire')
-                lock.acquire()
-                logging.warning('===Multiprocessing=== '
-                                'out.lock.acquire')
+            self.useDBLock(lock, True)
+            try:
+                cur.execute('UPDATE files SET md5 = ?,last_modified = ? '
+                            'WHERE files_id = ?',
+                            (fileMd5, last_modified, file_id))
+                con.commit()
+            except lite.Error as e:
+                reportError2(Caught=True,
+                             CaughtPrefix='+++ DB',
+                             CaughtCode='091',
+                             CaughtMsg='DB error occurred: [{!s}]'
+                                        .format(e.args[0]),
+                             NicePrint=True)
+            finally:
+                # Release DB lock if running in multiprocessing mode
+                self.useDBLock(lock, False)
 
-            cur.execute('UPDATE files SET md5 = ?,last_modified = ? '
-                        'WHERE files_id = ?',
-                        (fileMd5, last_modified, file_id))
-            con.commit()
-
-            # Control for when running multiprocessing release locking
-            if (args.processes and args.processes > 0):
-                logging.debug('===Multiprocessing=== in.lock.release')
-                lock.release()
-                logging.warning('===Multiprocessing=== '
-                                'out.lock.release')
-
-            # Update Date/Time on Flickr for Video files
-            filetype = mimetypes.guess_type(file)
-            if filetype is None:
-                logging.info('filetype is None!!!')
-            else:
-                logging.info('filetype:[{!s}]:'.format(filetype[0]))
-
-            if (not filetype[0] is None) and ('video' in filetype[0]):
-                video_date = nutime.strftime('%Y-%m-%d %H:%M:%S',
-                                             nutime.localtime(last_modified))
-                logging.info('video_date:[{!s}]'.format(video_date))
-
-                try:
-                    res_set_date = flick.photos_set_dates(file_id,
-                                                          str(video_date))
-                    logging.debug('Output for {!s}:'.format('res_set_date'))
-                    logging.debug(xml.etree.ElementTree.tostring(
-                                                            res_set_date,
-                                                            encoding='utf-8',
-                                                            method='xml'))
-                    if self.isGood(res_set_date):
-                        niceprint('Successfully set date [{!s}] '
-                                  'for file:[{!s}].'
-                                  .format(video_date.encode('utf-8')
-                                          if isThisStringUnicode(video_date) \
-                                          else video_date,
-                                          file.encode('utf-8') \
-                                          if isThisStringUnicode(file) \
-                                          else file))
-
-                except (IOError, ValueError, httplib.HTTPException):
-                    logging.error("Error setting date")
-                    logging.error(str(sys.exc_info()))
-                    niceprint("Error setting date")
-
-                if not self.isGood(res_set_date):
-                    raise IOError(res_set_date)
+            # Update the Video Date Taken
+            self.updatedVideoDate(file_id, file, last_modified)
 
             success = True
-        # CODING: Do I need this generic except?
-        #         Maybe after flickr and SQLite3(lite) excepts?
-        # except:
-        #     print(str(sys.exc_info()))
+
         except flickrapi.exceptions.FlickrError as ex:
-            logging.error('+++ #40 Caught flickrapi exception')
-            niceprint('+++ #40 Caught flickrapi exception')
-            logging.error('Error code: [{!s}]'.format(ex.code))
-            logging.error('Error code: [{!s}]'.format(ex))
-            logging.error(str(sys.exc_info()))
-            niceprint(str(sys.exc_info()))
+            reportError2(Caught=True,
+                         CaughtPrefix='+++',
+                         CaughtCode='040',
+                         CaughtMsg='Caught flickrapi exception',
+                         exceptUse=True,
+                         exceptCode=ex.code,
+                         exceptMsg=ex,
+                         NicePrint=True,
+                         exceptSysInfo=True)            
         except lite.Error as e:
-            logging.error('#DB30 A DB error occurred: [{!s}]'
-                          .format(e.args[0]))
-            niceprint('#DB30 A DB error occurred: [{!s}]'
-                      .format(e.args[0]))
+            reportError2(Caught=True,
+                         CaughtPrefix='+++ DB',
+                         CaughtCode='041',
+                         CaughtMsg='DB error: [{!s}]'
+                                   .format(e.args[0]),
+                         NicePrint=True)
             # Release the lock on error.
             self.useDBLock(lock, False)
+            success = False
+        except:
+            reportError2(Caught=True,
+                         CaughtPrefix='+++',
+                         CaughtCode='042',
+                         CaughtMsg='Caught exception in replacePhoto',
+                         exceptSysInfo=True)            
             success = False
 
         return success
@@ -2146,7 +2150,6 @@ class Uploadr:
                                      CaughtMsg='Error: DELETE FROM files',
                                      NicePrint=True)
                 else:
-                    # self.reportError(res)
                     reportError2(exceptUse=False,
                                  exceptCode=res['code'] \
                                             if 'code' in res \
@@ -2216,19 +2219,6 @@ class Uploadr:
             return True
         else:
             return False
-
-    #--------------------------------------------------------------------------
-    # reportError
-    #
-    # CODING: To be removed...
-    # def reportError(self, res):
-    #     """ reportError
-    #     """
-    #     
-    #     try:
-    #         print("ReportError: " + str(res['code'] + " " + res['message']))
-    #     except:
-    #         print("ReportError: " + str(res))
 
     #--------------------------------------------------------------------------
     # run
@@ -2380,7 +2370,6 @@ class Uploadr:
                     cur.execute('UPDATE files SET set_id = ? '
                                 'WHERE files_id = ?', (setId, file[0]))
                 else:
-                    # self.reportError(res)
                     reportError2(exceptUse=False,
                                  exceptCode=res['code'] \
                                             if 'code' in res \
@@ -2391,8 +2380,11 @@ class Uploadr:
                                  NicePrint=True)
                     
         except flickrapi.exceptions.FlickrError as ex:
-            logging.error('+++ #50 Caught flickrapi exception')
-            niceprint('+++ #50 Caught flickrapi exception')
+            reportError2(Caught=True,
+                         CaughtPrefix='+++',
+                         CaughtCode='050',
+                         CaughtMsg='Caught flickrapi exception',
+                         NicePrint=True)  
             # Error: 1: Photoset not found
             if (ex.code == 1):
                 niceprint('Photoset not found, creating new set...')
@@ -2413,25 +2405,32 @@ class Uploadr:
                                 'WHERE files_id = ?', (setId, file[0]))
                     con.commit()
                 except lite.Error, e:
-                    logging.error('#DB50 A DB error occurred: [{!s}]'
-                                  .format(e.args[0]))
-                    niceprint('#DB50 A DB error occurred: [{!s}]'
-                              .format(e.args[0]))
+                    reportError2(Caught=True,
+                                 CaughtPrefix='+++ DB',
+                                 CaughtCode='060',
+                                 CaughtMsg='DB error on UPDATE SET: [{!s}]'
+                                           .format(e.args[0]),
+                                 NicePrint=True)                      
             else:
-                niceprint('Error code: [{!s}]'.format(ex.code))
-                niceprint('Error code: [{!s}]'.format(ex))
-                niceprint(str(sys.exc_info()))
-                logging.error(str(sys.exc_info()))
+                reportError2(exceptUse=True,
+                             exceptCode=ex.code,
+                             exceptMsg=ex,
+                             NicePrint=True,
+                             exceptSysInfo=True)                 
         except lite.Error, e:
-            logging.error('#DB60 A DB error occurred: [{!s}]'
-                          .format(e.args[0]))
-            niceprint('#DB60 A DB error occurred: [{!s}]'
-                      .format(e.args[0]))
+            reportError2(Caught=True,
+                         CaughtPrefix='+++ DB',
+                         CaughtCode='061',
+                         CaughtMsg='DB error occurred: [{!s}]'
+                                   .format(e.args[0]),
+                         NicePrint=True)            
         except:
-            logging.error('+++ #60 Caught an exception')
-            niceprint('+++ #60 Caught an exception')
-            logging.error(str(sys.exc_info()))
-            niceprint(str(sys.exc_info()))
+            reportError2(Caught=True,
+                         CaughtPrefix='+++',
+                         CaughtCode='060',
+                         CaughtMsg='Caught exception in addFiletoSet',
+                         NicePrint=True,
+                         exceptSysInfo=True)            
 
     #--------------------------------------------------------------------------
     # createSet
@@ -2482,7 +2481,6 @@ class Uploadr:
                                                     createResp,
                                                     encoding='utf-8',
                                                     method='xml'))
-                # self.reportError(createResp)
                 reportError2(exceptUse=False,
                              exceptCode=createResp['code'] \
                                         if 'code' in createResp \
@@ -2493,12 +2491,15 @@ class Uploadr:
                              NicePrint=True)                
 
         except flickrapi.exceptions.FlickrError as ex:
-            logging.error('+++ #70 Caught flickrapi exception')
-            niceprint('+++ #70 Caught flickrapi exception')
-            logging.error('Error code: [{!s}]'.format(ex.code))
-            logging.error('Error code: [{!s}]'.format(ex))
-            logging.error(str(sys.exc_info()))
-            niceprint(str(sys.exc_info()))            
+            reportError2(Caught=True,
+                         CaughtPrefix='+++',
+                         CaughtCode='070',
+                         CaughtMsg='Caught flickrapi exception',
+                         exceptUse=True,
+                         exceptCode=ex.code,
+                         exceptMsg=ex,
+                         NicePrint=True,
+                         exceptSysInfo=True)            
             # Add to db the file NOT uploaded
             # A set on local DB (with primary photo) failed to be created on
             # FLickr because Primary Photo is not available.
@@ -2525,8 +2526,12 @@ class Uploadr:
                                   primaryPhotoId))
 
         except:
-            logging.error(str(sys.exc_info()))
-            niceprint(str(sys.exc_info()))
+            reportError2(Caught=True,
+                         CaughtPrefix='+++',
+                         CaughtCode='071',
+                         CaughtMsg='Caught exception in createSet',
+                         NicePrint=True,
+                         exceptSysInfo=True)            
 
         return False
 
@@ -2681,16 +2686,25 @@ class Uploadr:
         con.text_factory = str
         with con:
             cur = con.cursor()
+
+
+            try:
+                # Acquire DB lock if running in multiprocessing mode
+                self.useDBLock( lock, True)
+                
+            except lite.Error as e:
+                niceprint('#DB08 A DB error occurred: %s' % e.args[0])
+            finally:
+                # Release DB lock if running in multiprocessing mode
+                self.useDBLock( lock, False)
+                
             cur.execute("SELECT set_id, name FROM sets WHERE set_id NOT IN\
                         (SELECT set_id FROM files)")
             unusedsets = cur.fetchall()
 
             for row in unusedsets:
-                niceprint('Removing set [' +
-                          str(row[0]) +
-                          "] (" +
-                          row[1].decode('utf-8') +
-                          ').')
+                niceprint('Removing set [{!s}] ({!s}).'
+                          .format(str(row[0]), row[1].decode('utf-8')))
 
                 cur.execute("DELETE FROM sets WHERE set_id = ?", (row[0],))
             con.commit()
@@ -2842,8 +2856,9 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                      .format(setId,
                                              primaryPhotoId))
 
-                    logging.info("SELECT set_id FROM sets WHERE set_id = '" +
-                                 setId + "'")
+                    logging.info('SELECT set_id FROM sets '
+                                 'WHERE set_id = "{!s}"'
+                                 .format(setId))
                     cur.execute("SELECT set_id FROM sets WHERE set_id = '" +
                                 setId + "'")
                     foundSets = cur.fetchone()
@@ -2906,8 +2921,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                     sets,
                                     encoding='utf-8',
                                     method='xml'))
-                # self.reportError(sets)
-                reportError2(exceptUse=False,
+                reportError2(exceptUse=True,
                              exceptCode=sets['code'] \
                                         if 'code' in sets \
                                         else sets,
@@ -2917,12 +2931,15 @@ set0 = sets.find('photosets').findall('photoset')[0]
                              NicePrint=True)                
 
         except flickrapi.exceptions.FlickrError as ex:
-            logging.error('+++ #71 Caught flickrapi exception')
-            niceprint('+++ #71 Caught flickrapi exception')
-            niceprint('Error code: [{!s}]'.format(ex.code))
-            niceprint('Error code: [{!s}]'.format(ex))
-            logging.error(str(sys.exc_info()))
-            niceprint(str(sys.exc_info()))
+            reportError2(Caught=True,
+                         CaughtPrefix='+++',
+                         CaughtCode='071',
+                         CaughtMsg='Caught flickrapi exception',
+                         exceptUse=True,
+                         exceptCode=ex.code,
+                         exceptMsg=ex,
+                         NicePrint=True,
+                         exceptSysInfo=True)             
 
         # Closing DB connection
         if con is not None:
@@ -3180,8 +3197,35 @@ set0 = sets.find('photosets').findall('photoset')[0]
 
         global nuflickr
 
-        getPhotosResp = nuflickr.people.getPhotos(user_id="me",
-                                                  per_page=1)
+        getPhotosResp = None
+        try:
+            getPhotosResp = nuflickr.people.getPhotos(user_id="me", per_page=1)
+        except flickrapi.exceptions.FlickrError as ex:
+            reportError2(Caught=True,
+                         CaughtPrefix='+++',
+                         CaughtCode='401',
+                         CaughtMsg='Error in photos.search',
+                         exceptUse=True,
+                         exceptCode=ex.code,
+                         exceptMsg=ex) 
+        except (IOError, httplib.HTTPException):
+            reportError2(Caught=True,
+                         CaughtPrefix='+++',
+                         CaughtCode='402',
+                         CaughtMsg='Caught IO/HTTP Error in photos.search')
+        except:
+            reportError2(Caught=True,
+                         CaughtPrefix='+++',
+                         CaughtCode='403',
+                         CaughtMsg='Caught exception in photos.search',
+                         exceptSysInfo=True)
+        finally:
+            if getPhotosResp is None or not self.isGood(getPhotosResp):
+                logging.debug('getPhotosResp:[{!s}]'
+                              .format('None' \
+                                      if getPhotosResp is None \
+                                      else self.isGood(getPhotosResp)))
+            
         return getPhotosResp
 
     #--------------------------------------------------------------------------
@@ -3296,24 +3340,33 @@ set0 = sets.find('photosets').findall('photoset')[0]
                     break
 
             except flickrapi.exceptions.FlickrError as ex:
-                logging.error('+++ #72 Caught flickrapi exception')
-                niceprint('+++ #72 Caught flickrapi exception')
-                logging.error('Error code: [{!s}]'.format(ex.code))
-                logging.error('Error code: [{!s}]'.format(ex))
+                reportError2(Caught=True,
+                             CaughtPrefix='+++',
+                             CaughtCode='072',
+                             CaughtMsg='Caught flickrapi exception',
+                             exceptUse=True,
+                             exceptCode=ex.code,
+                             exceptMsg=ex,
+                             NicePrint=True)
                 logging.error('Sleep 10 and try to set date again.')
                 niceprint('Sleep 10 and try to set date again.')
                 nutime.sleep(10)
             except (IOError, httplib.HTTPException):
-                logging.error('+++ #73 Caught IOError, HTTP expcetion')
-                niceprint('+++ #73 Caught IOError, HTTP expcetion')
+                reportError2(Caught=True,
+                             CaughtPrefix='+++',
+                             CaughtCode='073',
+                             CaughtMsg='Caught IOError, HTTP exception',
+                             NicePrint=True)                
                 logging.error('Sleep 10 and try to set date again.')
                 niceprint('Sleep 10 and try to set date again.')
                 nutime.sleep(10)
             except:
-                logging.error('+++ #74 Caught expcetion')
-                niceprint('+++ #74 Caught expcetion')
-                logging.error(str(sys.exc_info()))
-                niceprint(str(sys.exc_info()))
+                reportError2(Caught=True,
+                             CaughtPrefix='+++',
+                             CaughtCode='074',
+                             CaughtMsg='Caught exception',
+                             NicePrint=True,
+                             exceptSysInfo=True)  
                 niceprint('Sleep 10 and try to set date again.')
                 nutime.sleep(10)
 
@@ -3339,7 +3392,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
     #
     # List Local pics, loaded pics into Flickr, pics not in sets on Flickr
     #
-    def printStat(self, InitialFoundFiles):
+    def printStat(self, InitialFoundFiles, BadFilesCount):
         """ printStat
         Shows Total photos and Photos Not in Sets on Flickr
         InitialFoundFiles = shows the Found files prior to processing
@@ -3389,11 +3442,13 @@ set0 = sets.find('photosets').findall('photoset')[0]
                       .format(countnotinsets))
 
         # Print total stats counters
-        niceprint('Initial Found Files:[{!s}] '
-                  'Photos count: Local:[{!s}] '
-                  'Flickr:[{!s}] '
+        niceprint('\nInitial Found Files:[{!s}] - Bad Files:[{!s}] = [{!s}] \n'
+                  'Photos count: Local:[{!s}] \n'
+                  'Flickr:[{!s}] \n'
                   'Not in sets on Flickr:[{!s}]'
                   .format(str(InitialFoundFiles),
+                          str(BadFilesCount),
+                          str(InitialFoundFiles-BadFilesCount),
                           str(countlocal),
                           str(countflickr),
                           str(countnotinsets)))
@@ -3418,24 +3473,21 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                     encoding='utf-8',
                                     method='xml'))
             for count, row in enumerate(res.find('photos').findall('photo')):
-                logging.debug(
-                    u'Photo get_not_in_set '
-                    u'id:[{!s}] '
-                    u'title:[{!s}]'.format(row.attrib['id'],
-                                           row.attrib['title']))
+                logging.info('Photo get_not_in_set id:[{!s}] title:[{!s}]'
+                             .format(row.attrib['id'],
+                                     row.attrib['title']))
                 logging.debug(xml.etree.ElementTree.tostring(
                                 row,
                                 encoding='utf-8',
                                 method='xml'))
-                niceprint(u'Photo get_not_in_set: id:[' +
-                          row.attrib['id'] + u'] ' +
-                          u'title:[' +
-                          row.attrib['title'] + u']')
-                logging.debug('count=[{!s}]'.format(count))
+                niceprint('Photo get_not_in_set: id:[{!s}] title:[{!s}] '
+                          .format(row.attrib['id'],
+                                  row.attrib['title']))
+                logging.info('count=[{!s}]'.format(count))
                 if (count == 500) or \
                         (count >= (args.list_photos_not_in_set-1)) or \
                         (count >= (countnotinsets-1)):
-                    logging.debug('Stopped at photo [{!s}] listing '
+                    logging.info('Stopped at photo [{!s}] listing '
                                   'photos not in a set'.format(count))
                     break
             niceprint('*****Completed Listing Photos not in a set '
@@ -3582,7 +3634,7 @@ if __name__ == "__main__":
             flick.removeIgnoredMedia()
 
         flick.createSets()
-        flick.printStat(nuMediacount)
+        flick.printStat(nuMediacount, nuBadfiles)
 
 niceprint('--------- (V{!s}) End time: {!s} ---------'
           .format(UPLDRConstants.Version,
