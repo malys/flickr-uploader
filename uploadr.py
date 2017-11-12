@@ -205,14 +205,12 @@ class UPLDRConstants:
 #   numutex      = multiprocessing mutex to control access to value nurunning
 #   nurunning    = multiprocessing Value to count processed photos
 #   nuMediacount = counter of total files to initially upload
-#   nuBadfiles   = counter of total number of bad files
 nutime = time
 nuflickr = None
 nulockDB = None
 numutex = None
 nurunning = None
 nuMediacount = None
-nuBadfiles = 0
 
 # -----------------------------------------------------------------------------
 # isThisStringUnicode
@@ -795,6 +793,14 @@ class Uploadr:
             rows = cur.fetchall()
 
             for row in rows:
+                logging.debug('Checking file_id:[{!s}] file:[{!s}] '
+                              'isFileIgnored?'
+                              .format(row[0].encode('utf-8')\
+                                      if isThisStringUnicode(row[0])\
+                                      else row[0],
+                                      row[1].encode('utf-8')\
+                                      if isThisStringUnicode(row[1])\
+                                      else row[1]))                
                 # row[1] is photo_id
                 if (self.isFileIgnored(row[1].decode('utf-8'))):
                     success = self.deleteFile(row, cur)
@@ -868,7 +874,6 @@ class Uploadr:
         global numutex
         global nurunning
         global nuMediacount
-        global nuBadfiles
 
         niceprint("*****Uploading files*****")
 
@@ -907,7 +912,6 @@ class Uploadr:
                 logging.debug('len(badMedia)'.format(len(badMedia)))
 
             changedMedia_count = len(changedMedia)
-            nuBadfiles = len(badMedia)
             niceprint('Removing {!s} badfiles. Found {!s} files to upload.'
                       .format(len(badMedia),
                               changedMedia_count))
@@ -1288,8 +1292,10 @@ class Uploadr:
                                   else filename))
             # Now everything should be in Unicode
             if excluded_dir in os.path.dirname(filename):
+                logging.debug('Returning isFileIgnored:[True]')
                 return True
 
+        logging.debug('Returning isFileIgnored:[False]')
         return False
     
     #--------------------------------------------------------------------------
@@ -1419,7 +1425,6 @@ class Uploadr:
         """
 
         global nuflickr
-        global nuBadfiles
 
         if (args.dry_run is True):
             niceprint('Dry Run Uploading file:[{!s}]...'
@@ -1769,7 +1774,6 @@ class Uploadr:
                         # Control for when running multiprocessing
                         # release locking
                         self.useDBLock(lock, False)
-                        nuBadfiles += 1
 
                 except lite.Error as e:
                     logging.error('#DB10 A DB error occurred: [{!s}]'
@@ -1820,10 +1824,7 @@ class Uploadr:
                                            'SET last_modified: [{!s}]'
                                            .format(e.args[0]),
                                  NicePrint=True)
-                    # logging.error('#DB20 A DB error occurred: [{!s}]'
-                    #               .format(e.args[0]))
-                    # niceprint('#DB20 A DB error occurred: [{!s}]'
-                    #           .format(e.args[0]))
+
                     self.useDBLock(lock, False)
                     if (args.processes and args.processes > 0):
                         logging.debug('===Multiprocessing==='
@@ -2161,8 +2162,12 @@ class Uploadr:
         except:
             # If you get 'attempt to write a readonly database', set 'admin'
             # as owner of the DB file (fickerdb) and 'users' as group
-            logging.error(str(sys.exc_info()))
-            niceprint(str(sys.exc_info()))
+            reportError2(Caught=True,
+                         CaughtPrefix='+++',
+                         CaughtCode='992',
+                         CaughtMsg='Caught exception in deleteFile',
+                         exceptSysInfo=True)
+            
         return success
 
     #--------------------------------------------------------------------------
@@ -2671,8 +2676,10 @@ class Uploadr:
             return m.hexdigest()
 
     # -------------------------------------------------------------------------
-    # Method to clean unused sets
-    #   Sets are Albums.
+    # removeUselessSetsTable
+    #
+    # Method to clean unused sets (Sets are Albums)
+    #
     def removeUselessSetsTable(self):
         """ removeUselessSetsTable
         
@@ -2687,26 +2694,45 @@ class Uploadr:
         with con:
             cur = con.cursor()
 
-
             try:
+                unusedsets = None
                 # Acquire DB lock if running in multiprocessing mode
-                self.useDBLock( lock, True)
-                
+                # self.useDBLock( lock, True)
+                cur.execute("SELECT set_id, name FROM sets WHERE set_id NOT IN\
+                            (SELECT set_id FROM files)")
+                unusedsets = cur.fetchall()                
             except lite.Error as e:
-                niceprint('#DB08 A DB error occurred: %s' % e.args[0])
+                reportError2(Caught=True,
+                             CaughtPrefix='+++ DB',
+                             CaughtCode='990',
+                             CaughtMsg='DB error SELECT FROM sets: [{!s}]'
+                                       .format(e.args[0]),
+                             NicePrint=True)                
             finally:
                 # Release DB lock if running in multiprocessing mode
-                self.useDBLock( lock, False)
-                
-            cur.execute("SELECT set_id, name FROM sets WHERE set_id NOT IN\
-                        (SELECT set_id FROM files)")
-            unusedsets = cur.fetchall()
+                # self.useDBLock( lock, False)
+                pass
 
             for row in unusedsets:
                 niceprint('Removing set [{!s}] ({!s}).'
                           .format(str(row[0]), row[1].decode('utf-8')))
 
-                cur.execute("DELETE FROM sets WHERE set_id = ?", (row[0],))
+                try:
+                    # Acquire DB lock if running in multiprocessing mode
+                    # self.useDBLock( lock, True)
+                    cur.execute("DELETE FROM sets WHERE set_id = ?", (row[0],))
+                except lite.Error as e:
+                    reportError2(Caught=True,
+                                 CaughtPrefix='+++ DB',
+                                 CaughtCode='990',
+                                 CaughtMsg='DB error DELETE FROM sets: [{!s}]'
+                                           .format(e.args[0]),
+                                 NicePrint=True)                
+                finally:
+                    # Release DB lock if running in multiprocessing mode
+                    # self.useDBLock( lock, False)
+                    pass
+
             con.commit()
 
         # Closing DB connection
@@ -3392,7 +3418,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
     #
     # List Local pics, loaded pics into Flickr, pics not in sets on Flickr
     #
-    def printStat(self, InitialFoundFiles, BadFilesCount):
+    def printStat(self, InitialFoundFiles):
         """ printStat
         Shows Total photos and Photos Not in Sets on Flickr
         InitialFoundFiles = shows the Found files prior to processing
@@ -3400,15 +3426,42 @@ set0 = sets.find('photosets').findall('photoset')[0]
         # Total Local photos count
         con = lite.connect(DB_PATH)
         con.text_factory = str
+
         countlocal = 0
         with con:
-            cur = con.cursor()
-            cur.execute("SELECT Count(*) FROM files")
+            try:
+                cur = con.cursor()
+                cur.execute("SELECT Count(*) FROM files")
+                countlocal = cur.fetchone()[0]
+                if LOGGING_LEVEL <= logging.DEBUG:
+                    niceprint('Total photos on local: {}'.format(countlocal))
+            except lite.Error as e:
+                reportError2(Caught=True,
+                             CaughtPrefix='+++ DB',
+                             CaughtCode='898',
+                             CaughtMsg='DB error on SELECT FROM files: [{!s}]'
+                                       .format(e.args[0]),
+                             NicePrint=True)
 
-            countlocal = cur.fetchone()[0]
-            if LOGGING_LEVEL <= logging.DEBUG:
-                niceprint('Total photos on local: {}'.format(countlocal))
-
+        # Total Local badfiles photos count
+        BadFilesCount = 0
+        with con:
+            try:
+                cur = con.cursor()
+                cur.execute("SELECT Count(*) FROM badfiles")
+                BadFilesCount = cur.fetchone()[0]
+                if LOGGING_LEVEL <= logging.DEBUG:
+                    niceprint('Total badfiles count on local: {}'
+                              .format(BadFilesCount))
+            except lite.Error as e:
+                reportError2(Caught=True,
+                             CaughtPrefix='+++ DB',
+                             CaughtCode='899',
+                             CaughtMsg='DB error on SELECT FROM '
+                                       'badfiles: [{!s}]'
+                                       .format(e.args[0]),
+                             NicePrint=True)
+                
         # Total FLickr photos count:
         #       find('photos').attrib['total']
         countflickr = 0
@@ -3442,10 +3495,13 @@ set0 = sets.find('photosets').findall('photoset')[0]
                       .format(countnotinsets))
 
         # Print total stats counters
-        niceprint('\nInitial Found Files:[{!s}] - Bad Files:[{!s}] = [{!s}] \n'
-                  'Photos count: Local:[{!s}] \n'
-                  'Flickr:[{!s}] \n'
-                  'Not in sets on Flickr:[{!s}]'
+        niceprint('\n  Initial Found Files:[{!s:>6s}]\n'
+                  '          - Bad Files:[{!s:>6s}] = [{!s:>6s}] \n'
+                  '          Please note some Bad files may no longer exist!\n'
+                  'Photos count:\n'
+                  '                Local:[{!s:>6s}] \n'
+                  '               Flickr:[{!s:>6s}] \n'
+                  'Not in sets on Flickr:[{!s:>6s}]'
                   .format(str(InitialFoundFiles),
                           str(BadFilesCount),
                           str(InitialFoundFiles-BadFilesCount),
@@ -3634,7 +3690,7 @@ if __name__ == "__main__":
             flick.removeIgnoredMedia()
 
         flick.createSets()
-        flick.printStat(nuMediacount, nuBadfiles)
+        flick.printStat(nuMediacount)
 
 niceprint('--------- (V{!s}) End time: {!s} ---------'
           .format(UPLDRConstants.Version,
