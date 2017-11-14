@@ -1615,9 +1615,9 @@ class Uploadr:
                             break
 
                         # Exceptions for flickr.upload function call...
-                        except (IOError,
-                                httplib.HTTPException,
-                                flickrapi.exceptions.FlickrError):
+                        # No as it is caught in the outher try to consider the
+                        # Error #5 invalid videos format loading...
+                        except (IOError, httplib.HTTPException):
                             reportError(Caught=True,
                                 CaughtPrefix='+++',
                                 CaughtCode='020',
