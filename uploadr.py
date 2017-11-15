@@ -465,8 +465,7 @@ logging.basicConfig(stream=sys.stderr,
 #         logging.info('Message with {!s}'.format(
 #                                     'INFO UNDER min WARNING LEVEL'))
 if LOGGING_LEVEL <= logging.INFO:
-    niceprint('Pretty Print for {!s}'.format(
-                                'FLICKR Configuration:'))
+    niceprint('Output for FLICKR Configuration:')
     pprint.pprint(FLICKR)
 
 #==============================================================================
@@ -718,8 +717,11 @@ class Uploadr:
                 logging.info('Token Non-Existant.')
                 return None
         except:
-            logging.error('Unexpected error:[{!s}]'.format(sys.exc_info()[0]))
-            niceprint('Unexpected error:[{!s}]'.format(sys.exc_info()[0]))
+            reportError(Caught=True,
+                        CaughtPrefix='+++',
+                        CaughtCode='009',
+                        CaughtMsg='Unexpected error in token_valid',
+                        exceptSysInfo=True)            
             raise
 
     # -------------------------------------------------------------------------
@@ -1466,8 +1468,12 @@ class Uploadr:
                             'last_modified FROM files WHERE path = ?',
                             (file,))
             except lite.Error as e:
-                logging.error('#DB08 A DB error occurred: {!s}'.format(args[0]))
-                niceprint('#DB08 A DB error occurred: {!s}'.format(args[0]))
+                reportError(Caught=True,
+                            CaughtPrefix='+++ DB',
+                            CaughtCode='015',
+                            CaughtMsg='DB error on SELECT: [{!s}]'
+                                      .format(e.args[0]),
+                            NicePrint=True) 
             finally:
                 # Release DB lock if running in multiprocessing mode
                 self.useDBLock(lock, False)
@@ -1489,12 +1495,12 @@ class Uploadr:
                                             else setName))
                 try:
                     # CODING: Is This sequence/assignment to photo being used?
-                    if isThisStringUnicode(file):
-                        photo = ('photo', file.encode('utf-8'),
-                                 open(file, 'rb').read())
-                    else:
-                        photo = ('photo', file,
-                                 open(file, 'rb').read())
+                    # if isThisStringUnicode(file):
+                    #     photo = ('photo', file.encode('utf-8'),
+                    #              open(file, 'rb').read())
+                    # else:
+                    #     photo = ('photo', file,
+                    #              open(file, 'rb').read())
                     if args.title:  # Replace
                         FLICKR["title"] = args.title
                     if args.description:  # Replace
@@ -1778,10 +1784,12 @@ class Uploadr:
                         self.useDBLock(lock, False)
 
                 except lite.Error as e:
-                    logging.error('#DB10 A DB error occurred: [{!s}]'
-                                  .format(e.args[0]))
-                    niceprint('#DB10 A DB error occurred: [{!s}]'
-                              .format(e.args[0]))
+                    reportError(Caught=True,
+                                CaughtPrefix='+++ DB',
+                                CaughtCode='041',
+                                CaughtMsg='DB error on INSERT: [{!s}]'
+                                          .format(e.args[0]),
+                                NicePrint=True)                    
                     self.useDBLock(lock, False)
 
                     return False
@@ -1890,11 +1898,10 @@ class Uploadr:
 
         success = False
         try:
-            # photo would be a FileObj.
             # nuflickr.replace accepts both a filename and a file object.
-            # when using filenames wiht unicode characters
+            # when using filenames with unicode characters
             #    - the flickrapi seems to fail with filename
-            #    - will try with FileObj and filename='dummy'
+            # so I've used photo FileObj and filename='dummy'
             photo = open(file.encode('utf-8'), 'rb')\
                     if isThisStringUnicode(file)\
                     else open(file, 'rb')
@@ -2201,19 +2208,24 @@ class Uploadr:
                         'VALUES (?,?,?)',
                         (setId, setName, primaryPhotoId))
         except lite.Error, e:
-            logging.error('#DB40 A DB error occurred: [{!s}]'
-                          .format(e.args[0]))
-            niceprint('#DB40 A DB error occurred: [{!s}]'
-                      .format(e.args[0]))
+            reportError(Caught=True,
+                CaughtPrefix='+++ DB',
+                CaughtCode='092',
+                CaughtMsg='DB error on INSERT: [{!s}]'
+                          .format(e.args[0]),
+                NicePrint=True)
 
         try:
             cur.execute('UPDATE files SET set_id = ? WHERE files_id = ?',
                     (setId, primaryPhotoId))
         except lite.Error, e:
-            logging.error('#DB41 A DB error occurred: [{!s}]'
-                          .format(e.args[0]))
-            niceprint('#DB41 A DB error occurred: [{!s}]'
-                      .format(e.args[0]))
+            reportError(Caught=True,
+                CaughtPrefix='+++ DB',
+                CaughtCode='093',
+                CaughtMsg='DB error on UPDATE: [{!s}]'
+                          .format(e.args[0]),
+                NicePrint=True)            
+
         con.commit()
 
         return True
@@ -2560,7 +2572,7 @@ class Uploadr:
             Creates the control database
         """
 
-        niceprint('Setting up the database: [{!s}]'.format(DB_PATH))
+        niceprint('Setting up database:[{!s}]'.format(DB_PATH))
         con = None
         try:
             con = lite.connect(DB_PATH)
@@ -2614,10 +2626,13 @@ class Uploadr:
             if con is not None:
                 con.close()
         except lite.Error, e:
-            logging.error('#DB70 A DB error occurred: Setup DB Error: {!s}'
-                          .format(e.args[0]))
-            niceprint('#DB70 A DB error occurred: Setup DB Error: {!s}'
-                      .format(e.args[0]))
+            reportError(Caught=True,
+                       CaughtPrefix='+++ DB',
+                       CaughtCode='145',
+                       CaughtMsg='DB error on DB create: [{!s}]'
+                                 .format(e.args[0]),
+                       NicePrint=True)
+           
             if con is not None:
                 con.close()
             sys.exit(1)
@@ -2658,8 +2673,12 @@ class Uploadr:
             if con is not None:
                 con.close()
         except lite.Error, e:
-            logging.error("#DB80 A DB error occurred: {!s}".format(e.args[0]))
-            niceprint("#DB80 A DB error occurred: {!s}".format(e.args[0]))
+            reportError(Caught=True,
+                        CaughtPrefix='+++ DB',
+                        CaughtCode='148',
+                        CaughtMsg='DB error on SELECT: [{!s}]'
+                                  .format(e.args[0]),
+                        NicePrint=True)
             if con is not None:
                 con.close()
             sys.exit(1)
@@ -2855,20 +2874,20 @@ set0 = sets.find('photosets').findall('photoset')[0]
 
                     if (args.verbose):
                         if setName is None:
-                            niceprint('setId=[{!s}] '
-                                      'setName=[{!s}] '
+                            niceprint('setName=[{!s}] '
+                                      'setId=[{!s}] '
                                       'primaryPhotoId=[{!s}]'
-                                      .format(setId,
-                                              'None',
+                                      .format('None',
+                                              setId,
                                               primaryPhotoId))
                         else:
-                            niceprint('setId=[{!s}] '
-                                      'setName=[{!s}] '
+                            niceprint('setName=[{!s}] '
+                                      'setId=[{!s}] '
                                       'primaryPhotoId=[{!s}]'
-                                      .format(setId,
-                                              setName.encode('utf-8') \
+                                      .format(setName.encode('utf-8') \
                                               if isThisStringUnicode(setName) \
                                               else setName,
+                                              setId,
                                               primaryPhotoId))
 
                     # Control for when flickr return a setName (title) as None
@@ -2917,24 +2936,6 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                             if isThisStringUnicode(setName) \
                                             else setName,
                                             primaryPhotoId))
-                        # niceprint('Adding set [{!s}] ({!s}) '
-                        #           'with primary photo [{!s}].'
-                        #           .format(
-                        #                 setId.encode('utf-8'),
-                        #                 setName \
-                        #                 if setName is not None \
-                        #                 else 'None',
-                        #                 primaryPhotoId.encode('utf-8')
-                        #                 ))
-                        # CODING Check above code and the remove this line
-                        # niceprint(u'Adding set ['.encode('utf-8') +
-                        #           setId.encode('utf-8') +
-                        #           u'] ('.encode('utf-8') +
-                        #           setName if setName is not None else 'None' +
-                        #           u') '.encode('utf-8') +
-                        #           u'with primary photo '.encode('utf-8') +
-                        #           primaryPhotoId.encode('utf-8') +
-                        #           u'.'.encode('utf-8'))
 
                         cur.execute('INSERT INTO sets (set_id, name, '
                                     'primary_photo_id) VALUES (?,?,?)',
@@ -3664,10 +3665,12 @@ if __name__ == "__main__":
 
     # Debug to show arguments
     if LOGGING_LEVEL <= logging.INFO:
-        logging.info('Pretty Print Output for {!s}'.format('args:'))
-        niceprint('Pretty Print Output for {!s}'.format('args:'))
+        niceprint('Output for arguments(args):')
         pprint.pprint(args)
 
+    if args.verbose:
+        niceprint('FILES_DIR: [{!s}]'.format(FILES_DIR))
+        
     logging.warning('FILES_DIR: [{!s}]'.format(FILES_DIR))
     if FILES_DIR == "":
         niceprint('Please configure the name of the folder [FILES_DIR] '
