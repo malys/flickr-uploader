@@ -1236,11 +1236,11 @@ class Uploadr:
                 filePath = os.path.join(dirpath, f)
                 if self.isFileIgnored(filePath):
                     logging.info('File {!s} in EXCLUDED_FOLDERS:'
-                                  .format(filePath.encode('utf-8')))
+                                 .format(filePath.encode('utf-8')))
                     continue
                 if any(ignored.search(f) for ignored in IGNORED_REGEX):
                     logging.info('File {!s} in IGNORED_REGEX:'
-                                  .format(filePath.encode('utf-8')))
+                                 .format(filePath.encode('utf-8')))
                     continue
                 ext = os.path.splitext(os.path.basename(f))[1][1:].lower()
                 if ext in ALLOWED_EXT:
