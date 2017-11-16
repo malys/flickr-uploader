@@ -11,12 +11,10 @@
     Some giberish. Please ignore!
     -----------------------------
     Area for my personal notes on on-going work! Please ignore!
-    * Row 1620 on upload...
-            # CODING: NEed to check for flickrapi exceptions also.
-    * Change code to inse
+    * replace X.encode if Unicde(X) else X by StrOutisThisStringUnicode(X)
+    * Change code to insert on database prior to upload and then update result
     * Search and eliminate: # CODING check line above and remove next line
-    * Have to check if actually self.useDBLock dos the trick or not
-      Protect all DB access( single processing or multiprocessing) with:
+    * Protect all DB access( single processing or multiprocessing) with:
       And even more:
         try:
             # Acquire DB lock if running in multiprocessing mode
@@ -95,7 +93,7 @@
     * Use niceprint function to output messages to stdout.
     * Use logging. for CRITICAL, ERROR, WARNING, INFO, DEBUG messages to stderr
     * Some ocasional critical messages are generated with sys.stderr.write()
-    * Specific CODING related comments marked with 'CODING'
+    * Specific CODING related comments are marked with 'CODING' keyword
     * Prefix coding for some output messages:
         *****   Section informative
         ===     Multiprocessing related
@@ -237,6 +235,22 @@ def isThisStringUnicode(s):
         return False
 
 # -----------------------------------------------------------------------------
+# StrOutisThisStringUnicode
+#
+# Returns true if String is Unicode
+#
+def StrOutisThisStringUnicode(s):
+    """
+    Outputs s.encode('utf-8') if isThisStringUnicode(s) esle s
+        niceprint('Checking file:[{!s}]...'.format(
+                                 StrOutisThisStringUnicode(file))
+    """
+    if s is not None:
+        return s.encode('utf-8') if isThisStringUnicode(s) else s
+    else:
+        return ''.encode('utf-8') if isThisStringUnicode('') else ''
+    
+# -----------------------------------------------------------------------------
 # niceprint
 #
 # Print a message with the format:
@@ -253,7 +267,8 @@ def niceprint(s):
             os.getpid(),
             'PRINT',
             'uploadr',
-            s.encode('utf-8') if isThisStringUnicode(s) else s))
+            StrOutisThisStringUnicode(s)))
+            # s.encode('utf-8') if isThisStringUnicode(s) else s))
 
 #------------------------------------------------------------------------------
 # reportError
@@ -378,7 +393,7 @@ EXCLUDED_FOLDERS = []
 for folder in inEXCLUDED_FOLDERS:
     EXCLUDED_FOLDERS.append(unicode(folder, 'utf-8'))
     if LOGGING_LEVEL <= logging.INFO:
-        sys.stderr.write('[{!s}]:[{!s}][WARNING ]:[uploadr] '
+        sys.stderr.write('[{!s}]:[{!s}][INFO    ]:[uploadr] '
                          'folder from EXCLUDED_FOLDERS:[{!s}]\n'
                          .format(nutime.strftime(UPLDRConstants.TimeFormat),
                                  os.getpid(),
@@ -386,9 +401,15 @@ for folder in inEXCLUDED_FOLDERS:
                                  if isThisStringUnicode(folder) \
                                  else folder))
 del inEXCLUDED_FOLDERS
-
-IGNORED_REGEX = [re.compile(regex) for regex in \
+# Consider Unicode Regular expressions
+IGNORED_REGEX = [re.compile(regex, re.UNICODE) for regex in \
                  eval(config.get('Config', 'IGNORED_REGEX'))]
+if LOGGING_LEVEL <= logging.INFO:
+    sys.stderr.write('[{!s}]:[{!s}][INFO    ]:[uploadr] '
+                     'Number of IGNORED_REGEX entries:[{!s}]\n'
+                     .format(nutime.strftime(UPLDRConstants.TimeFormat),
+                             os.getpid(),
+                             len(IGNORED_REGEX)))
 ALLOWED_EXT = eval(config.get('Config', 'ALLOWED_EXT'))
 RAW_EXT = eval(config.get('Config', 'RAW_EXT'))
 FILE_MAX_SIZE = eval(config.get('Config', 'FILE_MAX_SIZE'))
@@ -751,22 +772,10 @@ class Uploadr:
                         '(nuflickr.token_cache.token is None):[{!s}]'
                         .format(nuflickr.token_cache.token is None))
 
-        # CODING: Reconfirm this code change.
-        # if (nuflickr is None) or (nuflickr.token_cache.token is None):
         if (self.token is None):
             return False
         else:
             return True
-            # CODING: Check if simply returning True when token is set is OK.
-            # CODING: Seems it works!
-            # nuflickr = flickrapi.FlickrAPI(FLICKR["api_key"],
-            #                                FLICKR["secret"],
-            #                                token_cache_location=TOKEN_CACHE)
-            # if nuflickr.token_valid(perms='delete'):
-            #     return True
-            # else:
-            #     logging.warning('Authentication required.')
-            #     return False
 
     #--------------------------------------------------------------------------
     # removeIgnoreMedia
@@ -1031,11 +1040,6 @@ class Uploadr:
 
                 # Wait for join all jobs/tasks in the Process Pool
                 # All should be done by now!
-                # CODING ------------------------------------------------------
-                # Will release (set to None) the nulockDB lock control
-                # this prevents subsequent calls to useDBLock( nuLockDB, False)
-                # to raise exception:
-                #    ValueError('semaphore or lock released too many times
                 for j in uploadPool:
                     j.join()
                     niceprint('==={!s} (is alive: {!s}).exitcode = {!s}'
@@ -1047,10 +1051,14 @@ class Uploadr:
                           'All processes finished.')
 
                 # Will release (set to None) the nulockDB lock control
+                # this prevents subsequent calls to useDBLock( nuLockDB, False)
+                # to raise exception:
+                #    ValueError('semaphore or lock released too many times                
                 if (args.verbose):
-                    niceprint('===Multiprocessing=== pool joined!'
-                              ' What happens to nulockDB is None:[{!s}]?'
-                              ' It seems not, it still has a value!'
+                    niceprint('===Multiprocessing=== pool joined! '
+                              'What happens to nulockDB is None:[{!s}]? '
+                              'It seems not, it still has a value! '
+                              'Setting it to None!'
                               .format(nulockDB is None))
                 nulockDB = None
 
@@ -1235,12 +1243,12 @@ class Uploadr:
             for f in filenames:
                 filePath = os.path.join(dirpath, f)
                 if self.isFileIgnored(filePath):
-                    logging.info('File {!s} in EXCLUDED_FOLDERS:'
-                                 .format(filePath.encode('utf-8')))
+                    logging.debug('File {!s} in EXCLUDED_FOLDERS:'
+                                  .format(filePath.encode('utf-8')))
                     continue
                 if any(ignored.search(f) for ignored in IGNORED_REGEX):
-                    logging.info('File {!s} in IGNORED_REGEX:'
-                                 .format(filePath.encode('utf-8')))
+                    logging.debug('File {!s} in IGNORED_REGEX:'
+                                  .format(filePath.encode('utf-8')))
                     continue
                 ext = os.path.splitext(os.path.basename(f))[1][1:].lower()
                 if ext in ALLOWED_EXT:
@@ -1420,9 +1428,7 @@ class Uploadr:
         May run in single or multiprocessing mode
 
         lock = parameter for multiprocessing control of access to DB.
-               (if args.processes = 0 then lock can be None as it is not used)
-        running = counter of number of processed files in multiprocessing
-        mutex = multiprocessing control of access to running.
+               (if args.processes = 0 then lock may be None as it is not used)
         file = fie to be uploaded
         """
 
@@ -1436,10 +1442,12 @@ class Uploadr:
             return True
 
         if (args.verbose):
-            niceprint('Checking file:[{!s}]...'.format(
-                                            file.encode('utf-8') \
-                                            if isThisStringUnicode(file) \
-                                            else file))
+            niceprint('Checking file:[{!s}]...'
+                      .format(StrOutisThisStringUnicode(file)))
+            # niceprint('Checking file:[{!s}]...'.format(
+            #                                 file.encode('utf-8') \
+            #                                 if isThisStringUnicode(file) \
+            #                                 else file))
 
         if FULL_SET_NAME:
             setName = os.path.relpath(os.path.dirname(file),
@@ -1454,7 +1462,7 @@ class Uploadr:
         con.text_factory = str
         with con:
             cur = con.cursor()
-            logging.debug('Output for {!s}:'.format('uploadFILE SELECT'))
+            logging.debug('Output for uploadFILE SELECT:')
             logging.debug('{!s}: {!s}'.format('SELECT rowid,files_id,path,'
                                               'set_id,md5,tagged,'
                                               'last_modified FROM '
@@ -1485,22 +1493,19 @@ class Uploadr:
             last_modified = os.stat(file).st_mtime
             if row is None:
                 if (args.verbose):
-                    niceprint('Uploading file:[{!s}]...'.format(
-                                                file.encode('utf-8') \
-                                                if isThisStringUnicode(file) \
-                                                else file))
-                    niceprint('On Album:[{!s}]...'.format(
-                                            setName.encode('utf-8') \
-                                            if isThisStringUnicode(setName) \
-                                            else setName))
+                    niceprint('Uploading file:[{!s}]...'
+                              .format(StrOutisThisStringUnicode(file)))
+                    niceprint('On Album:[{!s}]...'
+                              .format(StrOutisThisStringUnicode(setName)))
+                    # niceprint('Uploading file:[{!s}]...'.format(
+                    #                             file.encode('utf-8') \
+                    #                             if isThisStringUnicode(file) \
+                    #                             else file))
+                    # niceprint('On Album:[{!s}]...'.format(
+                    #                         setName.encode('utf-8') \
+                    #                         if isThisStringUnicode(setName) \
+                    #                         else setName))
                 try:
-                    # CODING: Is This sequence/assignment to photo being used?
-                    # if isThisStringUnicode(file):
-                    #     photo = ('photo', file.encode('utf-8'),
-                    #              open(file, 'rb').read())
-                    # else:
-                    #     photo = ('photo', file,
-                    #              open(file, 'rb').read())
                     if args.title:  # Replace
                         FLICKR["title"] = args.title
                     if args.description:  # Replace
@@ -2374,10 +2379,18 @@ class Uploadr:
                           .format(file[1].encode('utf-8') \
                           if isThisStringUnicode(file[1]) \
                           else file[1]))
-
-                cur.execute("UPDATE files SET set_id = ? WHERE files_id = ?",
-                            (setId, file[0]))
-                con.commit()
+                try:
+                    cur.execute("UPDATE files SET set_id = ? "
+                                "WHERE files_id = ?",
+                                (setId, file[0]))
+                    con.commit()
+                except lite.Error as e:
+                    reportError(Caught=True,
+                                CaughtPrefix='+++ DB',
+                                CaughtCode='095',
+                                CaughtMsg='DB error on UPDATE files: [{!s}]'
+                                          .format(e.args[0]),
+                                NicePrint=True)                    
             else:
                 if (addPhotoResp['code'] == 1):
                     niceprint('Photoset not found, creating new set...')
@@ -2662,10 +2675,20 @@ class Uploadr:
             if (row[0] >= 2):
                 # delete from badfiles table and reset SEQUENCE
                 niceprint('Deleting from badfiles table. Reseting sequence.')
-                cur.execute('DELETE FROM badfiles')
-                cur.execute('DELETE FROM SQLITE_SEQUENCE '
-                            'WHERE name="badfiles"')
-                con.commit()
+                try:
+                    cur.execute('DELETE FROM badfiles')
+                    cur.execute('DELETE FROM SQLITE_SEQUENCE '
+                                'WHERE name="badfiles"')
+                    con.commit()
+                except lite.Error as e:
+                    reportError(Caught=True,
+                                CaughtPrefix='+++ DB',
+                                CaughtCode='147',
+                                CaughtMsg='DB error on SELECT FROM '
+                                          'badfiles: [{!s}]'
+                                          .format(e.args[0]),
+                                NicePrint=True)
+                    raise
             else:
                 niceprint('Wrong DB version. '
                           'Expected 2 or higher and not:[{!s}]'.format(row[0]))
@@ -2779,9 +2802,18 @@ class Uploadr:
         con = lite.connect(DB_PATH)
         con.text_factory = str
         with con:
-            cur = con.cursor()
-            cur.execute("SELECT set_id, name FROM sets")
-            allsets = cur.fetchall()
+            try:
+                cur = con.cursor()
+                cur.execute("SELECT set_id, name FROM sets")
+                allsets = cur.fetchall()
+            except lite.Error as e:
+                reportError(Caught=True,
+                            CaughtPrefix='+++ DB',
+                            CaughtCode='163',
+                            CaughtMsg='DB error on SELECT FROM '
+                                      'sets: [{!s}]'
+                                      .format(e.args[0]),
+                            NicePrint=True)            
             for row in allsets:
                 niceprint('Set: [{!s}] ({!s})'.format(str(row[0]), row[1]))
 
@@ -2912,13 +2944,22 @@ set0 = sets.find('photosets').findall('photoset')[0]
                     logging.info('SELECT set_id FROM sets '
                                  'WHERE set_id = "{!s}"'
                                  .format(setId))
-                    cur.execute("SELECT set_id FROM sets WHERE set_id = '" +
-                                setId + "'")
-                    foundSets = cur.fetchone()
-                    logging.info('Output for foundSets is [{!s}]'
-                                 .format('None'
-                                         if foundSets is None \
-                                         else foundSets))
+                    try:
+                        cur.execute("SELECT set_id FROM sets WHERE set_id = '" +
+                                    setId + "'")
+                        foundSets = cur.fetchone()
+                        logging.info('Output for foundSets is [{!s}]'
+                                     .format('None'
+                                             if foundSets is None \
+                                             else foundSets))
+                    except lite.Error as e:
+                        reportError(Caught=True,
+                                    CaughtPrefix='+++ DB',
+                                    CaughtCode='164',
+                                    CaughtMsg='DB error on SELECT FROM '
+                                              'sets: [{!s}]'
+                                              .format(e.args[0]),
+                                    NicePrint=True)                        
 
                     if (foundSets is None):
                         if setName is None:
@@ -2936,10 +2977,18 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                             if isThisStringUnicode(setName) \
                                             else setName,
                                             primaryPhotoId))
-
-                        cur.execute('INSERT INTO sets (set_id, name, '
-                                    'primary_photo_id) VALUES (?,?,?)',
-                                    (setId, setName, primaryPhotoId))
+                        try:
+                            cur.execute('INSERT INTO sets (set_id, name, '
+                                        'primary_photo_id) VALUES (?,?,?)',
+                                        (setId, setName, primaryPhotoId))
+                        except lite.Error as e:
+                            reportError(Caught=True,
+                                        CaughtPrefix='+++ DB',
+                                        CaughtCode='165',
+                                        CaughtMsg='DB error on INSERT INTO '
+                                                  'sets: [{!s}]'
+                                                  .format(e.args[0]),
+                                        NicePrint=True)                        
                     else:
                         logging.info('Flickr Set/Album already on '
                                      'local database.')
@@ -2986,6 +3035,8 @@ set0 = sets.find('photosets').findall('photoset')[0]
     #
     # Checks if image is already loaded with tag:checksum
     # (calls Flickr photos.search)
+    #
+    # CODING: possible outcomes
     # if checksum, title, setName, Count=0 THEN NOT EXISTS => UPLOAD + INSERT
     # if checksum, title, setName, Count=1 THEN EXISTS => PASS
     # if checksum, title, other setName, Count=1 THEN NOT EXISTS => UPLOAD + INSERT
@@ -3212,9 +3263,6 @@ set0 = sets.find('photosets').findall('photoset')[0]
     #
     # Searchs for image with tag:checksum (calls Flickr photos.search)
     #
-    # CODING: Will return searchResp and if isgood(searchResp) will provide
-    # also searchtotal and id of first photo
-    #
     # Sample response:
     # <photos page="2" pages="89" perpage="10" total="881">
     #     <photo id="2636" owner="47058503995@N01"
@@ -3440,7 +3488,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
     # List Local pics, loaded pics into Flickr, pics not in sets on Flickr
     #
     # CODING: to be developed. Consider making allMedia (coming from
-    # grabnewfiles from  uploadr) a global variabl to pass onto this function
+    # grabnewfiles from  uploadr) a global variable to pass onto this function
     def searchForDuplicates(self):
 
         pass
