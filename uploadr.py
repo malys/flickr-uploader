@@ -11,6 +11,8 @@
     Some giberish. Please ignore!
     -----------------------------
     Area for my personal notes on on-going work! Please ignore!
+    * updatedVideoDate not working with 3gpp video files...
+      Added mimetypes.add_type('video/3gpp','.3gp') to init. Confirm.
     * replace X.encode if Unicde(X) else X by StrOutisThisStringUnicode(X)
     * Change code to insert on database prior to upload and then update result
     * Search and eliminate: # CODING check line above and remove next line
@@ -567,6 +569,17 @@ class Uploadr:
         get self.token from Cache (getCachedToken)
         """
         self.token = self.getCachedToken()
+        
+        # Add mimetype .3gp to allow detection of .3gp as video
+        logging.info('Adding mimetpye ''video/3gp''/''.3gp''')
+        mimetypes.add_type('video/3gpp','.3gp')
+        if not mimetypes.types_map['.3gp'] == 'video/3gpp':
+            reportError(Caught=True,
+                        CaughtPrefix='xxx',
+                        CaughtCode='003',
+                        CaughtMsg='Not able to add mimetype'
+                                  ' ''video/3gp''/''.3gp'' correctly',
+                        NicePrint=True)
 
     # -------------------------------------------------------------------------
     # useDBLock
@@ -1320,9 +1333,9 @@ class Uploadr:
         # Update Date/Time on Flickr for Video files
         # Flickr doesn't read it  from the video file itself.
         filetype = mimetypes.guess_type(xfile)
-        logging.info('filetype is:[{!s}]:'.format('None'\
-                                                  if filetype is None\
-                                                  else filetype[0]))
+        logging.info('filetype is:[{!s}]'.format('None'\
+                                                 if filetype is None\
+                                                 else filetype[0]))
 
         # update video date/time TAKEN.
         # Flickr doesn't read it  from the video file itself.
@@ -3066,7 +3079,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
         returnIsPhotoUploaded = False
         returnPhotoUploaded = 0
 
-        logging.info('Is Already Uploaded:[checksum:{!s}]'.format(xchecksum))
+        logging.info('Is Already Uploaded:[checksum:{!s}]?'.format(xchecksum))
 
         try:
             searchIsUploaded = None
@@ -3108,10 +3121,12 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                                      encoding='utf-8',
                                                      method='xml'))
 
+        # Number of pics with pecified checksum
         returnPhotoUploaded = int(searchIsUploaded
                                   .find('photos').attrib['total'])
 
         if returnPhotoUploaded == 0:
+            # No pic found
             returnIsPhotoUploaded = False
         elif returnPhotoUploaded >= 1:
             reportError(Caught=True,
@@ -3166,12 +3181,12 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                 exceptSysInfo=True)
                 finally:
                     if resp is None or not self.isGood(resp):
-                        logging.error('respOK:[{!s}]'
+                        logging.error('resp.getAllContextsOK:[{!s}]'
                                       .format('None' \
                                                if resp is None \
                                                else self.isGood(resp)))
                         return returnIsPhotoUploaded, returnPhotoUploaded
-                    logging.debug('resp:')
+                    logging.debug('resp.getAllContextsOK:')
                     logging.debug(xml.etree.ElementTree.tostring(
                                                         resp,
                                                         encoding='utf-8',
