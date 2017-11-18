@@ -13,7 +13,7 @@
     Area for my personal notes on on-going work! Please ignore!
     * updatedVideoDate not working with 3gp video files...
       Added mimetypes.add_type('video/3gp','.3gp') to init. Confirm.
-    * replace X.encode if Unicde(X) else X by StrOutisThisStringUnicode(X)
+    * replace X.encode if Unicde(X) else X by StrUnicodeOut(X)
     * Change code to insert on database prior to upload and then update result
     * Search and eliminate: # CODING check line above and remove next line
     * Protect all DB access( single processing or multiprocessing) with:
@@ -223,6 +223,8 @@ def isThisStringUnicode(s):
     """
     Determines if a string is Unicode (return True) or not (returns False)
     to allow correct print operations.
+    
+    Used by StrUnicodeOut function.
     Example:
         niceprint('Checking file:[{!s}]...'.format(
                                  file.encode('utf-8') \
@@ -237,15 +239,14 @@ def isThisStringUnicode(s):
         return False
 
 # -----------------------------------------------------------------------------
-# StrOutisThisStringUnicode
+# StrUnicodeOut
 #
 # Returns true if String is Unicode
 #
-def StrOutisThisStringUnicode(s):
+def StrUnicodeOut(s):
     """
     Outputs s.encode('utf-8') if isThisStringUnicode(s) esle s
-        niceprint('Checking file:[{!s}]...'.format(
-                                 StrOutisThisStringUnicode(file))
+        niceprint('Checking file:[{!s}]...'.format(StrUnicodeOut(file))
     """
     if s is not None:
         return s.encode('utf-8') if isThisStringUnicode(s) else s
@@ -269,8 +270,7 @@ def niceprint(s):
             os.getpid(),
             'PRINT',
             'uploadr',
-            StrOutisThisStringUnicode(s)))
-            # s.encode('utf-8') if isThisStringUnicode(s) else s))
+            StrUnicodeOut(s)))
 
 #------------------------------------------------------------------------------
 # reportError
@@ -282,7 +282,7 @@ def niceprint(s):
 #     reportError(Caught=True,
 #                 CaughtPrefix='+++',
 #                 CaughtCode='990',
-#                 CaughtMsg='Caught flickrapi exception',
+#                 CaughtMsg='Flickrapi exception on photos.setdates',
 #                 exceptUse=True,
 #                 exceptCode=ex.code,
 #                 exceptMsg=ex,
@@ -318,7 +318,7 @@ def reportError(Caught=False, CaughtPrefix='', CaughtCode=0, CaughtMsg='',
         +++ DB  Database Exceptions handling related
         xxx     Error related
       CaughtCode = '010'
-      CaughtMsg = 'Caught flickrapi exception'/'DB Error INSERT'
+      CaughtMsg = 'Flickrapi exception on...'/'DB Error on INSERT'
       NicePrint = True/False
       exceptUse = True/False
       exceptCode = ex.code
@@ -399,9 +399,7 @@ for folder in inEXCLUDED_FOLDERS:
                          'folder from EXCLUDED_FOLDERS:[{!s}]\n'
                          .format(nutime.strftime(UPLDRConstants.TimeFormat),
                                  os.getpid(),
-                                 folder.encode('utf-8') \
-                                 if isThisStringUnicode(folder) \
-                                 else folder))
+                                 StrUnicodeOut(folder)))
 del inEXCLUDED_FOLDERS
 # Consider Unicode Regular expressions
 IGNORED_REGEX = [re.compile(regex, re.UNICODE) for regex in \
@@ -419,7 +417,7 @@ MANAGE_CHANGES = eval(config.get('Config', 'MANAGE_CHANGES'))
 RAW_TOOL_PATH = eval(config.get('Config', 'RAW_TOOL_PATH'))
 CONVERT_RAW_FILES = eval(config.get('Config', 'CONVERT_RAW_FILES'))
 FULL_SET_NAME = eval(config.get('Config', 'FULL_SET_NAME'))
-SOCKET_TIMEOUT = eval(config.get('Config', 'SOCKET_TIMEOUT'))
+MAX_SQL_ATTEMPTS = eval(config.get('Config', 'MAX_SQL_ATTEMPTS'))
 MAX_UPLOAD_ATTEMPTS = eval(config.get('Config', 'MAX_UPLOAD_ATTEMPTS'))
 # LOGGING_LEVEL = eval(config.get('Config', 'LOGGING_LEVEL'))
 LOGGING_LEVEL = (config.get('Config', 'LOGGING_LEVEL')
@@ -820,12 +818,8 @@ class Uploadr:
             for row in rows:
                 logging.debug('Checking file_id:[{!s}] file:[{!s}] '
                               'isFileIgnored?'
-                              .format(row[0].encode('utf-8')\
-                                      if isThisStringUnicode(row[0])\
-                                      else row[0],
-                                      row[1].encode('utf-8')\
-                                      if isThisStringUnicode(row[1])\
-                                      else row[1]))
+                              .format(StrUnicodeOut(row[0]),
+                                      StrUnicodeOut(row[1])))
                 # row[1] is photo_id
                 if (self.isFileIgnored(row[1].decode('utf-8'))):
                     success = self.deleteFile(row, cur)
@@ -1235,9 +1229,7 @@ class Uploadr:
                             niceprint('Finished copying tags.')
 
             niceprint('Finished converting files with extension:[{!s}]'
-                      .format(ext.encode('utf-8')
-                              if isThisStringUnicode(ext) \
-                              else ext))
+                      .format(StrUnicodeOut(ext)))
 
         niceprint('*****Completed converting files*****')
 
@@ -1306,15 +1298,11 @@ class Uploadr:
             logging.debug('is filename unicode?[{!s}]'
                           .format(isThisStringUnicode(filename)))
             logging.debug('is os.path.dirname(filename) unicode?[{!s}]'
-                          .format(isThisStringUnicode(os.path.dirname(
-                                                                filename))))
+                          .format(isThisStringUnicode(
+                                        os.path.dirname(filename))))
             logging.debug('excluded_dir:[{!s}] filename:[{!s}]'
-                          .format(excluded_dir.encode('utf-8') \
-                                  if isThisStringUnicode(excluded_dir) \
-                                  else excluded_dir,
-                                  filename.encode('utf-8') \
-                                  if isThisStringUnicode(filename) \
-                                  else filename))
+                          .format(StrUnicodeOut(excluded_dir),
+                                  StrUnicodeOut(filename)))
             # Now everything should be in Unicode
             if excluded_dir in os.path.dirname(filename):
                 logging.debug('Returning isFileIgnored:[True]')
@@ -1356,15 +1344,9 @@ class Uploadr:
                                                        encoding='utf-8',
                                                        method='xml'))
                 if self.isGood(res_set_date):
-                    niceprint(
-                       'Successfully set date [{!s}] for file:[{!s}].'
-                       .format(video_date.encode('utf-8') \
-                               if isThisStringUnicode(
-                                              video_date) \
-                               else video_date,
-                               xfile.encode('utf-8') \
-                               if isThisStringUnicode(xfile) \
-                               else xfile))
+                    niceprint('Successfully set date [{!s}] for file:[{!s}].'
+                              .format(StrUnicodeOut(video_date),
+                                      StrUnicodeOut(xfile)))
             except (IOError, ValueError, httplib.HTTPException):
                 reportError(Caught=True,
                             CaughtPrefix='+++',
@@ -1380,13 +1362,8 @@ class Uploadr:
                     raise IOError(res_set_date)
 
             niceprint('Successfully set date [{!s}] for pic [{!s}]'
-                      .format(video_date.encode('utf-8')
-                              if isThisStringUnicode(
-                                             video_date) \
-                              else video_date,
-                              xfile.encode('utf-8')
-                              if isThisStringUnicode(xfile) \
-                              else xfile))
+                      .format(StrUnicodeOut(video_date),
+                              StrUnicodeOut(xfile)))
             return True
         else:
             return True
@@ -1451,18 +1428,12 @@ class Uploadr:
 
         if (args.dry_run is True):
             niceprint('Dry Run Uploading file:[{!s}]...'
-                      .format(file.encode('utf-8') \
-                              if isThisStringUnicode(file) \
-                              else file))
+                      .format(StrUnicodeOut(file)))
             return True
 
         if (args.verbose):
             niceprint('Checking file:[{!s}]...'
-                      .format(StrOutisThisStringUnicode(file)))
-            # niceprint('Checking file:[{!s}]...'.format(
-            #                                 file.encode('utf-8') \
-            #                                 if isThisStringUnicode(file) \
-            #                                 else file))
+                      .format(StrUnicodeOut(file)))
 
         if FULL_SET_NAME:
             setName = os.path.relpath(os.path.dirname(file),
@@ -1509,17 +1480,10 @@ class Uploadr:
             if row is None:
                 if (args.verbose):
                     niceprint('Uploading file:[{!s}]...'
-                              .format(StrOutisThisStringUnicode(file)))
+                              .format(StrUnicodeOut(file)))
                     niceprint('On Album:[{!s}]...'
-                              .format(StrOutisThisStringUnicode(setName)))
-                    # niceprint('Uploading file:[{!s}]...'.format(
-                    #                             file.encode('utf-8') \
-                    #                             if isThisStringUnicode(file) \
-                    #                             else file))
-                    # niceprint('On Album:[{!s}]...'.format(
-                    #                         setName.encode('utf-8') \
-                    #                         if isThisStringUnicode(setName) \
-                    #                         else setName))
+                              .format(StrUnicodeOut(setName)))
+                # CODING focus this try and not cover so much code!
                 try:
                     if args.title:  # Replace
                         FLICKR["title"] = args.title
@@ -1586,12 +1550,10 @@ class Uploadr:
                                             .format(x, MAX_UPLOAD_ATTEMPTS))
                             if (x > 0):
                                 niceprint('Reuploading:[{!s}]...'
-                                          '[{!s}/{!s} attempts].'.format(
-                                                file.encode('utf-8') \
-                                                if isThisStringUnicode(file) \
-                                                else file,
-                                                x,
-                                                MAX_UPLOAD_ATTEMPTS))
+                                          '[{!s}/{!s} attempts].'
+                                          .format(StrUnicodeOut(file),
+                                                  x,
+                                                  MAX_UPLOAD_ATTEMPTS))
 
                             # Upload file to Flickr
                             # replace commas from tags and checksum tags
@@ -1627,12 +1589,12 @@ class Uploadr:
 
                             # Save photo_id returned from Flickr upload
                             photo_id = uploadResp.findall('photoid')[0].text
-                            logging.warning('Uploaded photo_id=[{!s}] Ok.'
+                            logging.warning('Uploaded photo_id=[{!s}] Ok. '
                                             'Will check for issues ('
                                             'duplicates or wrong checksum)'
                                             .format(photo_id))
                             if (args.verbose):
-                                niceprint('Uploaded photo_id=[{!s}] Ok.'
+                                niceprint('Uploaded photo_id=[{!s}] Ok. '
                                           'Will check for issues ('
                                           'duplicates or wrong checksum)'
                                           .format(photo_id))
@@ -1696,20 +1658,17 @@ class Uploadr:
                     if not search_result and not self.isGood(uploadResp):
                         niceprint('A problem occurred while attempting to '
                                   'upload the file:[{!s}]'
-                                  .format(file.encode('utf-8') \
-                                          if isThisStringUnicode(file) \
-                                          else file))
+                                  .format(StrUnicodeOut(file)))
                         raise IOError(uploadResp)
 
                     # Successful update
                     niceprint('Successfully uploaded the file:[{!s}].'
-                              .format(file.encode('utf-8') \
-                                      if isThisStringUnicode(file) \
-                                      else file))
+                              .format(StrUnicodeOut(file)))
 
                     # Save file_id... from uploadResp or search_result
                     # CODING: Obtained IndexOut of Range error after 1st load
                     # attempt failed and when search_Result returns 1 entry
+                    logging.info('search_result:[{!s}]'.format(search_result))
                     if search_result:
                         logging.warning('len(search_result(photos)'
                                         '.[photo]=[{!s}]'
@@ -1748,6 +1707,8 @@ class Uploadr:
                                             method='xml'))
 
                     # For tracking bad response from search_photos
+                    logging.info('TraceBackIndexError:[{!s}]'
+                                 .format(TraceBackIndexError))
                     if not TraceBackIndexError:
                         try:
                             # Acquire DBlock if running in multiprocessing mode
@@ -1761,7 +1722,7 @@ class Uploadr:
                             reportError(Caught=True,
                                         CaughtPrefix='+++ DB',
                                         CaughtCode='030',
-                                        CaughtMsg='DB error occurred: [{!s}]'
+                                        CaughtMsg='DB error on INSERT : [{!s}]'
                                                   .format(e.args[0]),
                                         NicePrint=True)
                         finally:
@@ -1778,7 +1739,7 @@ class Uploadr:
                     reportError(Caught=True,
                                 CaughtPrefix='+++',
                                 CaughtCode='040',
-                                CaughtMsg='Caught flickrapi exception',
+                                CaughtMsg='Flickrapi exception on upload',
                                 exceptUse=True,
                                 exceptCode=ex.code,
                                 exceptMsg=ex,
@@ -1904,17 +1865,12 @@ class Uploadr:
         global nuflickr
 
         if (args.dry_run is True):
-            niceprint('Dry Run Replacing the file:[{!s}]...'.format(
-                                            file.encode('utf-8') \
-                                            if isThisStringUnicode(file) \
-                                            else file))
+            niceprint('Dry Run Replacing file:[{!s}]...'
+                      .format(StrUnicodeOut(file)))
             return True
 
         if (args.verbose):
-            niceprint('Replacing the file:[{!s}]...'.format(
-                                            file.encode('utf-8') \
-                                            if isThisStringUnicode(file) \
-                                            else file))
+            niceprint('Replacing file:[{!s}]...'.format(StrUnicodeOut(fie)))
 
         success = False
         try:
@@ -1936,21 +1892,13 @@ class Uploadr:
 
                 try:
                     if (x > 0):
-                        niceprint('Re-Replacing:[{!s}]...'
-                                  '[{!s}/{!s} attempts].'.format(
-                                        file.encode('utf-8') \
-                                        if isThisStringUnicode(file) \
-                                        else file,
-                                        x,
-                                        MAX_UPLOAD_ATTEMPTS))
+                        niceprint('Re-Replacing:[{!s}]...[{!s}/{!s} attempts].'
+                                  .format(StrUnicodeOut(file),
+                                          x,
+                                          MAX_UPLOAD_ATTEMPTS))
 
-                    # Use fileobj.
-                    # replaceResp = nuflickr.replace(
-                    #                 filename=file,
-                    #                 fileobj=FileWithCallback(file, callback),
-                    #                 photo_id=file_id
-                    #                 )
-                    replaceResp = nuflickr.replace(
+                    # Use fileobj with filename='dummy'to accept unicode file.
+                        replaceResp = nuflickr.replace(
                                     filename='dummy',
                                     fileobj=FileWithCallback(file, callback),
                                     photo_id=file_id
@@ -2044,9 +1992,7 @@ class Uploadr:
                    (not self.isGood(res_get_info)):
                 niceprint('A problem occurred while attempting to '
                           'replace the file:[{!s}]'
-                          .format(file.encode('utf-8') \
-                                  if isThisStringUnicode(file) \
-                                else file))
+                          .format(StrUnicodeOut(file)))
 
             if (not self.isGood(replaceResp)):
                 raise IOError(replaceResp)
@@ -2058,9 +2004,7 @@ class Uploadr:
                 raise IOError(res_get_info)
 
             niceprint('Successfully replaced the file:[{!s}].'
-                      .format(file.encode('utf-8') \
-                              if isThisStringUnicode(file) \
-                              else file))
+                      .format(StrUnicodeOut(file)))
 
             # Update the db the file uploaded
             # Control for when running multiprocessing set locking
@@ -2074,7 +2018,7 @@ class Uploadr:
                 reportError(Caught=True,
                             CaughtPrefix='+++ DB',
                             CaughtCode='070',
-                            CaughtMsg='DB error occurred: [{!s}]'
+                            CaughtMsg='DB error on UPDATE: [{!s}]'
                                       .format(e.args[0]),
                             NicePrint=True)
             finally:
@@ -2090,7 +2034,7 @@ class Uploadr:
             reportError(Caught=True,
                         CaughtPrefix='+++',
                         CaughtCode='080',
-                        CaughtMsg='Caught flickrapi exception',
+                        CaughtMsg='Flickrapi exception on upload(or)replace',
                         exceptUse=True,
                         exceptCode=ex.code,
                         exceptMsg=ex,
@@ -2135,9 +2079,7 @@ class Uploadr:
 
         if args.dry_run:
             niceprint('Dry Run Deleting file:[{!s}]'
-                      .format(file[1].encode('utf-8') \
-                              if isThisStringUnicode(file[1]) \
-                              else file[1]))
+                      .format(StrUnicodeOut(file[1])))
             return True
 
         niceprint('Deleting file:[{!s}]'
@@ -2214,13 +2156,16 @@ class Uploadr:
         """ logSetCreation
 
         Creates on flickrdb local database a SetName(Album)
+        with Primary photo Id.
+        
+        Assigns Primary phoot Id to set on the local DB.
         """
 
-        logging.info('setName:[{!s}] setName.type:[{!s}]'
-                     .format(setName, type(setName)))
-        logging.warning('Adding set: [{!s}] to database log.'.format(setName))
+        logging.warning('Adding set: [{!s}] to database log.'
+                        .format(StrUnicodeOut(setName)))
         if (args.verbose):
-            niceprint('Adding set: [{!s}] to database log.'.format(setName))
+            niceprint('Adding set: [{!s}] to database log.'
+                      .format(StrUnicodeOut(setName)))
         success = False
 
         try:
@@ -2327,9 +2272,7 @@ class Uploadr:
                     # row[0] = files_id from files table
                     setId = self.createSet(setName, row[0], cur, con)
                     niceprint('Created the set: [{!s}]'.
-                              format(setName.encode('utf-8') \
-                                     if isThisStringUnicode(file) \
-                                     else setName))
+                              format(StrUnicodeOut(setName)))
                     newSetCreated = True
                 else:
                     # set[0] = set_id from sets table
@@ -2341,10 +2284,8 @@ class Uploadr:
                 # row[1] = path for the file from table files
                 # row[2] = set_id from files table
                 if row[2] is None and newSetCreated is False:
-                    niceprint('adding file to set [{!s}]...'.
-                              format(row[1].encode('utf-8') \
-                                     if isThisStringUnicode(row[1]) \
-                                     else row[1]))
+                    niceprint('adding file to set [{!s}]...'
+                              .format(StrUnicodeOut(row[1])))
 
                     self.addFileToSet(setId, row, cur)
 
@@ -2391,9 +2332,7 @@ class Uploadr:
 
             if (self.isGood(addPhotoResp)):
                 niceprint('Successfully added file:[{!s}] to its set.'
-                          .format(file[1].encode('utf-8') \
-                          if isThisStringUnicode(file[1]) \
-                          else file[1]))
+                          .format(StrUnicodeOut(file[1])))
                 try:
                     cur.execute("UPDATE files SET set_id = ? "
                                 "WHERE files_id = ?",
@@ -2436,7 +2375,7 @@ class Uploadr:
             reportError(Caught=True,
                         CaughtPrefix='+++',
                         CaughtCode='100',
-                        CaughtMsg='Caught flickrapi exception',
+                        CaughtMsg='Flickrapi exception on photosets.addPhoto',
                         NicePrint=True)
             # Error: 1: Photoset not found
             if (ex.code == 1):
@@ -2474,7 +2413,7 @@ class Uploadr:
             reportError(Caught=True,
                         CaughtPrefix='+++ DB',
                         CaughtCode='120',
-                        CaughtMsg='DB error occurred: [{!s}]'
+                        CaughtMsg='DB error on UPDATE files: [{!s}]'
                                   .format(e.args[0]),
                         NicePrint=True)
         except:
@@ -2498,13 +2437,9 @@ class Uploadr:
         global nuflickr
 
         logging.debug('Creating new set:[{!s}]'
-                      .format(setName.encode('utf-8')
-                             if isThisStringUnicode(setName) \
-                             else setName))
+                      .format(StrUnicodeOut(setName)))
         niceprint('Creating new set:[{!s}]'
-                  .format(setName.encode('utf-8')
-                          if isThisStringUnicode(setName) \
-                          else setName))
+                  .format(StrUnicodeOut(setName)))
 
         if args.dry_run:
             return True
@@ -2547,7 +2482,7 @@ class Uploadr:
             reportError(Caught=True,
                         CaughtPrefix='+++',
                         CaughtCode='130',
-                        CaughtMsg='Caught flickrapi exception',
+                        CaughtMsg='Flickrapi exception on photosets.create',
                         exceptUse=True,
                         exceptCode=ex.code,
                         exceptMsg=ex,
@@ -2565,17 +2500,13 @@ class Uploadr:
                           'Probably deleted from Flickr but still on local db '
                           'and local file.'
                           .format(primaryPhotoId,
-                                  setName.encode('utf-8')
-                                  if isThisStringUnicode(setName) \
-                                  else setName))
+                                  StrUnicodeOut(setName)))
                 logging.warning(
                           'Primary photo [{!s}] for Set [{!s}] '
                           'does not exist on Flickr'
                           'Probably deleted from Flickr but still on local db '
                           'and local file.'
-                          .format(setName.encode('utf-8')
-                                  if isThisStringUnicode(setName) \
-                                  else setName,
+                          .format(StrUnicodeOut(setName),
                                   primaryPhotoId))
 
         except:
@@ -2931,9 +2862,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                             niceprint('setName=[{!s}] '
                                       'setId=[{!s}] '
                                       'primaryPhotoId=[{!s}]'
-                                      .format(setName.encode('utf-8') \
-                                              if isThisStringUnicode(setName) \
-                                              else setName,
+                                      .format(StrUnicodeOut(setName),
                                               setId,
                                               primaryPhotoId))
 
@@ -2945,9 +2874,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                      'setName:[{!s}] '
                                      'primaryPhotoId:[{!s}]'
                                      .format(setId,
-                                             setName.encode('utf-8') \
-                                             if isThisStringUnicode(setName) \
-                                             else setName,
+                                             StrUnicodeOut(setName),
                                              primaryPhotoId))
                     else:
                         logging.info('Searching on DB for setId:[{!s}] '
@@ -2988,9 +2915,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                          'with primary photo [{!s}].'
                                          .format(
                                             setId,
-                                            setName.encode('utf-8') \
-                                            if isThisStringUnicode(setName) \
-                                            else setName,
+                                            StrUnicodeOut(setName),
                                             primaryPhotoId))
                         try:
                             cur.execute('INSERT INTO sets (set_id, name, '
@@ -3033,7 +2958,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
             reportError(Caught=True,
                         CaughtPrefix='+++',
                         CaughtCode='170',
-                        CaughtMsg='Caught flickrapi exception',
+                        CaughtMsg='Flickrapi exception on photosets_getList',
                         exceptUse=True,
                         exceptCode=ex.code,
                         exceptMsg=ex,
@@ -3093,7 +3018,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
             reportError(Caught=True,
                         CaughtPrefix='+++',
                         CaughtCode='180',
-                        CaughtMsg='Error in photos.search',
+                        CaughtMsg='Flickrapi exception on photos.search',
                         exceptUse=True,
                         exceptCode=ex.code,
                         exceptMsg=ex)
@@ -3148,12 +3073,8 @@ set0 = sets.find('photosets').findall('photoset')[0]
                     niceprint(
                         'pic.id=[{!s}] pic.title=[{!s}] pic.tags=[{!s}]'
                         .format(pic.attrib['id'],
-                                pic.attrib['title'].encode('utf-8') \
-                                if isThisStringUnicode(pic.attrib['title']) \
-                                else pic.attrib['title'],
-                                pic.attrib['tags'].encode('utf-8') \
-                                if isThisStringUnicode(pic.attrib['tags']) \
-                                else pic.attrib['tags']))
+                                StrUnicodeOut(pic.attrib['title']),
+                                StrUnicodeOut(pic.attrib['tags'])))
 
                 # Check SetNames to which this pic belongs to.
                 try:
@@ -3164,7 +3085,8 @@ set0 = sets.find('photosets').findall('photoset')[0]
                     reportError(Caught=True,
                                 CaughtPrefix='+++',
                                 CaughtCode='195',
-                                CaughtMsg='Error in getAllContexts',
+                                CaughtMsg='Flickrapi exception on '
+                                          'getAllContexts',
                                 exceptUse=True,
                                 exceptCode=ex.code,
                                 exceptMsg=ex)
@@ -3213,27 +3135,12 @@ set0 = sets.find('photosets').findall('photoset')[0]
                               'Flickr: Title:[{!s}] Set:[{!s}] Tags:[{!s}]'
                               .format(
                                     pic.attrib['id'],
-                                    xfile.encode('utf-8') \
-                                    if isThisStringUnicode(xfile) \
-                                    else xfile,
-                                    xtitle_filename.encode('utf-8') \
-                                    if isThisStringUnicode(xtitle_filename) \
-                                    else xtitle_filename,
-                                    xsetName.encode('utf-8') \
-                                    if isThisStringUnicode(xsetName) \
-                                    else xsetName,
-                                    pic.attrib['title'].encode('utf-8') \
-                                    if isThisStringUnicode(
-                                                    pic.attrib['title']) \
-                                    else pic.attrib['title'],
-                                    setinlist.attrib['title'].encode('utf-8')\
-                                    if isThisStringUnicode(
-                                                    setinlist.attrib['title'])\
-                                    else setinlist.attrib['title'],
-                                    pic.attrib['tags'].encode('utf-8') \
-                                    if isThisStringUnicode(
-                                                    pic.attrib['tags']) \
-                                    else pic.attrib['tags']))
+                                    StrUnicodeOut(xfile),
+                                    StrUnicodeOut(xtitle_filename),
+                                    StrUnicodeOut(xsetName),
+                                    StrUnicodeOut(pic.attrib['title']),
+                                    StrUnicodeOut(setinlist.attrib['title']),
+                                    StrUnicodeOut(pic.attrib['tags']),
 
                     # result is either
                     #   same
@@ -3266,7 +3173,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
 #     <photo id="38210659646" owner="146995488@N03" secret="2786b173f4" server="4536" farm="5" title="DSC01397" ispublic="0" isfriend="0" isfamily="0" tags="autoupload checksum1133825cea9d605f332d04b40a44a6d6" />
 #   </photos>
 # </rsp>
-# CAREFULL... flickrapi on occassion indicates total=2 but the list only brings 1
+# CAREFULL... flickrapi on occasion indicates total=2 but the list only brings 1
 #
 # <?xml version="1.0" encoding="utf-8" ?>
 # <rsp stat="ok">
@@ -3466,7 +3373,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                 reportError(Caught=True,
                             CaughtPrefix='+++',
                             CaughtCode='210',
-                            CaughtMsg='Caught flickrapi exception',
+                            CaughtMsg='Flickrapi exception on photos.setdates',
                             exceptUse=True,
                             exceptCode=ex.code,
                             exceptMsg=ex,
