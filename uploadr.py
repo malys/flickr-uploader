@@ -1718,10 +1718,10 @@ class Uploadr:
                                .find('photos')
                                .findall('photo')) == 0):
                             logging.error('xxx #E10 Error: '
-                                          'IndexError: search_result yields'
-                                          'Index out of range.'
-                                          'Manually check file:[{!s}]'
-                                          'Continue with next image.'
+                                          'IndexError: search_result yields '
+                                          'Index out of range. '
+                                          'Manually check file:[{!s}] '
+                                          'Continuing with next image.'
                                           .format(file))
                             TraceBackIndexError = True
                         else:
