@@ -13,7 +13,7 @@
     Area for my personal notes on on-going work! Please ignore!
     * updatedVideoDate not working with 3gp video files...
       Added mimetypes.add_type('video/3gp','.3gp') to init. Confirm.
-    * replace X.encode if Unicde(X) else X by StrUnicodeOut(X)
+    * replace X.encode if Unicode(X) else X by StrUnicodeOut(X)
     * Change code to insert on database prior to upload and then update result
     * Search and eliminate: # CODING check line above and remove next line
     * Protect all DB access( single processing or multiprocessing) with:
@@ -77,6 +77,8 @@
       that some processes have more work than others defeating the purpose
       of multiprocessing. When loading from scratch a big Library it works
       like a charm.
+    * If you reduce FILE_MAX_SIZE in settings, the previously loaded files
+      (over such size) are not removed.
     * Arguments not fully tested:
         -n
         -r (should work)
@@ -803,7 +805,7 @@ class Uploadr:
         Remove previously uploaded files, that are now being ignored due to
         change of the INI file configuration EXCLUDED_FOLDERS.
         """
-        niceprint('*****Removing ignored files*****')
+        niceprint('*****Removing files from Excluded Folders*****')
 
         if (not flick.checkToken()):
             flick.authenticate()
@@ -828,7 +830,7 @@ class Uploadr:
         if con is not None:
             con.close()
 
-        niceprint('*****Completed ignored files*****')
+        niceprint('*****Completed files from Excluded Folders*****')
 
     #--------------------------------------------------------------------------
     # removeDeleteMedia
@@ -1710,24 +1712,51 @@ class Uploadr:
                     logging.info('TraceBackIndexError:[{!s}]'
                                  .format(TraceBackIndexError))
                     if not TraceBackIndexError:
-                        try:
-                            # Acquire DBlock if running in multiprocessing mode
-                            self.useDBLock(lock, True)
-                            cur.execute(
-                                'INSERT INTO files '
-                                '(files_id, path, md5, last_modified, tagged) '
-                                'VALUES (?, ?, ?, ?, 1)',
-                                (file_id, file, file_checksum, last_modified))
-                        except lite.Error as e:
-                            reportError(Caught=True,
-                                        CaughtPrefix='+++ DB',
-                                        CaughtCode='030',
-                                        CaughtMsg='DB error on INSERT : [{!s}]'
-                                                  .format(e.args[0]),
-                                        NicePrint=True)
-                        finally:
-                            # Release DBlock if running in multiprocessing mode
-                            self.useDBLock(lock, False)
+
+                        # Database Locked is returned often on this INSERT
+                        # Will try MAX_SQL_ATTEMPTS...
+                        for x in range(0, MAX_SQL_ATTEMPTS):
+                            logging.info(
+                                'BEGIN SQL:[{!s}]...[{!s}/{!s} attempts].'
+                                .format('INSERT INTO files',
+                                        x,
+                                        MAX_SQL_ATTEMPTS))
+                            DBexception = False
+                            try:
+                                # Acquire DBlock if running in multiprocessing mode
+                                self.useDBLock(lock, True)
+                                cur.execute(
+                                    'INSERT INTO files '
+                                    '(files_id, path, md5, '
+                                    'last_modified, tagged) '
+                                    'VALUES (?, ?, ?, ?, 1)',
+                                    (file_id, file, file_checksum,
+                                     last_modified))
+                            except lite.Error as e:
+                                DBexception = True
+                                reportError(Caught=True,
+                                            CaughtPrefix='+++ DB',
+                                            CaughtCode='030',
+                                            CaughtMsg='DB error on INSERT: '
+                                                      '[{!s}]'
+                                                      .format(e.args[0]),
+                                            NicePrint=True,
+                                            exceptSysInfo=True)
+                            finally:    
+                                # Release DBlock if running in multiprocessing mode
+                                self.useDBLock(lock, False)
+                            
+                            if DBexception:
+                                logging.error('Sleep 2 and retry SQL...')
+                                niceprint('Sleep 2 and retry SQL...')
+                                nutime.sleep(2)                                
+                            else:
+                                logging.info(
+                                    'END SQL:[{!s}]...[{!s}/{!s} attempts].'
+                                    .format('INSERT INTO files',
+                                            x,
+                                            MAX_SQL_ATTEMPTS))
+                                break
 
                         # Update the Video Date Taken
                         self.updatedVideoDate(file_id, file, last_modified)
@@ -2436,8 +2465,8 @@ class Uploadr:
 
         global nuflickr
 
-        logging.debug('Creating new set:[{!s}]'
-                      .format(StrUnicodeOut(setName)))
+        logging.info('Creating new set:[{!s}]'
+                     .format(StrUnicodeOut(setName)))
         niceprint('Creating new set:[{!s}]'
                   .format(StrUnicodeOut(setName)))
 
@@ -3140,7 +3169,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                     StrUnicodeOut(xsetName),
                                     StrUnicodeOut(pic.attrib['title']),
                                     StrUnicodeOut(setinlist.attrib['title']),
-                                    StrUnicodeOut(pic.attrib['tags']),
+                                    StrUnicodeOut(pic.attrib['tags'])))
 
                     # result is either
                     #   same
