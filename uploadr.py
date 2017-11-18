@@ -11,8 +11,8 @@
     Some giberish. Please ignore!
     -----------------------------
     Area for my personal notes on on-going work! Please ignore!
-    * updatedVideoDate not working with 3gpp video files...
-      Added mimetypes.add_type('video/3gpp','.3gp') to init. Confirm.
+    * updatedVideoDate not working with 3gp video files...
+      Added mimetypes.add_type('video/3gp','.3gp') to init. Confirm.
     * replace X.encode if Unicde(X) else X by StrOutisThisStringUnicode(X)
     * Change code to insert on database prior to upload and then update result
     * Search and eliminate: # CODING check line above and remove next line
@@ -571,7 +571,7 @@ class Uploadr:
         self.token = self.getCachedToken()
         
         # Add mimetype .3gp to allow detection of .3gp as video
-        logging.info('Adding mimetpye ''video/3gp''/''.3gp''')
+        logging.info('Adding mimetpye "video/3gp"/".3gp"')
         mimetypes.add_type('video/3gpp','.3gp')
         if not mimetypes.types_map['.3gp'] == 'video/3gpp':
             reportError(Caught=True,
@@ -580,6 +580,8 @@ class Uploadr:
                         CaughtMsg='Not able to add mimetype'
                                   ' ''video/3gp''/''.3gp'' correctly',
                         NicePrint=True)
+        else:
+            logging.warning('Added mimetype "video/3gp"/".3gp" correctly.')
 
     # -------------------------------------------------------------------------
     # useDBLock
