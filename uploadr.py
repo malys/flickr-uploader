@@ -264,10 +264,10 @@ def StrUnicodeOut(s):
 def niceprint(s):
     """
     Print a message with the format:
-        [2017.10.25 22:32:03]:[PID]:[PRINT   ]:[uploadr] Some Message
+        [2017.11.19 01:53:57]:[PID       ][PRINT   ]:[uploadr] Some Message
         Accounts for UTF-8 Messages
     """
-    print('[{!s}]:[{!s}][{!s:8s}]:[{!s}] {!s}'.format(
+    print('[{!s}]:[{!s:11s}][{!s:8s}]:[{!s}] {!s}'.format(
             nutime.strftime(UPLDRConstants.TimeFormat),
             os.getpid(),
             'PRINT',
@@ -467,8 +467,8 @@ LOGGING_LEVEL = int(LOGGING_LEVEL)
 logging.basicConfig(stream=sys.stderr,
                     level=int(LOGGING_LEVEL),
                     datefmt=UPLDRConstants.TimeFormat,
-                    format='[%(asctime)s]:[%(processName)s][%(levelname)-8s]'
-                           ':[%(name)s] %(message)s')
+                    format='[%(asctime)s]:[%(processName)-11s]'
+                           '[%(levelname)-8s]:[%(name)s] %(message)s')
 #==============================================================================
 # Test section for logging.
 # CODING: Uncomment for testing.
