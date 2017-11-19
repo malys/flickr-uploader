@@ -234,6 +234,13 @@ def isThisStringUnicode(s):
                                  file.encode('utf-8') \
                                  if isThisStringUnicode(file) \
                                  else file))
+
+    >>> isThisStringUnicode('No Unicode string')
+    False
+    >>> isThisStringUnicode(u'Unicode string')
+    True
+    >>> isThisStringUnicode(2)
+    False                                 
     """
     if isinstance(s, unicode):
         return True
