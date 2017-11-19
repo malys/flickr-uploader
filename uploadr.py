@@ -234,6 +234,13 @@ def isThisStringUnicode(s):
                                  file.encode('utf-8') \
                                  if isThisStringUnicode(file) \
                                  else file))
+
+    >>> isThisStringUnicode('No Unicode string')
+    False
+    >>> isThisStringUnicode(u'Unicode string')
+    True
+    >>> isThisStringUnicode(2)
+    False
     """
     if isinstance(s, unicode):
         return True
@@ -1479,6 +1486,17 @@ class Uploadr:
             row = cur.fetchone()
             logging.debug('row {!s}:'.format(row))
 
+            # Check if file is already loaded
+            isLoaded, isCount = self.is_photo_already_uploaded(
+                                                file,
+                                                self.md5Checksum(file),
+                                                setName)
+            niceprint('is_photo_already_uploaded:[{!s}] count:[{!s}]'
+                      .format(isLoaded, isCount))
+            if isLoaded:
+                niceprint('##### ALREADY LOADED '
+                          'DO NOT PERFORM ANYTHING ELSE')
+
             # use file modified timestamp to check for changes
             last_modified = os.stat(file).st_mtime
             if row is None:
@@ -1529,18 +1547,6 @@ class Uploadr:
                                         .format(title_filename))
 
                     file_checksum = self.md5Checksum(file)
-
-                    # Check if file is already loaded
-                    isLoaded, isCount = self.is_photo_already_uploaded(
-                                                        file,
-                                                        self.md5Checksum(file),
-                                                        setName)
-                    niceprint('is_photo_already_uploaded:[{!s}] count:[{!s}]'
-                              .format(isLoaded, isCount))
-
-                    if isLoaded:
-                        niceprint('##### ALREADY LOADED '
-                                  'DO NOT PERFORM ANYTHING ELSE')
 
                     # Perform actual upload of the file
                     search_result = None
@@ -1756,6 +1762,7 @@ class Uploadr:
                                     .format('INSERT INTO files',
                                             x,
                                             MAX_SQL_ATTEMPTS))
+                                # Break the cycle of SQL_ATTEMPTS and continue
                                 break
 
                         # Update the Video Date Taken
@@ -3009,12 +3016,21 @@ set0 = sets.find('photosets').findall('photoset')[0]
     # (calls Flickr photos.search)
     #
     # CODING: possible outcomes
-    # if checksum, title, setName, Count=0 THEN NOT EXISTS
-    # if checksum, title, setName, Count=1 THEN EXISTS
-    # if checksum, title, other setName, Count=1 THEN NOT EXISTS
-    # if checksum, title, empty setName, Count=1 THEN ASSUME EXISTS ASSIGN SET
+    # if checksum,                             Count=0  THEN NOT EXISTS
+    # if checksum, title, empty setName,       Count=1  THEN EXISTS, ASSIGN SET
+    # if checksum, title, setName (1 or more), Count>=1 THEN EXISTS
+    # if checksum, title, other setName,       Count>=1 THEN NOT EXISTS
     # if checksum, title, setName BUT ALSO checksum, title, other setName => ??
     # if checksum, title, setName BUT ALSO checksum, title, empty setName => ??
+    #
+    # Logic:
+    #   Search photos with checksum
+    #   Verify if title is filename's (without extension)
+    #         not compatible with use of the -i option
+    #   Confirm if setname is the same.
+    #   THEN yes found loaded.
+    # Note: There could be more entries due to errors. To be checked manually
+    #
     def is_photo_already_uploaded(self, xfile, xchecksum, xsetName):
         """ is_photo_already_loaded
 
@@ -3026,13 +3042,6 @@ set0 = sets.find('photosets').findall('photoset')[0]
             returnIsPhotoUploaded = True (already loaded)/False(not loaded)
             returnPhotoUploaded = Number of found Images
         """
-    # CODING: Logic
-    #   Search photos with checksum
-    #   Verify if title is filename's (without extension)
-    #         not compatible with  use the -i optionchecksum
-    #   Confirm if setname is the same.
-    #   THEN yes found loaded.
-    # Note: There could be more entries due to errors. To be checked manually
 
         global nuflickr
         returnIsPhotoUploaded = False
@@ -3085,28 +3094,36 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                   .find('photos').attrib['total'])
 
         if returnPhotoUploaded == 0:
-            # No pic found
+            # if checksum,                             Count=0  THEN NOT EXISTS
             returnIsPhotoUploaded = False
         elif returnPhotoUploaded >= 1:
             reportError(Caught=True,
                         CaughtPrefix='+++',
                         CaughtCode='190',
-                        CaughtMsg='Found images with checksum:[{!s}] '
-                                  'Count=[{!s}]'
-                                  .format(xchecksum, returnPhotoUploaded),
+                        CaughtMsg='Found [{!s}] images with checksum:[{!s}]'
+                                  .format(returnPhotoUploaded, xchecksum),
                         NicePrint=True)
             # Get title from filepath as filename without extension
+            # NOTE: not compatible with use of the -i option
             xpath_filename, xtitle_filename = os.path.split(xfile)
             xtitle_filename = os.path.splitext(xtitle_filename)[0]
-            # Check Titles
+            logging.info('Title:[{!s}]'.format(StrUnicodeOut(xtitle_filename)))
+            
+            # For each pic found on Flickr 1st check title and then Sets
             returnList = []
             for pic in searchIsUploaded.find('photos').findall('photo'):
                 if args.verbose is not None and args.verbose:
-                    niceprint(
+                    logging.info(
                         'pic.id=[{!s}] pic.title=[{!s}] pic.tags=[{!s}]'
                         .format(pic.attrib['id'],
                                 StrUnicodeOut(pic.attrib['title']),
                                 StrUnicodeOut(pic.attrib['tags'])))
+
+                if not (xtitle_filename == pic.attrib['title']):
+                    logging.info('Different titles: File:[{!s}] Flickr:[{!s}]'
+                                 .format(StrUnicodeOut(xtitle_filename),
+                                         StrUnicodeOut(pic.attrib['title'])))
+                    continue
 
                 # Check SetNames to which this pic belongs to.
                 try:
@@ -3165,14 +3182,13 @@ set0 = sets.find('photosets').findall('photoset')[0]
                     niceprint('Check : id=[{!s}] File=[{!s}]\n'
                               'Check : Title:[{!s}] Set:[{!s}]\n'
                               'Flickr: Title:[{!s}] Set:[{!s}] Tags:[{!s}]'
-                              .format(
-                                    pic.attrib['id'],
-                                    StrUnicodeOut(xfile),
-                                    StrUnicodeOut(xtitle_filename),
-                                    StrUnicodeOut(xsetName),
-                                    StrUnicodeOut(pic.attrib['title']),
-                                    StrUnicodeOut(setinlist.attrib['title']),
-                                    StrUnicodeOut(pic.attrib['tags'])))
+                              .format(pic.attrib['id'],
+                                      StrUnicodeOut(xfile),
+                                      StrUnicodeOut(xtitle_filename),
+                                      StrUnicodeOut(xsetName),
+                                      StrUnicodeOut(pic.attrib['title']),
+                                      StrUnicodeOut(setinlist.attrib['title']),
+                                      StrUnicodeOut(pic.attrib['tags'])))
 
                     # result is either
                     #   same
