@@ -1,7 +1,5 @@
 # content of test_sample.py
 
-from uploadr.py import *
-
 def func(x):
     return x + 1
 
