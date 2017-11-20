@@ -8,3 +8,4 @@ python:
 # command to run tests
 script:
   - pytest # or py.test for Python versions 3.5 and below
+  - pytest --doctest-modules # Attempt to run test_*.txt with doctest
