@@ -7,7 +7,12 @@ python:
 #  - pip install -r requirements.txt
 # command to run tests
 script:
+  - pwd
+  - ls -la
   - cp ../uploadr.ini .
   - pytest # or py.test for Python versions 3.5 and below
 # is this commmand necessary or if you have test_*.txt it will automatically run?
   - pytest --doctest-modules # Attempt to run test_*.txt with doctest
+# force running 
+  - pytest --doctest-modules test_isThisStringUnicode.txt # Attempt to run test_*.txt with doctest
+  - pytest --doctest-modules test_isThisStringUnicode2.txt # Attempt to run test_*.txt with doctest
