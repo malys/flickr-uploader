@@ -16,7 +16,6 @@ script:
   - cp tests/uploadr.ini .
   - cat uploadr.ini
   - export PYTHONPATH=$PYTHONPATH:..
-  - env
   - pytest --flakes
   - pytest -v # or py.test for Python versions 3.5 and below
 # is this commmand necessary or if you have test_*.txt it will automatically run?
