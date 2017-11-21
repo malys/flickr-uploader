@@ -1,0 +1,22 @@
+>>> import StrUni
+>>> StrUni.isThisStringUnicode(u'Something')
+True
+>>> StrUni.isThisStringUnicode('Something')
+False
+>>> StrUni.isThisStringUnicode(245)
+False
+>>> StrUni.StrUnicodeOut(u'some text')
+'some text'
+>>> StrUni.StrUnicodeOut('some text')
+'some text'
+>>> StrUni.StrUnicodeOut(str(2)+u'some text')
+'2some text'
+>>> a = unicode('hello')
+>>> StrUni.isThisStringUnicode(a)
+True
+>>> b = unicode('Árvore'.decode('utf-8'))
+>>> print('excluded_dir:[{!s}] filename:[{!s}]'.format(StrUni.StrUnicodeOut(a), StrUni.StrUnicodeOut(b)))
+excluded_dir:[hello] filename:[Árvore]
+>>> c = unicode('Árvore'.decode('utf-8'))
+>>> print('c:[{!s}]'.format(StrUni.StrUnicodeOut(c)))
+c:[Árvore]
