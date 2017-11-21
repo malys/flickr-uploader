@@ -11,6 +11,7 @@
     Some giberish. Please ignore!
     -----------------------------
     Area for my personal notes on on-going work! Please ignore!
+    * on deleteFile... else for errors! 
     * updatedVideoDate not working with 3gp video files...
       Added mimetypes.add_type('video/3gp','.3gp') to init. Confirm.
     * replace X.encode if Unicode(X) else X by StrUnicodeOut(X)
@@ -138,7 +139,6 @@
 import httplib
 import sys
 import argparse
-import mimetools
 import mimetypes
 import os
 import time
@@ -954,8 +954,6 @@ class Uploadr:
 
             # To prevent recursive calling, check if __name__ == '__main__'
             if __name__ == '__main__':
-                l = multiprocessing.Lock()
-
                 logging.debug('===Multiprocessing=== Setting up logger!')
                 multiprocessing.log_to_stderr()
                 logger = multiprocessing.get_logger()
@@ -1900,7 +1898,7 @@ class Uploadr:
             return True
 
         if (args.verbose):
-            niceprint('Replacing file:[{!s}]...'.format(StrUnicodeOut(fie)))
+            niceprint('Replacing file:[{!s}]...'.format(StrUnicodeOut(file)))
 
         success = False
         try:
@@ -1915,7 +1913,6 @@ class Uploadr:
                           .format(photo, type(photo)))
 
             for x in range(0, MAX_UPLOAD_ATTEMPTS):
-                res = None
                 res_add_tag = None
                 res_get_info = None
                 replaceResp = None
@@ -2146,6 +2143,13 @@ class Uploadr:
                 niceprint("Successful deletion.")
                 success = True
             else:
+                # CODING: Change this to deleteResp
+                # Detect error #1 via exception format(ex.code) == '1'
+                # or via analysis of XML reply?
+# <?xml version="1.0" encoding="utf-8" ?>
+# <rsp stat="fail">
+#   <err code="1" msg="Photo "123" not found (invalid ID)" />
+# </rsp>
                 if (res['code'] == 1):
                     # File already removed from Flicker
                     try:
@@ -2155,7 +2159,8 @@ class Uploadr:
                         reportError(Caught=True,
                                     CaughtPrefix='+++ DB',
                                     CaughtCode='090',
-                                    CaughtMsg='Error: DELETE FROM files',
+                                    CaughtMsg='Error: DELETE FROM files:[{!s}]'
+                                              .format(e.args[0]),
                                     NicePrint=True)
                 else:
                     reportError(exceptUse=False,
@@ -2375,6 +2380,12 @@ class Uploadr:
                                 CaughtMsg='DB error on UPDATE files: [{!s}]'
                                           .format(e.args[0]),
                                 NicePrint=True)
+            # CODING check incorrect use of resp and how to handle return
+            # error codes from flickr... via exception?
+# <?xml version="1.0" encoding="utf-8" ?>
+# <rsp stat="fail">
+#   <err code="1" msg="Photoset not found" />
+# </rsp>                    
             else:
                 if (addPhotoResp['code'] == 1):
                     niceprint('Photoset not found, creating new set...')
