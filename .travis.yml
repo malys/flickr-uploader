@@ -18,19 +18,7 @@ script:
   - export PYTHONPATH=$PYTHONPATH:..
   - echo $usernsid
   - mkdir token
-  - sqlite3 token/oauth-tokens.sqlite << EOF
-CREATE TABLE oauth_cache_db_version (version int not null);
-CREATE TABLE oauth_tokens (
-                        api_key varchar(64) not null,
-                        lookup_key varchar(64) not null default '',
-                        oauth_token varchar(64) not null,
-                        oauth_token_secret varchar(64) not null,
-                        access_level varchar(6) not null,
-                        fullname varchar(255) not null,
-                        username varchar(255) not null,
-                        user_nsid varchar(64) not null,
-                        PRIMARY KEY(api_key, lookup_key));
-EOF  
+  - sqlite3 token/oauth-tokens.sqlite 'CREATE TABLE oauth_cache_db_version (version int not null);'
   - pytest --flakes
   - pytest -v # or py.test for Python versions 3.5 and below
 # is this commmand necessary or if you have test_*.txt it will automatically run?
