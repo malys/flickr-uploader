@@ -16,8 +16,15 @@ script:
   - cp tests/uploadr.ini .
   - cat uploadr.ini
   - export PYTHONPATH=$PYTHONPATH:..
-  - echo $usernsid
-  - mkdir token
+  - echo $SomeVar
+  - echo $api_key
+  - echo $oauth_token
+  - echo $oauth_token_secret
+  - echo $access_level
+  - echo $fullname
+  - echo $username
+  - echo $user_nsid  
+  - echo "INSERT INTO oauth_tokens ( api_key, lookup_key, oauth_token, oauth_token_secret, access_level, fullname, username, user_nsid) VALUES ( '"$api_key"', '', '"$oauth_token"', '"$oauth_token_secret"', '"$access_level"', '"$fullname"', '"$username"', '"$user_nsid"');" | sqlite3 tokens/oauth-tokens.sqlite  
   - sqlite3 token/oauth-tokens.sqlite 'CREATE TABLE oauth_cache_db_version (version int not null);'
   - pytest --flakes
   - pytest -v # or py.test for Python versions 3.5 and below
