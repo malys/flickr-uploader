@@ -7,25 +7,19 @@ python:
 #install:
 #  - pip install -r requirements.txt
 # command to run tests
-matrix:
-  - PYTHONPATH=..
-  - SomeVar=SomeVarValue
+env:
+  global:
+    - PYTHONPATH=..
+    - SomeVar=SomeVarValue
 script:
   - pwd
   - ls -la
   - cp tests/uploadr.ini .
   - cp tests/uploadr.ini /home/travis/virtualenv/python2.7.13/bin/uploadr.ini
   - cat uploadr.ini
-  - export PYTHONPATH=$PYTHONPATH:..
+  - echo $PYTHONPATH
   - echo $SomeVar
-  - echo $api_key
-  - echo $oauth_token
-  - echo $oauth_token_secret
-  - echo $access_level
-  - echo $fullname
-  - echo $username
-  - echo $user_nsid  
-  - echo "INSERT INTO oauth_tokens ( api_key, lookup_key, oauth_token, oauth_token_secret, access_level, fullname, username, user_nsid) VALUES ( '"$api_key"', '', '"$oauth_token"', '"$oauth_token_secret"', '"$access_level"', '"$fullname"', '"$username"', '"$user_nsid"');" | sqlite3 token/oauth-tokens.sqlite  
+  - echo "INSERT INTO oauth_tokens ( api_key, lookup_key, oauth_token, oauth_token_secret, access_level, fullname, username, user_nsid) VALUES ( '"$api_key"', '', '"$oauth_token"', '"$oauth_token_secret"', 'delete', '"$fullname"', '"$username"', '"$user_nsid"');" | sqlite3 token/oauth-tokens.sqlite
   - sqlite3 token/oauth-tokens.sqlite 'SELECT * FROM oauth_tokens;'
   - pytest --flakes
   - pytest -v # or py.test for Python versions 3.5 and below
