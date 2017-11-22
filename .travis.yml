@@ -24,7 +24,7 @@ script:
   - echo $fullname
   - echo $username
   - echo $user_nsid  
-  - echo "INSERT INTO oauth_tokens ( api_key, lookup_key, oauth_token, oauth_token_secret, access_level, fullname, username, user_nsid) VALUES ( '"$api_key"', '', '"$oauth_token"', '"$oauth_token_secret"', '"$access_level"', '"$fullname"', '"$username"', '"$user_nsid"');" | sqlite3 tokens/oauth-tokens.sqlite  
+  - echo "INSERT INTO oauth_tokens ( api_key, lookup_key, oauth_token, oauth_token_secret, access_level, fullname, username, user_nsid) VALUES ( '"$api_key"', '', '"$oauth_token"', '"$oauth_token_secret"', '"$access_level"', '"$fullname"', '"$username"', '"$user_nsid"');" | sqlite3 token/oauth-tokens.sqlite  
   - sqlite3 token/oauth-tokens.sqlite 'SELECT * FROM oauth_tokens;'
   - pytest --flakes
   - pytest -v # or py.test for Python versions 3.5 and below
