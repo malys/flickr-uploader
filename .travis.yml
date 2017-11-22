@@ -1,7 +1,7 @@
 language: python
 python:
   - "2.7"
-  - "3.6"
+  - "3.6
 # nightly gets the latest nightly version of python... python 3 in the case. For now I don't want that!
 #  - "nightly"
 # command to install dependencies
@@ -28,3 +28,7 @@ script:
   - pytest --doctest-modules # Attempt to run test_*.txt with doctest
 # force running 
   - pytest --doctest-modules -v tests/test_isThisStringUnicode.txt # Attempt to run test_*.txt with doctest
+# Code coverage  
+  - coverage run uploadr.py -n
+# Use coverage report to report on the results:
+  - coverage report -m  
