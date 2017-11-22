@@ -14,6 +14,7 @@ script:
   - pwd
   - ls -la
   - cp tests/uploadr.ini .
+  - cp tests/uploadr.ini /home/travis/virtualenv/python2.7.13/bin/uploadr.ini
   - cat uploadr.ini
   - export PYTHONPATH=$PYTHONPATH:..
   - echo $SomeVar
