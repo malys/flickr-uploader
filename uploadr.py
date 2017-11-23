@@ -234,6 +234,7 @@ def isThisStringUnicode(s):
                                  file.encode('utf-8') \
                                  if isThisStringUnicode(file) \
                                  else file))
+
     """
     if isinstance(s, unicode):
         return True
@@ -250,7 +251,7 @@ def isThisStringUnicode(s):
 #
 def StrUnicodeOut(s):
     """
-    Outputs s.encode('utf-8') if isThisStringUnicode(s) esle s
+    Outputs s.encode('utf-8') if isThisStringUnicode(s) else s
         niceprint('Checking file:[{!s}]...'.format(StrUnicodeOut(file))
     """
     if s is not None:
@@ -2110,9 +2111,10 @@ class Uploadr:
             return True
 
         niceprint('Deleting file:[{!s}]'
-                  .format(file[1].encode('utf-8')
-                          if isThisStringUnicode(file[1])
-                          else file[1]))
+                  .format(StrUnicodeOut(file[1])))
+                  # .format(file[1].encode('utf-8')
+                  #         if isThisStringUnicode(file[1])
+                  #         else file[1]))
 
         success = False
 
@@ -2755,7 +2757,8 @@ class Uploadr:
 
             for row in unusedsets:
                 niceprint('Removing set [{!s}] ({!s}).'
-                          .format(str(row[0]), row[1].decode('utf-8')))
+                          .format(StrUnicodeOut(row[0]),StrUnicodeOut(row[1])))
+                          # .format(str(row[0]), row[1].decode('utf-8')))
 
                 try:
                     # Acquire DB lock if running in multiprocessing mode
