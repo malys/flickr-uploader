@@ -251,7 +251,7 @@ def isThisStringUnicode(s):
 #
 def StrUnicodeOut(s):
     """
-    Outputs s.encode('utf-8') if isThisStringUnicode(s) esle s
+    Outputs s.encode('utf-8') if isThisStringUnicode(s) else s
         niceprint('Checking file:[{!s}]...'.format(StrUnicodeOut(file))
     """
     if s is not None:

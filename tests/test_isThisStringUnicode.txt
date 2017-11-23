@@ -3,13 +3,7 @@
 >>> sys.argv.append('uploadr.py')
 >>> sys.argv
 ['uploadr.py']
->>> exec(open('uploadr.py').read()) # doctest: +ELLIPSIS
-...
 >>> sys.argv[0]
 'uploadr.py'
->>> isThisStringUnicode(u'Something')
-True
->>> isThisStringUnicode('Something')
-False
->>> isThisStringUnicode(245)
-False
+>>> exec(open('uploadr.py').read()) # doctest: +ELLIPSIS
+[...
