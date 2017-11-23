@@ -24,8 +24,9 @@ script:
   - echo "INSERT INTO oauth_tokens ( api_key, lookup_key, oauth_token, oauth_token_secret, access_level, fullname, username, user_nsid) VALUES ( '"$api_key"', '', '"$oauth_token"', '"$oauth_token_secret"', 'delete', '"$fullname"', '"$username"', '"$user_nsid"');" | sqlite3 token/oauth-tokens.sqlite
   - sqlite3 token/oauth-tokens.sqlite 'SELECT * FROM oauth_tokens;'
 # Code coverage  
-  - coverage run uploadr.py -n
-# Use coverage report to report on the results:
+  - coverage run -a uploadr.py -n
+  - coverage run -a uploadr.py -v
+# Use coverage report to report on the results: Two runs does the report get combined?
   - coverage report -m
 # pytest --flakes (Code analysis)
   - pytest -v --flakes
@@ -37,6 +38,6 @@ script:
 # force running 
 #  - pytest --doctest-modules -v tests/test_isThisStringUnicode.txt # Attempt to run test_*.txt with doctest
 # DB OUTPUT for REFERENCE
-  - sqlite3 flickrdb 'SELECT * FROM files;'
+  - sqlite3 flickrdb "SELECT *, datetime( last_modified, 'unixepoch', 'localtime') FROM files;"
   - sqlite3 flickrdb 'SELECT * FROM badfiles;'
   - sqlite3 flickrdb 'SELECT * FROM sets;'
