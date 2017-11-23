@@ -1,7 +1,7 @@
 language: python
 python:
   - "2.7"
-  - "3.6"
+#  - "3.6"
 # nightly gets the latest nightly version of python... python 3 in the case. For now I don't want that!
 #  - "nightly"
 # command to install dependencies
@@ -10,19 +10,21 @@ python:
 # command to run tests
 env:
   global:
-    - PYTHONPATH=..
-    - SomeVar=SomeVarValue
+    - PYTHONPATH=..:.
+#    - SomeVar=SomeVarValue
 script:
   - pwd
   - ls -la
   - cp tests/uploadr.ini .
   - cp tests/uploadr.ini /home/travis/virtualenv/python2.7.13/bin/uploadr.ini
-  - cat uploadr.ini
-  - echo $PYTHONPATH
-  - echo $SomeVar
+  - grep FILES_DIR uploadr.ini
+#  - cat uploadr.ini
+#  - echo $PYTHONPATH
+#  - echo $SomeVar
   - echo "INSERT INTO oauth_tokens ( api_key, lookup_key, oauth_token, oauth_token_secret, access_level, fullname, username, user_nsid) VALUES ( '"$api_key"', '', '"$oauth_token"', '"$oauth_token_secret"', 'delete', '"$fullname"', '"$username"', '"$user_nsid"');" | sqlite3 token/oauth-tokens.sqlite
   - sqlite3 token/oauth-tokens.sqlite 'SELECT * FROM oauth_tokens;'
-  - pytest -q --flakes
+  - pytest -v --flakes
+  - pytest -v --flakes uploadr.py
   - pytest -v # or py.test for Python versions 3.5 and below
 # is this commmand necessary or if you have test_*.txt it will automatically run?
   - pytest --doctest-modules # Attempt to run test_*.txt with doctest
