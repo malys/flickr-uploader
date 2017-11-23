@@ -22,7 +22,7 @@ script:
   - echo $SomeVar
   - echo "INSERT INTO oauth_tokens ( api_key, lookup_key, oauth_token, oauth_token_secret, access_level, fullname, username, user_nsid) VALUES ( '"$api_key"', '', '"$oauth_token"', '"$oauth_token_secret"', 'delete', '"$fullname"', '"$username"', '"$user_nsid"');" | sqlite3 token/oauth-tokens.sqlite
   - sqlite3 token/oauth-tokens.sqlite 'SELECT * FROM oauth_tokens;'
-  - pytest --flakes
+  - pytest -q --flakes
   - pytest -v # or py.test for Python versions 3.5 and below
 # is this commmand necessary or if you have test_*.txt it will automatically run?
   - pytest --doctest-modules # Attempt to run test_*.txt with doctest
