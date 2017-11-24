@@ -1546,8 +1546,10 @@ class Uploadr:
                                                                file,
                                                                file_checksum,
                                                                setName)
-            niceprint('is_photo_already_uploaded:[{!s}] count:[{!s}]'
-                      .format(isLoaded, isCount))
+            niceprint('is_photo_already_uploaded:[{!s}] '
+                      'count:[{!s}] pic:[{!s}] '
+                      'row is None == [{!s}]'
+                      .format(isLoaded, isCount, isfile_id, row is None))
             if isLoaded and row is None:
                 # Insert into DB files
                 niceprint('##### ALREADY LOADED. '
