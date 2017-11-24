@@ -27,7 +27,7 @@ script:
   - coverage help
   - coverage run -a uploadr.py -n
   - coverage run -a uploadr.py -v
-  - coverage run -a uploadr.py -v -l 10
+  - coverage run -a uploadr.py -l 10
   - coverage report -m
   # Multiprocessing
   - coverage run -a --concurrency multiprocessing uploadr.py -vp 2
