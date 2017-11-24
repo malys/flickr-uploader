@@ -1430,21 +1430,21 @@ class Uploadr:
         global nuflickr
 
         # ---------------------------------------------------------------------
-        # class dbInsertIntoFiles
+        # dbInsertIntoFiles
         #
         def dbInsertIntoFiles(self, lock,
                               file_id, file, file_checksum, last_modified):
             """ dbInsertIntoFiles
-            
+
             Insert into local DB files table.
-            
+
             lock          = for multiprocessing
             file_id       = pic id
             file          = filename
             file_checksum = md5 checksum
             last_modified = Last modified time
             """
-            
+
             # Database Locked is returned often on this INSERT
             # Will try MAX_SQL_ATTEMPTS...
             for x in range(0, MAX_SQL_ATTEMPTS):
@@ -1487,7 +1487,7 @@ class Uploadr:
                                 MAX_SQL_ATTEMPTS))
                     # Break the cycle of SQL_ATTEMPTS and continue
                     break
-    
+
         if (args.dry_run is True):
             niceprint('Dry Run Uploading file:[{!s}]...'
                       .format(StrUnicodeOut(file)))
@@ -1550,15 +1550,15 @@ class Uploadr:
                       .format(isLoaded, isCount))
             if isLoaded and row is None:
                 # Insert into DB files
-                niceprint('##### ALREADY LOADED '
-                          'DO NOT PERFORM ANYTHING ELSE'
+                niceprint('##### ALREADY LOADED. '
+                          'DO NOT PERFORM ANYTHING ELSE. '
                           'ROW IS NONE... UPDATING DATABASE')
-                self.dbInsertIntoFiles(lock, isfile_id, file,
-                                       file_checksum, last_modified)
+                dbInsertIntoFiles(lock, isfile_id, file,
+                                  file_checksum, last_modified)
 
                 # Update the Video Date Taken
                 self.updatedVideoDate(file_id, file, last_modified)
-                
+
             elif row is None:
                 if (args.verbose):
                     niceprint('Uploading file:[{!s}]...'
@@ -1777,8 +1777,8 @@ class Uploadr:
                                  .format(TraceBackIndexError))
                     if not TraceBackIndexError:
                         # Insert into DB files
-                        self.dbInsertIntoFiles(lock, file_id, file,
-                                               file_checksum, last_modified)
+                        dbInsertIntoFiles(lock, file_id, file,
+                                          file_checksum, last_modified)
 
                         # Update the Video Date Taken
                         self.updatedVideoDate(file_id, file, last_modified)
