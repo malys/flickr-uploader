@@ -1432,7 +1432,7 @@ class Uploadr:
         # ---------------------------------------------------------------------
         # dbInsertIntoFiles
         #
-        def dbInsertIntoFiles(self, lock,
+        def dbInsertIntoFiles(lock,
                               file_id, file, file_checksum, last_modified):
             """ dbInsertIntoFiles
 
