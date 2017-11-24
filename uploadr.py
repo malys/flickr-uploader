@@ -1490,7 +1490,8 @@ class Uploadr:
                       .format(isLoaded, isCount))
             if isLoaded:
                 niceprint('##### ALREADY LOADED '
-                          'DO NOT PERFORM ANYTHING ELSE')
+                          'DO NOT PERFORM ANYTHING ELSE'
+                          'IF ROW IS NONE... UPDATE DATABASE')
 
             # use file modified timestamp to check for changes
             last_modified = os.stat(file).st_mtime
@@ -3164,6 +3165,11 @@ set0 = sets.find('photosets').findall('photoset')[0]
                 if (len(resp.findall('set')) == 0):
                     niceprint('##### PHOTO UPLOADED WITHOUT SET ')
                     logging.error('##### PHOTO UPLOADED WITHOUT SET ')
+                    returnList.append({'id': pic.attrib['id'],
+                                       'title': pic.attrib['title'],
+                                       'set': '',
+                                       'tags': pic.attrib['tags'],
+                                       'result': 'empty'})                    
 
                 for setinlist in resp.findall('set'):
                     logging.debug('setinlist:')
@@ -3184,27 +3190,30 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                       StrUnicodeOut(pic.attrib['tags'])))
 
                     # result is either
+                    #   empty = same title, no set
                     #   same
                     #   noset
                     #   otherset
 
-                    returnList.append({'id': pic.attrib['id'],
-                                       'title': pic.attrib['title'],
-                                        'set': setinlist.attrib['title'],
-                                        'tags': pic.attrib['tags'],
-                                        'result': 'nothing'})
-                    niceprint('output for returnList:[{!s}]'
-                              .format(returnList))
+                    # returnList.append({'id': pic.attrib['id'],
+                    #                    'title': pic.attrib['title'],
+                    #                     'set': setinlist.attrib['title'],
+                    #                     'tags': pic.attrib['tags'],
+                    #                     'result': 'nothing'})
+                    # logging.info('output for returnList:[{!s}]'
+                    #              .format(returnList))
 
-                    if ((xtitle_filename == pic.attrib['title']) and
-                            (xsetName == setinlist.attrib['title'])):
+                    # if checksum, title, setName (1 or more), Count>=1 THEN EXISTS
+                    if (xsetName == setinlist.attrib['title']):
                         niceprint('##### IS PHOTO UPLOADED = TRUE')
                         logging.error('##### IS PHOTO UPLOADED = TRUE')
                         returnIsPhotoUploaded = True
-                        # return returnIsPhotoUploaded, returnPhotoUploaded
+                        return returnIsPhotoUploaded, returnPhotoUploaded
                     else:
-                        niceprint('##### IS PHOTO UPLOADED = FALSE')
-                        logging.error('##### IS PHOTO UPLOADED = FALSE')
+                        # if checksum, title, other setName,       Count>=1 THEN NOT EXISTS
+                        niceprint('##### IS PHOTO UPLOADED = FALSE, CONTINUING')
+                        logging.error('##### IS PHOTO UPLOADED = FALSE, CONTINUING')
+                        continue
 
         return returnIsPhotoUploaded, returnPhotoUploaded
 # <?xml version="1.0" encoding="utf-8" ?>
