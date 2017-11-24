@@ -1,0 +1,9 @@
+>>> import sys
+>>> sys.argv=[]
+>>> sys.argv.append('uploadr.py')
+>>> sys.argv
+['uploadr.py']
+>>> sys.argv[0]
+'uploadr.py'
+>>> exec(open('uploadr.py').read()) # doctest: +ELLIPSIS
+[...

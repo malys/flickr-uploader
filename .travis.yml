@@ -1,0 +1,43 @@
+language: python
+python:
+  - "2.7"
+#  - "3.6"
+# nightly gets the latest nightly version of python... python 3 in the case. For now I don't want that!
+#  - "nightly"
+# command to install dependencies
+#install:
+#  - pip install -r requirements.txt
+# command to run tests
+env:
+  global:
+    - PYTHONPATH=..:.
+#    - SomeVar=SomeVarValue
+script:
+  - pwd
+  - ls -la
+  - cp tests/uploadr.ini .
+  - cp tests/uploadr.ini /home/travis/virtualenv/python2.7.13/bin/uploadr.ini
+  - grep FILES_DIR uploadr.ini
+#  - cat uploadr.ini
+#  - echo $PYTHONPATH
+#  - echo $SomeVar
+  - echo "INSERT INTO oauth_tokens ( api_key, lookup_key, oauth_token, oauth_token_secret, access_level, fullname, username, user_nsid) VALUES ( '"$api_key"', '', '"$oauth_token"', '"$oauth_token_secret"', 'delete', '"$fullname"', '"$username"', '"$user_nsid"');" | sqlite3 token/oauth-tokens.sqlite
+  - sqlite3 token/oauth-tokens.sqlite 'SELECT * FROM oauth_tokens;'
+# Code coverage  
+  - coverage run -a uploadr.py -n
+  - coverage run -a uploadr.py -v
+# Use coverage report to report on the results: Two runs does the report get combined?
+  - coverage report -m
+# pytest --flakes (Code analysis)
+  - pytest -v --flakes
+#  - pytest -v # or py.test for Python versions 3.5 and below
+# is this commmand necessary? Let's keep it for now as it allows a double run.
+# if you have test_*.txt it will automatically run?
+  - pytest --doctest-modules # Attempt to run test_*.txt with doctest
+# is this commmand necessary?
+# force running 
+#  - pytest --doctest-modules -v tests/test_isThisStringUnicode.txt # Attempt to run test_*.txt with doctest
+# DB OUTPUT for REFERENCE
+  - sqlite3 flickrdb "SELECT *, datetime( last_modified, 'unixepoch', 'localtime') FROM files;"
+  - sqlite3 flickrdb 'SELECT * FROM badfiles;'
+  - sqlite3 flickrdb 'SELECT * FROM sets;'

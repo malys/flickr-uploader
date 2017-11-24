@@ -1424,7 +1424,7 @@ class Uploadr:
 
         lock = parameter for multiprocessing control of access to DB.
                (if args.processes = 0 then lock may be None as it is not used)
-        file = fie to be uploaded
+        file = file to be uploaded
         """
 
         global nuflickr
@@ -2387,7 +2387,7 @@ class Uploadr:
 # <?xml version="1.0" encoding="utf-8" ?>
 # <rsp stat="fail">
 #   <err code="1" msg="Photoset not found" />
-# </rsp>                    
+# </rsp>
             else:
                 if (addPhotoResp['code'] == 1):
                     niceprint('Photoset not found, creating new set...')
@@ -3211,9 +3211,9 @@ set0 = sets.find('photosets').findall('photoset')[0]
 
                     # returnList.append({'id': pic.attrib['id'],
                     #                    'title': pic.attrib['title'],
-                    #                    'set': setinlist.attrib['title'],
-                    #                    'tags': pic.attrib['tags'],
-                    #                    'result': 'nothing'})
+                    #                     'set': setinlist.attrib['title'],
+                    #                     'tags': pic.attrib['tags'],
+                    #                     'result': 'nothing'})
                     # logging.info('output for returnList:[{!s}]'
                     #              .format(returnList))
 
@@ -3225,7 +3225,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                         return returnIsPhotoUploaded, returnPhotoUploaded
                     else:
                         # if checksum, title, other setName,       Count>=1 THEN NOT EXISTS
-                        niceprint('##### THIS PHOTO UPLOADED = FALSE, CONTINUING')
+                        niceprint('##### IS PHOTO UPLOADED = FALSE, CONTINUING')
                         logging.error('##### IS PHOTO UPLOADED = FALSE, CONTINUING')
                         continue
 
