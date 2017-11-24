@@ -23,10 +23,11 @@ script:
 #  - echo $SomeVar
   - echo "INSERT INTO oauth_tokens ( api_key, lookup_key, oauth_token, oauth_token_secret, access_level, fullname, username, user_nsid) VALUES ( '"$api_key"', '', '"$oauth_token"', '"$oauth_token_secret"', 'delete', '"$fullname"', '"$username"', '"$user_nsid"');" | sqlite3 token/oauth-tokens.sqlite
   - sqlite3 token/oauth-tokens.sqlite 'SELECT * FROM oauth_tokens;'
-# Code coverage  
+# Code coverage
+  - coverage help
   - coverage run -a uploadr.py -n
   - coverage run -a uploadr.py -v
-  - coverage --concurrency multiprocessing run -a uploadr.py -vp 2
+  - coverage run --concurrency multiprocessing -a uploadr.py -vp 2
 # Use coverage report to report on the results: Two runs does the report get combined?
   - coverage report -m
 # pytest --flakes (Code analysis)

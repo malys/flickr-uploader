@@ -1557,7 +1557,7 @@ class Uploadr:
                                   file_checksum, last_modified)
 
                 # Update the Video Date Taken
-                self.updatedVideoDate(file_id, file, last_modified)
+                self.updatedVideoDate(isfile_id, file, last_modified)
 
             elif row is None:
                 if (args.verbose):
