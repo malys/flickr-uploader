@@ -18,7 +18,9 @@ def isThisStringUnicode(s):
     >>> isThisStringUnicode('No Unicode string')
     False
     >>> isThisStringUnicode(u'Unicode string')
-    True                               
+    True
+    >>> isThisStringUnicode(2)
+    False
     """
     if isinstance(s, unicode):
         return True

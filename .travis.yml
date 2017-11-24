@@ -26,6 +26,7 @@ script:
 # Code coverage  
   - coverage run -a uploadr.py -n
   - coverage run -a uploadr.py -v
+  - coverage --concurrency multiprocessing run -a uploadr.py -vp 2
 # Use coverage report to report on the results: Two runs does the report get combined?
   - coverage report -m
 # pytest --flakes (Code analysis)

@@ -11,7 +11,7 @@
     Some giberish. Please ignore!
     -----------------------------
     Area for my personal notes on on-going work! Please ignore!
-    * on deleteFile... else for errors! 
+    * on deleteFile... else for errors!
     * updatedVideoDate not working with 3gp video files...
       Added mimetypes.add_type('video/3gp','.3gp') to init. Confirm.
     * replace X.encode if Unicode(X) else X by StrUnicodeOut(X)
@@ -1429,6 +1429,65 @@ class Uploadr:
 
         global nuflickr
 
+        # ---------------------------------------------------------------------
+        # class dbInsertIntoFiles
+        #
+        def dbInsertIntoFiles(self, lock,
+                              file_id, file, file_checksum, last_modified):
+            """ dbInsertIntoFiles
+            
+            Insert into local DB files table.
+            
+            lock          = for multiprocessing
+            file_id       = pic id
+            file          = filename
+            file_checksum = md5 checksum
+            last_modified = Last modified time
+            """
+            
+            # Database Locked is returned often on this INSERT
+            # Will try MAX_SQL_ATTEMPTS...
+            for x in range(0, MAX_SQL_ATTEMPTS):
+                logging.info('BEGIN SQL:[{!s}]...[{!s}/{!s} attempts].'
+                             .format('INSERT INTO files', x, MAX_SQL_ATTEMPTS))
+                DBexception = False
+                try:
+                    # Acquire DBlock if in multiprocessing mode
+                    self.useDBLock(lock, True)
+                    cur.execute(
+                        'INSERT INTO files '
+                        '(files_id, path, md5, '
+                        'last_modified, tagged) '
+                        'VALUES (?, ?, ?, ?, 1)',
+                        (file_id, file, file_checksum,
+                         last_modified))
+                except lite.Error as e:
+                    DBexception = True
+                    reportError(Caught=True,
+                                CaughtPrefix='+++ DB',
+                                CaughtCode='030',
+                                CaughtMsg='DB error on INSERT: '
+                                          '[{!s}]'
+                                          .format(e.args[0]),
+                                NicePrint=True,
+                                exceptSysInfo=True)
+                finally:
+                    # Release DBlock if in multiprocessing mode
+                    self.useDBLock(lock, False)
+
+                if DBexception:
+                    logging.error('Sleep 2 and retry SQL...')
+                    niceprint('Sleep 2 and retry SQL...')
+                    nutime.sleep(2)
+                else:
+                    logging.info(
+                        'END SQL:[{!s}]...[{!s}/{!s} attempts].'
+                        .format('INSERT INTO files',
+                                x,
+                                MAX_SQL_ATTEMPTS))
+                    # Break the cycle of SQL_ATTEMPTS and continue
+                    break
+    
         if (args.dry_run is True):
             niceprint('Dry Run Uploading file:[{!s}]...'
                       .format(StrUnicodeOut(file)))
@@ -1478,21 +1537,29 @@ class Uploadr:
             row = cur.fetchone()
             logging.debug('row {!s}:'.format(row))
 
-            # Check if file is already loaded
-            isLoaded, isCount = self.is_photo_already_uploaded(
-                                                file,
-                                                self.md5Checksum(file),
-                                                setName)
-            niceprint('is_photo_already_uploaded:[{!s}] count:[{!s}]'
-                      .format(isLoaded, isCount))
-            if isLoaded:
-                niceprint('##### ALREADY LOADED '
-                          'DO NOT PERFORM ANYTHING ELSE'
-                          'IF ROW IS NONE... UPDATE DATABASE')
-
             # use file modified timestamp to check for changes
             last_modified = os.stat(file).st_mtime
-            if row is None:
+            file_checksum = self.md5Checksum(file)
+
+            # Check if file is already loaded
+            isLoaded, isCount, isfile_id = self.is_photo_already_uploaded(
+                                                               file,
+                                                               file_checksum,
+                                                               setName)
+            niceprint('is_photo_already_uploaded:[{!s}] count:[{!s}]'
+                      .format(isLoaded, isCount))
+            if isLoaded and row is None:
+                # Insert into DB files
+                niceprint('##### ALREADY LOADED '
+                          'DO NOT PERFORM ANYTHING ELSE'
+                          'ROW IS NONE... UPDATING DATABASE')
+                self.dbInsertIntoFiles(lock, isfile_id, file,
+                                       file_checksum, last_modified)
+
+                # Update the Video Date Taken
+                self.updatedVideoDate(file_id, file, last_modified)
+                
+            elif row is None:
                 if (args.verbose):
                     niceprint('Uploading file:[{!s}]...'
                               .format(StrUnicodeOut(file)))
@@ -1538,8 +1605,6 @@ class Uploadr:
                         logging.warning('title '
                                         'from INI file:[{!s}]'
                                         .format(title_filename))
-
-                    file_checksum = self.md5Checksum(file)
 
                     # Perform actual upload of the file
                     search_result = None
@@ -1711,52 +1776,9 @@ class Uploadr:
                     logging.info('TraceBackIndexError:[{!s}]'
                                  .format(TraceBackIndexError))
                     if not TraceBackIndexError:
-
-                        # Database Locked is returned often on this INSERT
-                        # Will try MAX_SQL_ATTEMPTS...
-                        for x in range(0, MAX_SQL_ATTEMPTS):
-                            logging.info(
-                                'BEGIN SQL:[{!s}]...[{!s}/{!s} attempts].'
-                                .format('INSERT INTO files',
-                                        x,
-                                        MAX_SQL_ATTEMPTS))
-                            DBexception = False
-                            try:
-                                # Acquire DBlock if in multiprocessing mode
-                                self.useDBLock(lock, True)
-                                cur.execute(
-                                    'INSERT INTO files '
-                                    '(files_id, path, md5, '
-                                    'last_modified, tagged) '
-                                    'VALUES (?, ?, ?, ?, 1)',
-                                    (file_id, file, file_checksum,
-                                     last_modified))
-                            except lite.Error as e:
-                                DBexception = True
-                                reportError(Caught=True,
-                                            CaughtPrefix='+++ DB',
-                                            CaughtCode='030',
-                                            CaughtMsg='DB error on INSERT: '
-                                                      '[{!s}]'
-                                                      .format(e.args[0]),
-                                            NicePrint=True,
-                                            exceptSysInfo=True)
-                            finally:
-                                # Release DBlock if in multiprocessing mode
-                                self.useDBLock(lock, False)
-
-                            if DBexception:
-                                logging.error('Sleep 2 and retry SQL...')
-                                niceprint('Sleep 2 and retry SQL...')
-                                nutime.sleep(2)
-                            else:
-                                logging.info(
-                                    'END SQL:[{!s}]...[{!s}/{!s} attempts].'
-                                    .format('INSERT INTO files',
-                                            x,
-                                            MAX_SQL_ATTEMPTS))
-                                # Break the cycle of SQL_ATTEMPTS and continue
-                                break
+                        # Insert into DB files
+                        self.dbInsertIntoFiles(lock, file_id, file,
+                                               file_checksum, last_modified)
 
                         # Update the Video Date Taken
                         self.updatedVideoDate(file_id, file, last_modified)
@@ -3048,12 +3070,14 @@ set0 = sets.find('photosets').findall('photoset')[0]
                 SetName.
 
             returnIsPhotoUploaded = True (already loaded)/False(not loaded)
-            returnPhotoUploaded = Number of found Images
+            returnPhotoUploaded   = Number of found Images
+            returnPhotoID         = Pic ID on Flickr
         """
 
         global nuflickr
         returnIsPhotoUploaded = False
         returnPhotoUploaded = 0
+        returnPhotoID = None
 
         logging.info('Is Already Uploaded:[checksum:{!s}]?'.format(xchecksum))
 
@@ -3090,7 +3114,9 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                       else self.isGood(searchIsUploaded)))
                 # CODING: how to indicate an error... different from False?
                 # Possibly raising an error?
-                return returnIsPhotoUploaded, returnPhotoUploaded
+                return returnIsPhotoUploaded, \
+                       returnPhotoUploaded, \
+                       returnPhotoID
 
         logging.debug('searchIsUploaded:')
         logging.debug(xml.etree.ElementTree.tostring(searchIsUploaded,
@@ -3116,7 +3142,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
             xpath_filename, xtitle_filename = os.path.split(xfile)
             xtitle_filename = os.path.splitext(xtitle_filename)[0]
             logging.info('Title:[{!s}]'.format(StrUnicodeOut(xtitle_filename)))
-            
+
             # For each pic found on Flickr 1st check title and then Sets
             returnList = []
             for pic in searchIsUploaded.find('photos').findall('photo'):
@@ -3166,7 +3192,9 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                       .format('None'
                                                if resp is None
                                                else self.isGood(resp)))
-                        return returnIsPhotoUploaded, returnPhotoUploaded
+                        return returnIsPhotoUploaded, \
+                               returnPhotoUploaded, \
+                               returnPhotoID
                     logging.debug('resp.getAllContextsOK:')
                     logging.debug(xml.etree.ElementTree.tostring(
                                                         resp,
@@ -3222,14 +3250,17 @@ set0 = sets.find('photosets').findall('photoset')[0]
                         niceprint('##### IS PHOTO UPLOADED = TRUE')
                         logging.error('##### IS PHOTO UPLOADED = TRUE')
                         returnIsPhotoUploaded = True
-                        return returnIsPhotoUploaded, returnPhotoUploaded
+                        returnPhotoID = pic.attrib['id']
+                        return returnIsPhotoUploaded, \
+                               returnPhotoUploaded, \
+                               returnPhotoID
                     else:
                         # if checksum, title, other setName,       Count>=1 THEN NOT EXISTS
                         niceprint('##### IS PHOTO UPLOADED = FALSE, CONTINUING')
                         logging.error('##### IS PHOTO UPLOADED = FALSE, CONTINUING')
                         continue
 
-        return returnIsPhotoUploaded, returnPhotoUploaded
+        return returnIsPhotoUploaded, returnPhotoUploaded, returnPhotoID
 # <?xml version="1.0" encoding="utf-8" ?>
 # <rsp stat="ok">
 #   <photos page="1" pages="1" perpage="100" total="2">
