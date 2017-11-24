@@ -5,6 +5,3 @@
 ['uploadr.py']
 >>> sys.argv[0]
 'uploadr.py'
-#>>> exec(open('uploadr.py').read()) # doctest: +ELLIPSIS
-#[...
-

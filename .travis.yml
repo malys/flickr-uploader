@@ -11,10 +11,11 @@ python:
 env:
   global:
     - PYTHONPATH=..:.
-#    - SomeVar=SomeVarValue
+# Set to -v for Verbose option of uploadr
+#    - VerboseVar=-v
 script:
   - pwd
-  - ls -la
+#  - ls -la
   - cp tests/uploadr.ini .
   - cp tests/uploadr.ini /home/travis/virtualenv/python2.7.13/bin/uploadr.ini
   - grep FILES_DIR uploadr.ini
@@ -25,12 +26,12 @@ script:
   - sqlite3 token/oauth-tokens.sqlite 'SELECT * FROM oauth_tokens;'
 # Code coverage
   - coverage run -a uploadr.py -n
-  - coverage run -a uploadr.py -v
+  - coverage run -a uploadr.py $VerboseVar
   - coverage run -a uploadr.py -l 10
   - coverage run -a uploadr.py -bl 10  
   - coverage report -m
   # Multiprocessing
-  - coverage run -a --concurrency multiprocessing uploadr.py -vp 2
+  - coverage run -a --concurrency multiprocessing uploadr.py $VerboseVar -p 2
 # Use coverage report to report on the results: Two runs does the report get combined?
   - coverage combine
   - coverage report -m
@@ -47,3 +48,7 @@ script:
   - sqlite3 flickrdb "SELECT *, datetime( last_modified, 'unixepoch', 'localtime') FROM files;"
   - sqlite3 flickrdb 'SELECT * FROM badfiles;'
   - sqlite3 flickrdb 'SELECT * FROM sets;'
+  - rm tests/photo.jpg
+# Test Deleted file
+  - coverage run -a uploadr.py $VerboseVar -bl 10  
+  - coverage report -m  

@@ -2442,6 +2442,9 @@ class Uploadr:
                         CaughtPrefix='+++',
                         CaughtCode='100',
                         CaughtMsg='Flickrapi exception on photosets.addPhoto',
+                        exceptUse=True,
+                        exceptCode=ex.code,
+                        exceptMsg=ex,                        
                         NicePrint=True)
             # Error: 1: Photoset not found
             if (ex.code == 1):
