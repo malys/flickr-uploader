@@ -11,6 +11,7 @@
     Some giberish. Please ignore!
     -----------------------------
     Area for my personal notes on on-going work! Please ignore!
+    * on deleteFile... else for errors! 
     * updatedVideoDate not working with 3gp video files...
       Added mimetypes.add_type('video/3gp','.3gp') to init. Confirm.
     * replace X.encode if Unicode(X) else X by StrUnicodeOut(X)
@@ -1477,7 +1478,6 @@ class Uploadr:
             row = cur.fetchone()
             logging.debug('row {!s}:'.format(row))
 
-
             # Check if file is already loaded
             isLoaded, isCount = self.is_photo_already_uploaded(
                                                 file,
@@ -1755,6 +1755,7 @@ class Uploadr:
                                     .format('INSERT INTO files',
                                             x,
                                             MAX_SQL_ATTEMPTS))
+                                # Break the cycle of SQL_ATTEMPTS and continue
                                 break
 
                         # Update the Video Date Taken
@@ -2150,7 +2151,7 @@ class Uploadr:
 # <?xml version="1.0" encoding="utf-8" ?>
 # <rsp stat="fail">
 #   <err code="1" msg="Photo "123" not found (invalid ID)" />
-# </rsp>                
+# </rsp>
                 if (res['code'] == 1):
                     # File already removed from Flicker
                     try:
@@ -2161,7 +2162,7 @@ class Uploadr:
                                     CaughtPrefix='+++ DB',
                                     CaughtCode='090',
                                     CaughtMsg='Error: DELETE FROM files:[{!s}]'
-                                              .format(e.args[0]),                                    
+                                              .format(e.args[0]),
                                     NicePrint=True)
                 else:
                     reportError(exceptUse=False,
@@ -2386,7 +2387,7 @@ class Uploadr:
 # <?xml version="1.0" encoding="utf-8" ?>
 # <rsp stat="fail">
 #   <err code="1" msg="Photoset not found" />
-# </rsp>                       
+# </rsp>
             else:
                 if (addPhotoResp['code'] == 1):
                     niceprint('Photoset not found, creating new set...')
@@ -2758,6 +2759,7 @@ class Uploadr:
                 niceprint('Removing set [{!s}] ({!s}).'
                           .format(StrUnicodeOut(row[0]),StrUnicodeOut(row[1])))
                           # .format(str(row[0]), row[1].decode('utf-8')))
+
                 try:
                     # Acquire DB lock if running in multiprocessing mode
                     # self.useDBLock( lock, True)
@@ -3110,10 +3112,12 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                   .format(returnPhotoUploaded, xchecksum),
                         NicePrint=True)
             # Get title from filepath as filename without extension
-            # NOTE: not compatible with use of the -i option            
+            # NOTE: not compatible with use of the -i option
             xpath_filename, xtitle_filename = os.path.split(xfile)
             xtitle_filename = os.path.splitext(xtitle_filename)[0]
-            # Check Titles
+            logging.info('Title:[{!s}]'.format(StrUnicodeOut(xtitle_filename)))
+            
+            # For each pic found on Flickr 1st check title and then Sets
             returnList = []
             for pic in searchIsUploaded.find('photos').findall('photo'):
                 if args.verbose is not None and args.verbose:
@@ -3179,7 +3183,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                        'title': pic.attrib['title'],
                                        'set': '',
                                        'tags': pic.attrib['tags'],
-                                       'result': 'empty'})                    
+                                       'result': 'empty'})
 
                 for setinlist in resp.findall('set'):
                     logging.debug('setinlist:')
