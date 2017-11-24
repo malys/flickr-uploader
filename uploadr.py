@@ -11,10 +11,8 @@
     Some giberish. Please ignore!
     -----------------------------
     Area for my personal notes on on-going work! Please ignore!
+    * In multiprocessing mode photo.search seems to fail
     * on deleteFile... else for errors!
-    * updatedVideoDate not working with 3gp video files...
-      Added mimetypes.add_type('video/3gp','.3gp') to init. Confirm.
-    * replace X.encode if Unicode(X) else X by StrUnicodeOut(X)
     * Change code to insert on database prior to upload and then update result
     * Search and eliminate: # CODING check line above and remove next line
     * Protect all DB access( single processing or multiprocessing) with:
@@ -285,7 +283,7 @@ def niceprint(s):
 #
 # Provides a messaging wrapper for logging.error, niprint & str(sys.exc_info()
 #
-# CODING: Examples of use of reportError:
+# Examples of use of reportError:
 # except flickrapi.exceptions.FlickrError as ex:
 #     reportError(Caught=True,
 #                 CaughtPrefix='+++',
@@ -1542,6 +1540,7 @@ class Uploadr:
             file_checksum = self.md5Checksum(file)
 
             # Check if file is already loaded
+            # CODING: In multiprocessing mode photo.search seems to fail
             isLoaded, isCount, isfile_id = self.is_photo_already_uploaded(
                                                                file,
                                                                file_checksum,
