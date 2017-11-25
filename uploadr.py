@@ -3171,13 +3171,19 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                 StrUnicodeOut(pic.attrib['title']),
                                 StrUnicodeOut(pic.attrib['tags'])))
 
+                # CODING: UnicodeWarning: Unicode equal comparison failed to
+                # convert both arguments to Unicode
+                logging.info('type(xtitle_filename)=[{!s}] '
+                             'type(pic.attrib[title])=[{!s}]'
+                             .format(type(xtitle_filename),
+                                     type(pic.attrib['title'])))
+                
                 if not (xtitle_filename == pic.attrib['title']):
                     logging.info('Different titles: File:[{!s}] Flickr:[{!s}]'
                                  .format(StrUnicodeOut(xtitle_filename),
                                          StrUnicodeOut(pic.attrib['title'])))
                     continue
 
-                # Check SetNames to which this pic belongs to.
                 try:
                     resp = None
                     resp = nuflickr.photos.getAllContexts(
@@ -3232,8 +3238,8 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                        'result': 'empty'})
 
                 for setinlist in resp.findall('set'):
-                    logging.debug('setinlist:')
-                    logging.debug(xml.etree.ElementTree.tostring(
+                    logging.warning('setinlist:')
+                    logging.warning(xml.etree.ElementTree.tostring(
                                                         setinlist,
                                                         encoding='utf-8',
                                                         method='xml'))
@@ -3241,18 +3247,18 @@ set0 = sets.find('photosets').findall('photoset')[0]
                     niceprint('\nCheck : id=[{!s}] File=[{!s}]\n'
                               'Check : Title:[{!s}] Set:[{!s}]\n'
                               'Flickr: Title:[{!s}] Set:[{!s}] Tags:[{!s}]\n'
-                              'Compare Sets=[{!s}]'
                               .format(pic.attrib['id'],
                                       StrUnicodeOut(xfile),
                                       StrUnicodeOut(xtitle_filename),
                                       StrUnicodeOut(xsetName),
                                       StrUnicodeOut(pic.attrib['title']),
                                       StrUnicodeOut(setinlist.attrib['title']),
-                                      StrUnicodeOut(pic.attrib['tags'])),
-                                      (StrUnicodeOut(xsetName) ==
+                                      StrUnicodeOut(pic.attrib['tags'])))
+                                      
+                    niceprint('Compare Sets=[{!s}]'
+                              .format((StrUnicodeOut(xsetName) ==
                                        StrUnicodeOut(setinlist
-                                                     .attrib['title']))
-                            )
+                                                     .attrib['title']))))
 
                     # result is either
                     #   empty = same title, no set
@@ -3262,9 +3268,9 @@ set0 = sets.find('photosets').findall('photoset')[0]
 
                     # returnList.append({'id': pic.attrib['id'],
                     #                    'title': pic.attrib['title'],
-                    #                     'set': setinlist.attrib['title'],
-                    #                     'tags': pic.attrib['tags'],
-                    #                     'result': 'nothing'})
+                    #                    'set': setinlist.attrib['title'],
+                    #                    'tags': pic.attrib['tags'],
+                    #                    'result': 'nothing'})
                     # logging.info('output for returnList:[{!s}]'
                     #              .format(returnList))
 
