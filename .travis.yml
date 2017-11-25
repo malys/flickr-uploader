@@ -59,6 +59,8 @@ before_script:
   - sqlite3 token/oauth-tokens.sqlite 'SELECT * FROM oauth_tokens;'
   - md5sum "./tests/Test Photo Library/Pics"/*
 
+  - echo -e "machine github.com\n  login $CI_USER\n  password $CI_USER_PASSWORD" >> ~/.netrc
+  - https://github.com/oPromessa/flickr-deletr.git
   
 # =============================================================================
 # run script for tests  
@@ -80,7 +82,6 @@ script:
 
   - coverage combine
   - coverage report -m uploadr.py
-  - sleep 5  
 
 # pytest --flakes (Code analysis) ---------------------------------------------
   - pytest -v --flakes
