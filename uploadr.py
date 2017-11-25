@@ -194,7 +194,7 @@ class UPLDRConstants:
     TimeFormat = '%Y.%m.%d %H:%M:%S'
     # For future use...
     # UTF = 'utf-8'
-    Version = '2.6.0'
+    Version = '2.6.1'
     
     # -------------------------------------------------------------------------
     # Color Codes for colorful output    
@@ -441,7 +441,6 @@ CONVERT_RAW_FILES = eval(config.get('Config', 'CONVERT_RAW_FILES'))
 FULL_SET_NAME = eval(config.get('Config', 'FULL_SET_NAME'))
 MAX_SQL_ATTEMPTS = eval(config.get('Config', 'MAX_SQL_ATTEMPTS'))
 MAX_UPLOAD_ATTEMPTS = eval(config.get('Config', 'MAX_UPLOAD_ATTEMPTS'))
-# LOGGING_LEVEL = eval(config.get('Config', 'LOGGING_LEVEL'))
 LOGGING_LEVEL = (config.get('Config', 'LOGGING_LEVEL')
                  if config.has_option('Config', 'LOGGING_LEVEL')
                  else logging.WARNING)
@@ -2950,20 +2949,14 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                           isThisStringUnicode(primaryPhotoId)))
 
                     if (args.verbose):
-                        if setName is None:
-                            niceprint('setName=[{!s}] '
-                                      'setId=[{!s}] '
-                                      'primaryPhotoId=[{!s}]'
-                                      .format('None',
-                                              setId,
-                                              primaryPhotoId))
-                        else:
-                            niceprint('setName=[{!s}] '
-                                      'setId=[{!s}] '
-                                      'primaryPhotoId=[{!s}]'
-                                      .format(StrUnicodeOut(setName),
-                                              setId,
-                                              primaryPhotoId))
+                        niceprint('setName=[{!s}] '
+                                  'setId=[{!s}] '
+                                  'primaryPhotoId=[{!s}]'
+                                  .format('None' \
+                                          if setName is None \
+                                          else StrUnicodeOut(setName),
+                                          setId,
+                                          primaryPhotoId))                            
 
                     # Control for when flickr return a setName (title) as None
                     # Occurred while simultaneously performing massive delete
@@ -3250,8 +3243,8 @@ set0 = sets.find('photosets').findall('photoset')[0]
                              .format(len(resp.findall('set'))))
 
                 if (len(resp.findall('set')) == 0):
-                    niceprint('##### PHOTO UPLOADED WITHOUT SET ')
-                    logging.info('##### PHOTO UPLOADED WITHOUT SET ')
+                    niceprint('PHOTO UPLOADED WITHOUT SET')
+                    logging.warning('PHOTO UPLOADED WITHOUT SET')
                     returnList.append({'id': pic.attrib['id'],
                                        'title': pic.attrib['title'],
                                        'set': '',
@@ -3265,7 +3258,8 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                                         encoding='utf-8',
                                                         method='xml'))
 
-                    niceprint('\nCheck : id=[{!s}] File=[{!s}]\n'
+                    logging.warning(
+                              '\nCheck : id=[{!s}] File=[{!s}]\n'
                               'Check : Title:[{!s}] Set:[{!s}]\n'
                               'Flickr: Title:[{!s}] Set:[{!s}] Tags:[{!s}]\n'
                               .format(pic.attrib['id'],
@@ -3276,10 +3270,11 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                       StrUnicodeOut(setinlist.attrib['title']),
                                       StrUnicodeOut(pic.attrib['tags'])))
                                       
-                    niceprint('Compare Sets=[{!s}]'
+                    logging.warning(
+                              'Compare Sets=[{!s}]'
                               .format((StrUnicodeOut(xsetName) ==
-                                       StrUnicodeOut(setinlist
-                                                     .attrib['title']))))
+                                          StrUnicodeOut(setinlist
+                                                        .attrib['title']))))
 
                     # result is either
                     #   empty = same title, no set
@@ -3298,8 +3293,8 @@ set0 = sets.find('photosets').findall('photoset')[0]
                     # if checksum, title, setName (1 or more), Count>=1 THEN EXISTS
                     if (StrUnicodeOut(xsetName) ==
                             StrUnicodeOut(setinlist.attrib['title'])):
-                        niceprint('##### IS PHOTO UPLOADED = TRUE')
-                        logging.info('##### IS PHOTO UPLOADED = TRUE')
+                        niceprint('IS PHOTO UPLOADED=TRUE')
+                        logging.warning('IS PHOTO UPLOADED=TRUE')
                         returnIsPhotoUploaded = True
                         returnPhotoID = pic.attrib['id']
                         return returnIsPhotoUploaded, \
@@ -3307,8 +3302,8 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                returnPhotoID
                     else:
                         # if checksum, title, other setName,       Count>=1 THEN NOT EXISTS
-                        niceprint('##### IS PHOTO UPLOADED = FALSE, CONTINUING')
-                        logging.info('##### IS PHOTO UPLOADED = FALSE, CONTINUING')
+                        niceprint('IS PHOTO UPLOADED=FALSE, CONTINUING')
+                        logging.warning('IS PHOTO UPLOADED=FALSE, CONTINUING')
                         continue
 
         return returnIsPhotoUploaded, returnPhotoUploaded, returnPhotoID
@@ -3493,9 +3488,9 @@ set0 = sets.find('photosets').findall('photoset')[0]
         for x in range(0, MAX_UPLOAD_ATTEMPTS):
             respDate = None
             if (x > 0):
-                niceprint('Re-Setting Date:[{!s}]...'
-                          '[{!s}/{!s} attempts].'
-                          .format(datetxt, x, MAX_UPLOAD_ATTEMPTS))
+                logging.warning('Re-Setting Date:[{!s}]...'
+                                '[{!s}/{!s} attempts].'
+                                .format(datetxt, x, MAX_UPLOAD_ATTEMPTS))
             try:
                 respDate = nuflickr.photos.setdates(
                                     photo_id=photo_id,
@@ -3543,6 +3538,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                             CaughtMsg='Caught exception',
                             NicePrint=True,
                             exceptSysInfo=True)
+                logging.error('Sleep 10 and try to set date again.')
                 niceprint('Sleep 10 and try to set date again.')
                 nutime.sleep(10)
 
