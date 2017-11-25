@@ -11,6 +11,7 @@
     Some giberish. Please ignore!
     -----------------------------
     Area for my personal notes on on-going work! Please ignore!
+    * Test deleted file from local which is also deleted from flickr
     * In multiprocessing mode photo.search seems to fail
     * on deleteFile... else for errors!
     * Change code to insert on database prior to upload and then update result
@@ -831,7 +832,7 @@ class Uploadr:
                                       StrUnicodeOut(row[1])))
                 # row[1] is photo_id
                 if (self.isFileIgnored(row[1].decode('utf-8'))):
-                    success = self.deleteFile(row, cur)
+                    self.deleteFile(row, cur)
 
         # Closing DB connection
         if con is not None:
@@ -1231,6 +1232,9 @@ class Uploadr:
 
             niceprint('Finished converting files with extension:[{!s}]'
                       .format(StrUnicodeOut(ext)))
+
+        if p is None:
+            del p
 
         niceprint('*****Completed converting files*****')
 
@@ -2175,7 +2179,7 @@ class Uploadr:
 # <rsp stat="fail">
 #   <err code="1" msg="Photo "123" not found (invalid ID)" />
 # </rsp>
-                if (res['code'] == 1):
+                if (deleteResp['code'] == 1):
                     # File already removed from Flicker
                     try:
                         cur.execute("DELETE FROM files WHERE files_id = ?",
@@ -2189,12 +2193,12 @@ class Uploadr:
                                     NicePrint=True)
                 else:
                     reportError(exceptUse=False,
-                                exceptCode=res['code']
-                                           if 'code' in res
-                                           else res,
-                                exceptMsg=res['message']
-                                           if 'message' in res
-                                           else res,
+                                exceptCode=deleteResp['code']
+                                           if 'code' in deleteResp
+                                           else deleteResp,
+                                exceptMsg=deleteResp['message']
+                                          if 'message' in deleteResp
+                                          else deleteResp,
                                 NicePrint=True)
         except:
             # If you get 'attempt to write a readonly database', set 'admin'
@@ -2226,7 +2230,6 @@ class Uploadr:
         if (args.verbose):
             niceprint('Adding set: [{!s}] to database log.'
                       .format(StrUnicodeOut(setName)))
-        success = False
 
         try:
             cur.execute('INSERT INTO sets (set_id, name, primary_photo_id) '
@@ -2429,12 +2432,12 @@ class Uploadr:
                                 'WHERE files_id = ?', (setId, file[0]))
                 else:
                     reportError(exceptUse=False,
-                                exceptCode=res['code']
-                                           if 'code' in res
-                                           else res,
-                                exceptMsg=res['message']
-                                           if 'message' in res
-                                           else res,
+                                exceptCode=addPhotoResp['code']
+                                           if 'code' in addPhotoResp
+                                           else addPhotoResp,
+                                exceptMsg=addPhotoResp['message']
+                                          if 'message' in addPhotoResp
+                                          else addPhotoResp,
                                 NicePrint=True)
 
         except flickrapi.exceptions.FlickrError as ex:
@@ -2782,9 +2785,10 @@ class Uploadr:
                 pass
 
             for row in unusedsets:
-                niceprint('Removing set [{!s}] ({!s}).'
-                          .format(StrUnicodeOut(row[0]),StrUnicodeOut(row[1])))
-                          # .format(str(row[0]), row[1].decode('utf-8')))
+                if args.verbose:
+                    niceprint('Removing set [{!s}] ({!s}).'
+                              .format(StrUnicodeOut(row[0]),
+                                      StrUnicodeOut(row[1])))
 
                 try:
                     # Acquire DB lock if running in multiprocessing mode
