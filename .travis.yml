@@ -46,7 +46,6 @@ env:
     #- TestScenario=Replace UploadrOptions="$VerboseVar $BadFilesVar"
 # RemoveReplace
     - TestScenario=RemoveReplace UploadrOptions="$VerboseVar $BadFilesVar"
-    
 
 # =============================================================================
 # before_script
@@ -69,6 +68,10 @@ before_script:
 # =============================================================================
 # run script for tests  
 script:
+# DELETE RUN ------------------------------------------------------------------
+# !!!!!!!!!!!!!!!!!!!!!!!!!! CAREFULL !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  - coverage run -a --concurrency multiprocessing ./flickr-deletr-master/delete.py
+  
 # First RUN -------------------------------------------------------------------
 #  - coverage run -a --concurrency multiprocessing uploadr.py $VerboseVar -p 2
   - coverage run -a --concurrency multiprocessing uploadr.py $VerboseVar $UploadrOptions
