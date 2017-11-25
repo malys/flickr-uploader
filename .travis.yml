@@ -1,4 +1,6 @@
 # =============================================================================
+# Use travis settings maximum_number_of_builds --set 1 as the builds envs depend on flickr
+# =============================================================================
 # language
 language: python
 python:
@@ -21,7 +23,8 @@ env:
     - LC_ALL=en_US.utf8
     - LANG=en_US.utf8
 # Set to -v for Verbose option of uploadr
-    - VerboseVar=-v    
+    - VerboseVar=-v
+    - BadFilesVar=-b  
   matrix:
 # TestScenario: Help, DryRun, BadFiles, MultiProcessing, Remove, Replace, RemoveReplace
 # Help
@@ -29,15 +32,15 @@ env:
 # DryRun
     #- TestScenario=DryRun UploadrOptions="$VerboseVar -n"  
 # Badfiles  
-    #- TestScenario=BadFiles UploadrOptions="$VerboseVar -b"
+    #- TestScenario=BadFiles UploadrOptions="$VerboseVar $BadFilesVar"
 # Multiprocessing  
-    - TestScenario=MultiProcessing UploadrOptions="$VerboseVar -b -p 5"
+    - TestScenario=MultiProcessing UploadrOptions="$VerboseVar $BadFilesVar -p 5"
 # Remove
-    #- TestScenario=Remove UploadrOptions="$VerboseVar -b"
+    #- TestScenario=Remove UploadrOptions="$VerboseVar $BadFilesVar"
 # Replace
-    #- TestScenario=Replace UploadrOptions="$VerboseVar -b"
+    #- TestScenario=Replace UploadrOptions="$VerboseVar $BadFilesVar"
 # RemoveReplace
-    - TestScenario=RemoveReplace UploadrOptions="$VerboseVar -b"
+    - TestScenario=RemoveReplace UploadrOptions="$VerboseVar $BadFilesVar"
     
 
 # =============================================================================
