@@ -16,7 +16,8 @@ before_install:
 # command to install dependencies
 install:
   - pip install -r requirements.txt
-  - wget https://github.com/oPromessa/flickr-deletr.git
+  - wget https://github.com/oPromessa/flickr-deletr/archive/master.tar.gz -O flickr-deletr-master.tar.gz
+  - tar zxvf flickr-deletr-master.tar.gz
   - ls -la
 
 # =============================================================================
