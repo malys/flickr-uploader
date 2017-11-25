@@ -29,12 +29,12 @@ script:
   - coverage run -a uploadr.py $VerboseVar
   - coverage run -a uploadr.py $VerboseVar -l 10
   - coverage run -a uploadr.py $VerboseVar -bl 10  
-  - coverage report -m
+  - coverage report -m uploadr.py
   # Multiprocessing
   - coverage run -a --concurrency multiprocessing uploadr.py $VerboseVar -p 2
 # Use coverage report to report on the results: Two runs does the report get combined?
   - coverage combine
-  - coverage report -m
+  - coverage report -m uploadr.py
 # pytest --flakes (Code analysis)
   - pytest -v --flakes
 #  - pytest -v # or py.test for Python versions 3.5 and below
@@ -53,6 +53,6 @@ script:
 # - sleep 10
 # Test Deleted file
   - coverage run -a uploadr.py $VerboseVar -bl 10  
-  - coverage report -m
+  - coverage report -m uploadr.py
   - sqlite3 flickrdb "SELECT *, datetime( last_modified, 'unixepoch', 'localtime') FROM files;"
   
