@@ -196,6 +196,15 @@ class UPLDRConstants:
     # For future use...
     # UTF = 'utf-8'
     Version = '2.6.0'
+    
+    # -------------------------------------------------------------------------
+    # Color Codes for colorful output    
+    W  = '\033[0m'  # white (normal)
+    R  = '\033[31m' # red
+    G  = '\033[32m' # green
+    O  = '\033[33m' # orange
+    B  = '\033[34m' # blue
+    P  = '\033[35m' # purple    
 
     # -------------------------------------------------------------------------
     # class UPLDRConstants __init__
@@ -477,7 +486,9 @@ LOGGING_LEVEL = int(LOGGING_LEVEL)
 logging.basicConfig(stream=sys.stderr,
                     level=int(LOGGING_LEVEL),
                     datefmt=UPLDRConstants.TimeFormat,
-                    format='[%(asctime)s]:[%(processName)-11s]'
+                    format=UPLDRConstants.P+
+                           '[%(asctime)s]:[%(processName)-11s]'+
+                           UPLDRConstants.W+
                            '[%(levelname)-8s]:[%(name)s] %(message)s')
 # =============================================================================
 # Test section for logging.

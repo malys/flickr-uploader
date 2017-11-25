@@ -40,7 +40,7 @@ script:
 # to reply quickly enough.
   - coverage run -a uploadr.py $VerboseVar -n
   - sleep 5
-  - coverage run -a uploadr.py $VerboseVar
+  - coverage run -a uploadr.py $VerboseVar -b
   - sleep 5
 #  - coverage run -a uploadr.py $VerboseVar -l 10
 #  - sleep 5
