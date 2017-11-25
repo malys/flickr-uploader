@@ -55,14 +55,22 @@ script:
 
 # Deleted Pics ================================================================
   - rm tests/photo.jpg
+  - coverage run -a uploadr.py $VerboseVar
 # Deleted Pics ----------------------------------------------------------------
 
 # Deleted Pics Non existant on FLickr =========================================
 # For testing a local deleted file also not available in flickr
 # - sleep 10
 # Test Deleted file
-  - coverage run -a uploadr.py $VerboseVar -bl 10  
-  - coverage report -m uploadr.py
-  - sqlite3 flickrdb "SELECT *, datetime( last_modified, 'unixepoch', 'localtime') FROM files;"
+#  - coverage run -a uploadr.py $VerboseVar -bl 10  
+#  - coverage report -m uploadr.py
+#  - sqlite3 flickrdb "SELECT *, datetime( last_modified, 'unixepoch', 'localtime') FROM files;"
 # Deleted Pics Non existant on FLickr -----------------------------------------
+
+# Modified Pics ===============================================================
+  - ls -la tests/Pics/file00053809264.jpg
+  - touch tests/Pics/file00053809264.jpg
+  - coverage run -a uploadr.py $VerboseVar
+  - ls -la tests/Pics/file00053809264.jpg
+# Modified Pics ---------------------------------------------------------------
 
