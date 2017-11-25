@@ -613,8 +613,8 @@ class Uploadr:
         # CODING: Not used for now:
         # useDBLockTimeout = 0.5
 
-        logging.debug('Entering useDBLock with useDBoperation:[{!s}].'.
-                      format(useDBoperation))
+        logging.debug('Entering useDBLock with useDBoperation:[{!s}].'
+                      .format(useDBoperation))
 
         if useDBthisLock is None:
             return useDBLockReturn
@@ -3214,12 +3214,12 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                                         encoding='utf-8',
                                                         method='xml'))
 
-                niceprint('len(resp.findall(''set'')):[{!s}]'
-                          .format(len(resp.findall('set'))))
+                logging.info('len(resp.findall(''set'')):[{!s}]'
+                             .format(len(resp.findall('set'))))
 
                 if (len(resp.findall('set')) == 0):
                     niceprint('##### PHOTO UPLOADED WITHOUT SET ')
-                    logging.error('##### PHOTO UPLOADED WITHOUT SET ')
+                    logging.info('##### PHOTO UPLOADED WITHOUT SET ')
                     returnList.append({'id': pic.attrib['id'],
                                        'title': pic.attrib['title'],
                                        'set': '',
@@ -3262,7 +3262,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                     if (StrUnicodeOut(xsetName) ==
                             StrUnicodeOut(setinlist.attrib['title'])):
                         niceprint('##### IS PHOTO UPLOADED = TRUE')
-                        logging.error('##### IS PHOTO UPLOADED = TRUE')
+                        logging.info('##### IS PHOTO UPLOADED = TRUE')
                         returnIsPhotoUploaded = True
                         returnPhotoID = pic.attrib['id']
                         return returnIsPhotoUploaded, \
@@ -3271,7 +3271,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                     else:
                         # if checksum, title, other setName,       Count>=1 THEN NOT EXISTS
                         niceprint('##### IS PHOTO UPLOADED = FALSE, CONTINUING')
-                        logging.error('##### IS PHOTO UPLOADED = FALSE, CONTINUING')
+                        logging.info('##### IS PHOTO UPLOADED = FALSE, CONTINUING')
                         continue
 
         return returnIsPhotoUploaded, returnPhotoUploaded, returnPhotoID

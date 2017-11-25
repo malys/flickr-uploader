@@ -69,13 +69,13 @@ script:
 
 # Modified Pics ===============================================================
   - ls -la tests/Pics/file00053809264.jpg
-  - md5 tests/Pics/file00053809264.jpg
+  - md5sum tests/Pics/file00053809264.jpg
   - cp tests/Pics/file000132701536.jpg tests/Pics/file00053809264.jpg
   - touch tests/Pics/file00053809264.jpg
-  - md5 tests/Pics/file00053809264.jpg
+  - md5sum tests/Pics/file00053809264.jpg
   - ls -la tests/Pics/file00053809264.jpg
   - coverage run -a uploadr.py $VerboseVar
   - ls -la tests/Pics/file00053809264.jpg
-  - md5 tests/Pics/file00053809264.jpg
+  - md5sum tests/Pics/file00053809264.jpg
 # Modified Pics ---------------------------------------------------------------
 
