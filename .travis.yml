@@ -27,6 +27,7 @@ script:
   - coverage run -a --concurrency multiprocessing uploadr.py $VerboseVar -p 2
   - coverage combine
   - coverage report -m uploadr.py
+  - sleep 5
 # Multiprocessing -------------------------------------------------------------
 
 # Several Options =============================================================
@@ -34,11 +35,18 @@ script:
 # Second run
 # Third run List pics without a set
 # Fourth run add fles to badfiles
+# IT's possibly good to have some sleep in between tests... Flickr does not seem
+# to reply quickly enough.
   - coverage run -a uploadr.py $VerboseVar -n
+  - sleep 5
   - coverage run -a uploadr.py $VerboseVar
-  - coverage run -a uploadr.py $VerboseVar -l 10
-  - coverage run -a uploadr.py $VerboseVar -bl 10  
+  - sleep 5
+#  - coverage run -a uploadr.py $VerboseVar -l 10
+#  - sleep 5
+#  - coverage run -a uploadr.py $VerboseVar -bl 10
+#  - sleep 5
   - coverage report -m uploadr.py
+  - sleep 5  
 # Several Options -------------------------------------------------------------
 
 # pytest --flakes (Code analysis) =============================================

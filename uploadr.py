@@ -1963,7 +1963,7 @@ class Uploadr:
                     # Use fileobj with filename='dummy'to accept unicode file.
                         replaceResp = nuflickr.replace(
                                     filename='dummy',
-                                    fileobj=FileWithCallback(file, callback),
+                                    fileobj=FileWithCallback(photo, callback),
                                     photo_id=file_id
                                     )
                     logging.info('replaceResp: ')
