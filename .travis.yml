@@ -70,6 +70,7 @@ before_script:
 script:
 # DELETE RUN ------------------------------------------------------------------
 # !!!!!!!!!!!!!!!!!!!!!!!!!! CAREFULL !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  - cp flickr-deletr-master/tests/uploadr.ini flickr-deletr-master/uploadr.ini
   - coverage run -a --concurrency multiprocessing ./flickr-deletr-master/delete.py
   
 # First RUN -------------------------------------------------------------------
