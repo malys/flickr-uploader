@@ -63,7 +63,7 @@ script:
 # DB OUTPUT for REFERENCE -----------------------------------------------------
 
 # Deleted Pics ================================================================
-  - rm tests/photo.jpg
+  - rm "./tests/Test Photo Library/photo.jpg"
   - coverage run -a uploadr.py $VerboseVar
 # Deleted Pics ----------------------------------------------------------------
 
@@ -77,14 +77,9 @@ script:
 # Deleted Pics Non existant on FLickr -----------------------------------------
 
 # Modified Pics ===============================================================
-  - ls -la tests/Pics/file00053809264.jpg
-  - md5sum tests/Pics/file00053809264.jpg
-  - cp tests/Pics/file000132701536.jpg tests/Pics/file00053809264.jpg
-  - touch tests/Pics/file00053809264.jpg
-  - md5sum tests/Pics/file00053809264.jpg
-  - ls -la tests/Pics/file00053809264.jpg
+  - cp "./tests/Test Photo Library/ReplaceTest/file00053809264.jpg.ForReplace" "./tests/Test Photo Library/Pics/file00053809264.jpg"
+  - touch "./tests/Test Photo Library/Pics/file00053809264.jpg"
+  - md5sum "./tests/Test Photo Library/Pics"/*
   - coverage run -a uploadr.py $VerboseVar
-  - ls -la tests/Pics/file00053809264.jpg
-  - md5sum tests/Pics/file00053809264.jpg
 # Modified Pics ---------------------------------------------------------------
 
