@@ -1,18 +1,50 @@
+# =============================================================================
+# language
 language: python
 python:
   - "2.7"
 #  - "3.6"
 # nightly gets the latest nightly version of python... python 3 in the case. For now I don't want that!
 #  - "nightly"
+
+# =============================================================================
 # command to install dependencies
 #install:
 #  - pip install -r requirements.txt
 # command to run tests
+
+# =============================================================================
+# env
 env:
   global:
     - PYTHONPATH=..:.
+    - LC_ALL=en_US.utf8
+    - LANG=en_US.utf8
 # Set to -v for Verbose option of uploadr
-#    - VerboseVar=-v
+    - VerboseVar=-v    
+  matrix:
+# TestScenario: Help, DryRun, BadFiles, MultiProcessing, Remove, Replace, RemoveReplace
+# Help
+    - TestScenario=Help UploadrOptions="$VerboseVar --help"
+# DryRun
+    #- TestScenario=DryRun UploadrOptions="$VerboseVar -n"  
+# Badfiles  
+    #- TestScenario=BadFiles UploadrOptions="$VerboseVar -b"
+# Multiprocessing  
+    - TestScenario=MultiProcessing UploadrOptions="$VerboseVar -b -p 5"
+# Remove
+    #- TestScenario=Remove UploadrOptions="$VerboseVar -b"
+# Replace
+    #- TestScenario=Replace UploadrOptions="$VerboseVar -b"
+# RemoveReplace
+    - TestScenario=RemoveReplace UploadrOptions="$VerboseVar -b"
+    
+
+# =============================================================================
+# before_script
+# Get database token ready
+# Get uploadr.ini from tests
+# Use environment secure variable for private settings
 before_script:
   - pwd
 #  - ls -laR
@@ -22,64 +54,50 @@ before_script:
 #  - cat uploadr.ini
   - echo "INSERT INTO oauth_tokens ( api_key, lookup_key, oauth_token, oauth_token_secret, access_level, fullname, username, user_nsid) VALUES ( '"$api_key"', '', '"$oauth_token"', '"$oauth_token_secret"', 'delete', '"$fullname"', '"$username"', '"$user_nsid"');" | sqlite3 token/oauth-tokens.sqlite
   - sqlite3 token/oauth-tokens.sqlite 'SELECT * FROM oauth_tokens;'
+  - md5sum "./tests/Test Photo Library/Pics"/*
+
+  
+# =============================================================================
+# run script for tests  
 script:
-# Multiprocessing =============================================================
+# First RUN -------------------------------------------------------------------
 #  - coverage run -a --concurrency multiprocessing uploadr.py $VerboseVar -p 2
-  - coverage run -a --concurrency multiprocessing uploadr.py $VerboseVar
+  - coverage run -a --concurrency multiprocessing uploadr.py $VerboseVar $UploadrOptions
+  
   - coverage combine
   - coverage report -m uploadr.py
   - sleep 5
-# Multiprocessing -------------------------------------------------------------
 
-# Several Options =============================================================
-# Dry run: -n
-# Second run
-# Third run List pics without a set
-# Fourth run add fles to badfiles
-# IT's possibly good to have some sleep in between tests... Flickr does not seem
-# to reply quickly enough.
-  - coverage run -a uploadr.py $VerboseVar -n
-  - sleep 5
-  - coverage run -a uploadr.py $VerboseVar -b
-  - sleep 5
-#  - coverage run -a uploadr.py $VerboseVar -l 10
-#  - sleep 5
-#  - coverage run -a uploadr.py $VerboseVar -bl 10
-#  - sleep 5
+# Second RUN ------------------------------------------------------------------
+  - if [[ $TestScenario == Remove ]]; then rm "./tests/Test Photo Library/photo.jpg"; fi
+  - if [[ $TestScenario == Replace ]]; then cp "./tests/Test Photo Library/ReplaceTest/file00053809264.jpg.ForReplace" "./tests/Test Photo Library/Pics/file00053809264.jpg"; fi
+  - if [[ $TestScenario == RemoveReplace ]]; then rm "./tests/Test Photo Library/photo.jpg"; fi
+  - if [[ $TestScenario == RemoveReplace ]]; then cp "./tests/Test Photo Library/ReplaceTest/file00053809264.jpg.ForReplace" "./tests/Test Photo Library/Pics/file00053809264.jpg"; fi
+  - coverage run -a --concurrency multiprocessing uploadr.py $VerboseVar $UploadrOptions
+
+  - coverage combine
   - coverage report -m uploadr.py
   - sleep 5  
-# Several Options -------------------------------------------------------------
 
-# pytest --flakes (Code analysis) =============================================
+# pytest --flakes (Code analysis) ---------------------------------------------
   - pytest -v --flakes
 #  - pytest -v # or py.test for Python versions 3.5 and below
   - pytest --doctest-modules # Attempt to run test_*.txt with doctest
-# pytest --flakes (Code analysis) ---------------------------------------------
 
-# DB OUTPUT for REFERENCE =====================================================
-  - sqlite3 flickrdb "SELECT *, datetime( last_modified, 'unixepoch', 'localtime') FROM files;"
-  - sqlite3 flickrdb 'SELECT * FROM badfiles;'
-  - sqlite3 flickrdb 'SELECT * FROM sets;'
-# DB OUTPUT for REFERENCE -----------------------------------------------------
-
-# Deleted Pics ================================================================
-  - rm "./tests/Test Photo Library/photo.jpg"
-  - coverage run -a uploadr.py $VerboseVar
-# Deleted Pics ----------------------------------------------------------------
-
-# Deleted Pics Non existant on FLickr =========================================
+# Deleted Pics Non existant on FLickr -----------------------------------------
 # For testing a local deleted file also not available in flickr
 # - sleep 10
 # Test Deleted file
 #  - coverage run -a uploadr.py $VerboseVar -bl 10  
 #  - coverage report -m uploadr.py
 #  - sqlite3 flickrdb "SELECT *, datetime( last_modified, 'unixepoch', 'localtime') FROM files;"
-# Deleted Pics Non existant on FLickr -----------------------------------------
 
-# Modified Pics ===============================================================
-  - cp "./tests/Test Photo Library/ReplaceTest/file00053809264.jpg.ForReplace" "./tests/Test Photo Library/Pics/file00053809264.jpg"
-  - touch "./tests/Test Photo Library/Pics/file00053809264.jpg"
-  - md5sum "./tests/Test Photo Library/Pics"/*
-  - coverage run -a uploadr.py $VerboseVar
-# Modified Pics ---------------------------------------------------------------
-
+after_script:
+# MD5SUM Output for REFERENCE -------------------------------------------------
+  - if [[ $TestScenario == RemoveReplace ]]; then md5sum "./tests/Test Photo Library/Pics"/*; fi
+  - if [[ $TestScenario == RemoveReplace ]]; then md5sum "./tests/Test Photo Library/Pics"/*; fi
+  
+# DB OUTPUT for REFERENCE -----------------------------------------------------
+  - sqlite3 flickrdb "SELECT *, datetime( last_modified, 'unixepoch', 'localtime') FROM files;"
+  - sqlite3 flickrdb 'SELECT * FROM badfiles;'
+  - sqlite3 flickrdb 'SELECT * FROM sets;'  
