@@ -11,6 +11,8 @@
     Some giberish. Please ignore!
     -----------------------------
     Area for my personal notes on on-going work! Please ignore!
+    * CHANGE -S OPTION TO SET IF ONE SHOULD SEARCH PRIOR TO LOADING...As it may
+      take a long time! Need to check.
     * Test deleted file from local which is also deleted from flickr
     * In multiprocessing mode photo.search seems to fail
     * on deleteFile... else for errors!
