@@ -9,6 +9,12 @@ python:
 # nightly gets the latest nightly version of python... python 3 in the case. For now I don't want that!
 #  - "nightly"
 
+before_install:
+  - echo -e "machine github.com\n  login $CI_USER\n  password $CI_USER_PASSWORD" >> ~/.netrc
+
+install:  
+  - wget https://github.com/oPromessa/flickr-deletr.git
+  
 # =============================================================================
 # command to install dependencies
 #install:
@@ -59,8 +65,7 @@ before_script:
   - sqlite3 token/oauth-tokens.sqlite 'SELECT * FROM oauth_tokens;'
   - md5sum "./tests/Test Photo Library/Pics"/*
 
-  - echo -e "machine github.com\n  login $CI_USER\n  password $CI_USER_PASSWORD" >> ~/.netrc
-  - https://github.com/oPromessa/flickr-deletr.git
+
   
 # =============================================================================
 # run script for tests  

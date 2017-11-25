@@ -11,7 +11,8 @@
     Some giberish. Please ignore!
     -----------------------------
     Area for my personal notes on on-going work! Please ignore!
-    * Error 181 occurs in multiprocessing mode!
+    * +++#121: Caught exception in addFiletoSet occurred 6 in 5200 times.
+    * Error 181 occurs in multiprocessing mode! under TravisCI! Strange!
     * CHANGE -S OPTION TO SET IF ONE SHOULD SEARCH PRIOR TO LOADING...As it may
       take a long time! Need to check.
     * Test deleted file from local which is also deleted from flickr
