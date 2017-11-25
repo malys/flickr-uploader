@@ -24,7 +24,8 @@ before_script:
   - sqlite3 token/oauth-tokens.sqlite 'SELECT * FROM oauth_tokens;'
 script:
 # Multiprocessing =============================================================
-  - coverage run -a --concurrency multiprocessing uploadr.py $VerboseVar -p 2
+#  - coverage run -a --concurrency multiprocessing uploadr.py $VerboseVar -p 2
+  - coverage run -a --concurrency multiprocessing uploadr.py $VerboseVar
   - coverage combine
   - coverage report -m uploadr.py
   - sleep 5
