@@ -285,9 +285,11 @@ def niceprint(s):
         [2017.11.19 01:53:57]:[PID       ][PRINT   ]:[uploadr] Some Message
         Accounts for UTF-8 Messages
     """
-    print('[{!s}]:[{!s:11s}][{!s:8s}]:[{!s}] {!s}'.format(
+    print('{}[{!s}]:[{!s:11s}]{}[{!s:8s}]:[{!s}] {!s}'.format(
+            UPLDRConstants.G,
             nutime.strftime(UPLDRConstants.TimeFormat),
             os.getpid(),
+            UPLDRConstants.W,
             'PRINT',
             'uploadr',
             StrUnicodeOut(s)))
