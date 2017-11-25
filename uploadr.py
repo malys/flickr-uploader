@@ -11,6 +11,9 @@
     Some giberish. Please ignore!
     -----------------------------
     Area for my personal notes on on-going work! Please ignore!
+   * Compra unicode and string: [107891def2778c22b53b737051f32872]
+     uploadr.py:3259: UnicodeWarning: Unicode equal comparison failed to convert both arguments to Unicode - interpreting them as being unequal
+     if (xsetName == setinlist.attrib['title']):    
     * CHANGE -S OPTION TO SET IF ONE SHOULD SEARCH PRIOR TO LOADING...As it may
       take a long time! Need to check.
     * Test deleted file from local which is also deleted from flickr
@@ -3256,7 +3259,8 @@ set0 = sets.find('photosets').findall('photoset')[0]
                     #              .format(returnList))
 
                     # if checksum, title, setName (1 or more), Count>=1 THEN EXISTS
-                    if (xsetName == setinlist.attrib['title']):
+                    if (StrUnicodeOut(xsetName) ==
+                            StrUnicodeOut(setinlist.attrib['title'])):
                         niceprint('##### IS PHOTO UPLOADED = TRUE')
                         logging.error('##### IS PHOTO UPLOADED = TRUE')
                         returnIsPhotoUploaded = True
