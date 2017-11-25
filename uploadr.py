@@ -1848,6 +1848,7 @@ class Uploadr:
                 #   then: if md5 has changed then perform replacePhoto
                 #   operation on Flickr
                 try:
+                    logging.warning('CHANGES row[6]=[{!s}]'.format(row[6]))
                     if (row[6] is None):
                         # Update db the last_modified time of file
 
@@ -1859,6 +1860,8 @@ class Uploadr:
                         con.commit()
                         self.useDBLock(lock, False)
 
+                    logging.warning('CHANGES row[6]!=last_modified: [{!s}]'
+                                    .format((row[6] != last_modified)))
                     if (row[6] != last_modified):
                         # Update db both the new file/md5 and the
                         # last_modified time of file by by calling replacePhoto
