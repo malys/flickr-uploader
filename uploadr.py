@@ -11,9 +11,7 @@
     Some giberish. Please ignore!
     -----------------------------
     Area for my personal notes on on-going work! Please ignore!
-   * Compra unicode and string: [107891def2778c22b53b737051f32872]
-     uploadr.py:3259: UnicodeWarning: Unicode equal comparison failed to convert both arguments to Unicode - interpreting them as being unequal
-     if (xsetName == setinlist.attrib['title']):    
+    * Error 181 occurs in multiprocessing mode!
     * CHANGE -S OPTION TO SET IF ONE SHOULD SEARCH PRIOR TO LOADING...As it may
       take a long time! Need to check.
     * Test deleted file from local which is also deleted from flickr
