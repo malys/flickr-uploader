@@ -3238,16 +3238,21 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                                         encoding='utf-8',
                                                         method='xml'))
 
-                    niceprint('Check : id=[{!s}] File=[{!s}]\n'
+                    niceprint('\nCheck : id=[{!s}] File=[{!s}]\n'
                               'Check : Title:[{!s}] Set:[{!s}]\n'
-                              'Flickr: Title:[{!s}] Set:[{!s}] Tags:[{!s}]'
+                              'Flickr: Title:[{!s}] Set:[{!s}] Tags:[{!s}]\n'
+                              'Compare Sets=[{!s}]'
                               .format(pic.attrib['id'],
                                       StrUnicodeOut(xfile),
                                       StrUnicodeOut(xtitle_filename),
                                       StrUnicodeOut(xsetName),
                                       StrUnicodeOut(pic.attrib['title']),
                                       StrUnicodeOut(setinlist.attrib['title']),
-                                      StrUnicodeOut(pic.attrib['tags'])))
+                                      StrUnicodeOut(pic.attrib['tags'])),
+                                      (StrUnicodeOut(xsetName) ==
+                                       StrUnicodeOut(setinlist
+                                                     .attrib['title']))
+                            )
 
                     # result is either
                     #   empty = same title, no set
