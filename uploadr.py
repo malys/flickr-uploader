@@ -3177,8 +3177,17 @@ set0 = sets.find('photosets').findall('photoset')[0]
                              'type(pic.attrib[title])=[{!s}]'
                              .format(type(xtitle_filename),
                                      type(pic.attrib['title'])))
+                logging.info('xtitle_filename=[{!s}] '
+                             'pic.attrib[title]=[{!s}]'
+                             .format(StrUnicodeOut(xtitle_filename),
+                                     StrUnicodeOut(pic.attrib['title'])))
+                logging.info('Compare Titles=[{!s}]'
+                            .format((StrUnicodeOut(xtitle_filename) ==
+                                     StrUnicodeOut(pic.attrib['title']))))
                 
-                if not (xtitle_filename == pic.attrib['title']):
+                # if not (xtitle_filename == pic.attrib['title']):
+                if not (StrUnicodeOut(xtitle_filename) ==
+                            StrUnicodeOut(pic.attrib['title'])):
                     logging.info('Different titles: File:[{!s}] Flickr:[{!s}]'
                                  .format(StrUnicodeOut(xtitle_filename),
                                          StrUnicodeOut(pic.attrib['title'])))
