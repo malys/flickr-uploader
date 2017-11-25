@@ -15,7 +15,7 @@ env:
 #    - VerboseVar=-v
 before_script:
   - pwd
-#  - ls -la
+  - ls -la
   - cp tests/uploadr.ini .
   - cp tests/uploadr.ini /home/travis/virtualenv/python2.7.13/bin/uploadr.ini
   - grep FILES_DIR uploadr.ini
