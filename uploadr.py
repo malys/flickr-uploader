@@ -1961,11 +1961,12 @@ class Uploadr:
                                           MAX_UPLOAD_ATTEMPTS))
 
                     # Use fileobj with filename='dummy'to accept unicode file.
-                        replaceResp = nuflickr.replace(
-                                    filename='dummy',
-                                    fileobj=FileWithCallback(photo, callback),
-                                    photo_id=file_id
-                                    )
+                    replaceResp = nuflickr.replace(
+                                filename='dummy',
+                                fileobj=FileWithCallback(photo, callback),
+                                photo_id=file_id
+                                )
+                
                     logging.info('replaceResp: ')
                     logging.info(xml.etree.ElementTree.tostring(
                                                     replaceResp,
