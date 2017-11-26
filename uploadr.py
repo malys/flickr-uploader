@@ -11,6 +11,8 @@
     Some giberish. Please ignore!
     -----------------------------
     Area for my personal notes on on-going work! Please ignore!
+    * +++#121: Caught exception in addFiletoSet occurred 6 in 5200 times.
+    * Error 181 occurs in multiprocessing mode! under TravisCI! Strange!
     * CHANGE -S OPTION TO SET IF ONE SHOULD SEARCH PRIOR TO LOADING...As it may
       take a long time! Need to check.
     * Test deleted file from local which is also deleted from flickr
@@ -192,7 +194,16 @@ class UPLDRConstants:
     TimeFormat = '%Y.%m.%d %H:%M:%S'
     # For future use...
     # UTF = 'utf-8'
-    Version = '2.6.0'
+    Version = '2.6.1'
+    
+    # -------------------------------------------------------------------------
+    # Color Codes for colorful output    
+    W  = '\033[0m'  # white (normal)
+    R  = '\033[31m' # red
+    G  = '\033[32m' # green
+    O  = '\033[33m' # orange
+    B  = '\033[34m' # blue
+    P  = '\033[35m' # purple    
 
     # -------------------------------------------------------------------------
     # class UPLDRConstants __init__
@@ -273,9 +284,11 @@ def niceprint(s):
         [2017.11.19 01:53:57]:[PID       ][PRINT   ]:[uploadr] Some Message
         Accounts for UTF-8 Messages
     """
-    print('[{!s}]:[{!s:11s}][{!s:8s}]:[{!s}] {!s}'.format(
+    print('{}[{!s}]:[{!s:11s}]{}[{!s:8s}]:[{!s}] {!s}'.format(
+            UPLDRConstants.G,
             nutime.strftime(UPLDRConstants.TimeFormat),
             os.getpid(),
+            UPLDRConstants.W,
             'PRINT',
             'uploadr',
             StrUnicodeOut(s)))
@@ -428,7 +441,6 @@ CONVERT_RAW_FILES = eval(config.get('Config', 'CONVERT_RAW_FILES'))
 FULL_SET_NAME = eval(config.get('Config', 'FULL_SET_NAME'))
 MAX_SQL_ATTEMPTS = eval(config.get('Config', 'MAX_SQL_ATTEMPTS'))
 MAX_UPLOAD_ATTEMPTS = eval(config.get('Config', 'MAX_UPLOAD_ATTEMPTS'))
-# LOGGING_LEVEL = eval(config.get('Config', 'LOGGING_LEVEL'))
 LOGGING_LEVEL = (config.get('Config', 'LOGGING_LEVEL')
                  if config.has_option('Config', 'LOGGING_LEVEL')
                  else logging.WARNING)
@@ -474,7 +486,9 @@ LOGGING_LEVEL = int(LOGGING_LEVEL)
 logging.basicConfig(stream=sys.stderr,
                     level=int(LOGGING_LEVEL),
                     datefmt=UPLDRConstants.TimeFormat,
-                    format='[%(asctime)s]:[%(processName)-11s]'
+                    format=UPLDRConstants.P+
+                           '[%(asctime)s]:[%(processName)-11s]'+
+                           UPLDRConstants.W+
                            '[%(levelname)-8s]:[%(name)s] %(message)s')
 # =============================================================================
 # Test section for logging.
@@ -610,8 +624,8 @@ class Uploadr:
         # CODING: Not used for now:
         # useDBLockTimeout = 0.5
 
-        logging.debug('Entering useDBLock with useDBoperation:[{!s}].'.
-                      format(useDBoperation))
+        logging.debug('Entering useDBLock with useDBoperation:[{!s}].'
+                      .format(useDBoperation))
 
         if useDBthisLock is None:
             return useDBLockReturn
@@ -1845,6 +1859,7 @@ class Uploadr:
                 #   then: if md5 has changed then perform replacePhoto
                 #   operation on Flickr
                 try:
+                    logging.warning('CHANGES row[6]=[{!s}]'.format(row[6]))
                     if (row[6] is None):
                         # Update db the last_modified time of file
 
@@ -1856,6 +1871,8 @@ class Uploadr:
                         con.commit()
                         self.useDBLock(lock, False)
 
+                    logging.warning('CHANGES row[6]!=last_modified: [{!s}]'
+                                    .format((row[6] != last_modified)))
                     if (row[6] != last_modified):
                         # Update db both the new file/md5 and the
                         # last_modified time of file by by calling replacePhoto
@@ -1955,11 +1972,13 @@ class Uploadr:
                                           MAX_UPLOAD_ATTEMPTS))
 
                     # Use fileobj with filename='dummy'to accept unicode file.
-                        replaceResp = nuflickr.replace(
-                                    filename='dummy',
-                                    fileobj=FileWithCallback(file, callback),
-                                    photo_id=file_id
-                                    )
+                    replaceResp = nuflickr.replace(
+                                filename='dummy',
+                                fileobj=photo,
+                                # fileobj=FileWithCallback(file, callback),
+                                photo_id=file_id
+                                )
+                
                     logging.info('replaceResp: ')
                     logging.info(xml.etree.ElementTree.tostring(
                                                     replaceResp,
@@ -2930,20 +2949,14 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                           isThisStringUnicode(primaryPhotoId)))
 
                     if (args.verbose):
-                        if setName is None:
-                            niceprint('setName=[{!s}] '
-                                      'setId=[{!s}] '
-                                      'primaryPhotoId=[{!s}]'
-                                      .format('None',
-                                              setId,
-                                              primaryPhotoId))
-                        else:
-                            niceprint('setName=[{!s}] '
-                                      'setId=[{!s}] '
-                                      'primaryPhotoId=[{!s}]'
-                                      .format(StrUnicodeOut(setName),
-                                              setId,
-                                              primaryPhotoId))
+                        niceprint('setName=[{!s}] '
+                                  'setId=[{!s}] '
+                                  'primaryPhotoId=[{!s}]'
+                                  .format('None' \
+                                          if setName is None \
+                                          else StrUnicodeOut(setName),
+                                          setId,
+                                          primaryPhotoId))                            
 
                     # Control for when flickr return a setName (title) as None
                     # Occurred while simultaneously performing massive delete
@@ -3118,7 +3131,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                         exceptSysInfo=True)
         finally:
             if searchIsUploaded is None or not self.isGood(searchIsUploaded):
-                logging.debug('searchIsUploadedOK:[{!s}]'
+                logging.error('searchIsUploadedOK:[{!s}]'
                               .format('None'
                                       if searchIsUploaded is None
                                       else self.isGood(searchIsUploaded)))
@@ -3163,13 +3176,28 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                 StrUnicodeOut(pic.attrib['title']),
                                 StrUnicodeOut(pic.attrib['tags'])))
 
-                if not (xtitle_filename == pic.attrib['title']):
+                # CODING: UnicodeWarning: Unicode equal comparison failed to
+                # convert both arguments to Unicode
+                logging.info('type(xtitle_filename)=[{!s}] '
+                             'type(pic.attrib[title])=[{!s}]'
+                             .format(type(xtitle_filename),
+                                     type(pic.attrib['title'])))
+                logging.info('xtitle_filename=[{!s}] '
+                             'pic.attrib[title]=[{!s}]'
+                             .format(StrUnicodeOut(xtitle_filename),
+                                     StrUnicodeOut(pic.attrib['title'])))
+                logging.info('Compare Titles=[{!s}]'
+                            .format((StrUnicodeOut(xtitle_filename) ==
+                                     StrUnicodeOut(pic.attrib['title']))))
+                
+                # if not (xtitle_filename == pic.attrib['title']):
+                if not (StrUnicodeOut(xtitle_filename) ==
+                            StrUnicodeOut(pic.attrib['title'])):
                     logging.info('Different titles: File:[{!s}] Flickr:[{!s}]'
                                  .format(StrUnicodeOut(xtitle_filename),
                                          StrUnicodeOut(pic.attrib['title'])))
                     continue
 
-                # Check SetNames to which this pic belongs to.
                 try:
                     resp = None
                     resp = nuflickr.photos.getAllContexts(
@@ -3211,12 +3239,12 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                                         encoding='utf-8',
                                                         method='xml'))
 
-                niceprint('len(resp.findall(''set'')):[{!s}]'
-                          .format(len(resp.findall('set'))))
+                logging.info('len(resp.findall(''set'')):[{!s}]'
+                             .format(len(resp.findall('set'))))
 
                 if (len(resp.findall('set')) == 0):
-                    niceprint('##### PHOTO UPLOADED WITHOUT SET ')
-                    logging.error('##### PHOTO UPLOADED WITHOUT SET ')
+                    niceprint('PHOTO UPLOADED WITHOUT SET')
+                    logging.warning('PHOTO UPLOADED WITHOUT SET')
                     returnList.append({'id': pic.attrib['id'],
                                        'title': pic.attrib['title'],
                                        'set': '',
@@ -3224,15 +3252,16 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                        'result': 'empty'})
 
                 for setinlist in resp.findall('set'):
-                    logging.debug('setinlist:')
-                    logging.debug(xml.etree.ElementTree.tostring(
+                    logging.warning('setinlist:')
+                    logging.warning(xml.etree.ElementTree.tostring(
                                                         setinlist,
                                                         encoding='utf-8',
                                                         method='xml'))
 
-                    niceprint('Check : id=[{!s}] File=[{!s}]\n'
+                    logging.warning(
+                              '\nCheck : id=[{!s}] File=[{!s}]\n'
                               'Check : Title:[{!s}] Set:[{!s}]\n'
-                              'Flickr: Title:[{!s}] Set:[{!s}] Tags:[{!s}]'
+                              'Flickr: Title:[{!s}] Set:[{!s}] Tags:[{!s}]\n'
                               .format(pic.attrib['id'],
                                       StrUnicodeOut(xfile),
                                       StrUnicodeOut(xtitle_filename),
@@ -3240,6 +3269,12 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                       StrUnicodeOut(pic.attrib['title']),
                                       StrUnicodeOut(setinlist.attrib['title']),
                                       StrUnicodeOut(pic.attrib['tags'])))
+                                      
+                    logging.warning(
+                              'Compare Sets=[{!s}]'
+                              .format((StrUnicodeOut(xsetName) ==
+                                          StrUnicodeOut(setinlist
+                                                        .attrib['title']))))
 
                     # result is either
                     #   empty = same title, no set
@@ -3249,16 +3284,17 @@ set0 = sets.find('photosets').findall('photoset')[0]
 
                     # returnList.append({'id': pic.attrib['id'],
                     #                    'title': pic.attrib['title'],
-                    #                     'set': setinlist.attrib['title'],
-                    #                     'tags': pic.attrib['tags'],
-                    #                     'result': 'nothing'})
+                    #                    'set': setinlist.attrib['title'],
+                    #                    'tags': pic.attrib['tags'],
+                    #                    'result': 'nothing'})
                     # logging.info('output for returnList:[{!s}]'
                     #              .format(returnList))
 
                     # if checksum, title, setName (1 or more), Count>=1 THEN EXISTS
-                    if (xsetName == setinlist.attrib['title']):
-                        niceprint('##### IS PHOTO UPLOADED = TRUE')
-                        logging.error('##### IS PHOTO UPLOADED = TRUE')
+                    if (StrUnicodeOut(xsetName) ==
+                            StrUnicodeOut(setinlist.attrib['title'])):
+                        niceprint('IS PHOTO UPLOADED=TRUE')
+                        logging.warning('IS PHOTO UPLOADED=TRUE')
                         returnIsPhotoUploaded = True
                         returnPhotoID = pic.attrib['id']
                         return returnIsPhotoUploaded, \
@@ -3266,8 +3302,8 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                returnPhotoID
                     else:
                         # if checksum, title, other setName,       Count>=1 THEN NOT EXISTS
-                        niceprint('##### IS PHOTO UPLOADED = FALSE, CONTINUING')
-                        logging.error('##### IS PHOTO UPLOADED = FALSE, CONTINUING')
+                        niceprint('IS PHOTO UPLOADED=FALSE, CONTINUING')
+                        logging.warning('IS PHOTO UPLOADED=FALSE, CONTINUING')
                         continue
 
         return returnIsPhotoUploaded, returnPhotoUploaded, returnPhotoID
@@ -3452,9 +3488,9 @@ set0 = sets.find('photosets').findall('photoset')[0]
         for x in range(0, MAX_UPLOAD_ATTEMPTS):
             respDate = None
             if (x > 0):
-                niceprint('Re-Setting Date:[{!s}]...'
-                          '[{!s}/{!s} attempts].'
-                          .format(datetxt, x, MAX_UPLOAD_ATTEMPTS))
+                logging.warning('Re-Setting Date:[{!s}]...'
+                                '[{!s}/{!s} attempts].'
+                                .format(datetxt, x, MAX_UPLOAD_ATTEMPTS))
             try:
                 respDate = nuflickr.photos.setdates(
                                     photo_id=photo_id,
@@ -3502,6 +3538,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                             CaughtMsg='Caught exception',
                             NicePrint=True,
                             exceptSysInfo=True)
+                logging.error('Sleep 10 and try to set date again.')
                 niceprint('Sleep 10 and try to set date again.')
                 nutime.sleep(10)
 
