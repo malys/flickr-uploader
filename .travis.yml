@@ -70,9 +70,9 @@ before_script:
 script:
 # DELETE RUN ------------------------------------------------------------------
 # !!!!!!!!!!!!!!!!!!!!!!!!!! CAREFULL !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  - if [[ $TestScenario == Delete ]]; cp flickr-deletr-master/tests/uploadr.ini flickr-deletr-master/uploadr.ini; fi
-  - if [[ $TestScenario == Delete ]]; cp token/oauth-tokens.sqlite flickr-deletr-master/token/oauth-tokens.sqlite; fi
-  - if [[ $TestScenario == Delete ]]; coverage run -a --concurrency multiprocessing ./flickr-deletr-master/delete.py; fi
+  - if [[ $TestScenario == Delete ]]; then cp flickr-deletr-master/tests/uploadr.ini flickr-deletr-master/uploadr.ini; fi
+  - if [[ $TestScenario == Delete ]]; then cp token/oauth-tokens.sqlite flickr-deletr-master/token/oauth-tokens.sqlite; fi
+  - if [[ $TestScenario == Delete ]]; then coverage run -a --concurrency multiprocessing ./flickr-deletr-master/delete.py; fi
   
 # First RUN -------------------------------------------------------------------
 #  - coverage run -a --concurrency multiprocessing uploadr.py $VerboseVar -p 2
