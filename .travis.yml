@@ -18,7 +18,7 @@ install:
   - pip install -r requirements.txt
   - wget https://github.com/oPromessa/flickr-deletr/archive/master.tar.gz -O flickr-deletr-master.tar.gz
   - tar zxvf flickr-deletr-master.tar.gz
-  - ls -la
+  #- ls -la
 
 # =============================================================================
 # env
@@ -31,9 +31,11 @@ env:
     - VerboseVar=-v
     - BadFilesVar=-b  
   matrix:
-# TestScenario: Help, DryRun, BadFiles, MultiProcessing, Remove, Replace, RemoveReplace
+# TestScenario: Help, Delete DryRun, BadFiles, MultiProcessing, Remove, Replace, RemoveReplace
 # Help
     - TestScenario=Help UploadrOptions="$VerboseVar --help"
+# Delete !!!!!!!!!!!!!!!!!!! CAREFULL !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    #- TestScenario=Delete UploadrOptions="$VerboseVar"    
 # DryRun
     #- TestScenario=DryRun UploadrOptions="$VerboseVar -n"  
 # Badfiles  
@@ -62,17 +64,15 @@ before_script:
   - echo "INSERT INTO oauth_tokens ( api_key, lookup_key, oauth_token, oauth_token_secret, access_level, fullname, username, user_nsid) VALUES ( '"$api_key"', '', '"$oauth_token"', '"$oauth_token_secret"', 'delete', '"$fullname"', '"$username"', '"$user_nsid"');" | sqlite3 token/oauth-tokens.sqlite
   - sqlite3 token/oauth-tokens.sqlite 'SELECT * FROM oauth_tokens;'
   - md5sum "./tests/Test Photo Library/Pics"/*
-
-
   
 # =============================================================================
 # run script for tests  
 script:
 # DELETE RUN ------------------------------------------------------------------
 # !!!!!!!!!!!!!!!!!!!!!!!!!! CAREFULL !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  - cp flickr-deletr-master/tests/uploadr.ini flickr-deletr-master/uploadr.ini
-  - cp token/oauth-tokens.sqlite flickr-deletr-master/token/oauth-tokens.sqlite
-  - coverage run -a --concurrency multiprocessing ./flickr-deletr-master/delete.py
+  - if [[ $TestScenario == Delete ]]; cp flickr-deletr-master/tests/uploadr.ini flickr-deletr-master/uploadr.ini; fi
+  - if [[ $TestScenario == Delete ]]; cp token/oauth-tokens.sqlite flickr-deletr-master/token/oauth-tokens.sqlite; fi
+  - if [[ $TestScenario == Delete ]]; coverage run -a --concurrency multiprocessing ./flickr-deletr-master/delete.py; fi
   
 # First RUN -------------------------------------------------------------------
 #  - coverage run -a --concurrency multiprocessing uploadr.py $VerboseVar -p 2
