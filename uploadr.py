@@ -3131,7 +3131,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                         exceptSysInfo=True)
         finally:
             if searchIsUploaded is None or not self.isGood(searchIsUploaded):
-                logging.debug('searchIsUploadedOK:[{!s}]'
+                logging.error('searchIsUploadedOK:[{!s}]'
                               .format('None'
                                       if searchIsUploaded is None
                                       else self.isGood(searchIsUploaded)))
