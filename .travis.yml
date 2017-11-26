@@ -113,4 +113,6 @@ after_script:
 # DB OUTPUT for REFERENCE -----------------------------------------------------
   - sqlite3 flickrdb "SELECT *, datetime( last_modified, 'unixepoch', 'localtime') FROM files;"
   - sqlite3 flickrdb 'SELECT * FROM badfiles;'
-  - sqlite3 flickrdb 'SELECT * FROM sets;'  
+  - sqlite3 flickrdb 'SELECT * FROM sets;'
+  - sqlite3 flickrdb 'SELECT sets.set_id, sets.name, count(*) FROM sets, files WHERE sets.set_id = files.set_id;'
+  - sqlite3 flickrdb 'SELECT sets.set_id, sets.name, files_id, path FROM sets, files WHERE sets.set_id = files.set_id ORDER BY sets.set_id, path;'

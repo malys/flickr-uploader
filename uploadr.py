@@ -11,6 +11,21 @@
     Some giberish. Please ignore!
     -----------------------------
     Area for my personal notes on on-going work! Please ignore!
+    * Correct the logging/messaging a bit...
+      niceprint
+      nicepring with verbose
+      
+      CRITICAL: Blocking situations
+      ERROR: Relevant errors
+      exceptions
+        logging.error
+        niceprint (optional)
+        Syserror
+      Handled Exceptions...
+      WARNING: relevant conclusions/situations
+      INFO: relevant output of variables
+      DEBUG: entering and existing functions
+
     * +++#121: Caught exception in addFiletoSet occurred 6 in 5200 times.
     * Error 181 occurs in multiprocessing mode! under TravisCI! Strange!
     * CHANGE -S OPTION TO SET IF ONE SHOULD SEARCH PRIOR TO LOADING...As it may
@@ -1505,6 +1520,7 @@ class Uploadr:
                                 MAX_SQL_ATTEMPTS))
                     # Break the cycle of SQL_ATTEMPTS and continue
                     break
+        # ---------------------------------------------------------------------
 
         if (args.dry_run is True):
             niceprint('Dry Run Uploading file:[{!s}]...'
@@ -1571,7 +1587,7 @@ class Uploadr:
                       .format(isLoaded, isCount, isfile_id, row is None))
             if isLoaded and row is None:
                 # Insert into DB files
-                niceprint('##### ALREADY LOADED. '
+                niceprint('ALREADY LOADED. '
                           'DO NOT PERFORM ANYTHING ELSE. '
                           'ROW IS NONE... UPDATING DATABASE')
                 dbInsertIntoFiles(lock, isfile_id, file,
