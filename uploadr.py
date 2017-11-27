@@ -424,23 +424,24 @@ def retry(attempts=3, waittime=5):
             rtime = time
             error = None
             
-            if LOGGING_LEVEL <= logging.INFO:
+            if LOGGING_LEVEL <= logging.WARNING:
                 if args is not None:
-                    logging.info('Function:[{!s}] Rretry control'
-                                 'Max Attempts:[{!s}] Waittime:[{!s}]'
-                                 .format(f.__name__, attempts, waittime))                    
+                    logging.warning('Function:[{!s}] Rretry control'
+                                    'Max Attempts:[{!s}] Waittime:[{!s}]'
+                                    .format(f.__name__, attempts, waittime))                    
                     for i, a in enumerate(args):
-                        print('Retry wrapper: i=[{!s}] a=[{!s}]'.format(i, a))
+                        logging.warning('Retry wrapper: arg[{!s}]={!s}'
+                                        .format(i, a))
             for i in range(attempts):
                 try:
-                    logging.info('Function:[{!s}] Attempt:[{!s}] of [{!s}]'
-                                 .format(f.__name__, i+1, attempts))
+                    logging.warning('Function:[{!s}] Attempt:[{!s}] of [{!s}]'
+                                    .format(f.__name__, i+1, attempts))
                     return f(*args,**kwargs)
                 except Exception as e:
-                    logging.error('Error code: [{!s}]'.format(e))
+                    logging.error('Error code A: [{!s}]'.format(e))
                     error = e
                 except flickrapi.exceptions.FlickrError as ex:
-                    logging.error('Error code: [{!s}]'.format(ex))
+                    logging.error('Error code B: [{!s}]'.format(ex))
                     # reportError(Caught=errordict[0]['Caught'],
                     #             CaughtPrefix=errordict[0]['CaughtPrefix'],
                     #             CaughtCode=errordict[0]['CaughtCode'],
@@ -451,7 +452,7 @@ def retry(attempts=3, waittime=5):
                     #             NicePrint=errordict[0]['NicePrint'],
                     #             exceptSysInfo=errordict[0]['exceptSysInfo'])
                 except lite.Error as e:
-                    logging.error('Error code: [{!s}]'.format(e))
+                    logging.error('Error code C: [{!s}]'.format(e))
                     error = e
                     # reportError(Caught=errordict[1]['Caught'],
                     #             CaughtPrefix=errordict[1]['CaughtPrefix'],
@@ -463,7 +464,7 @@ def retry(attempts=3, waittime=5):
                     # Release the lock on error.
                     self.useDBLock(lock, False)
                 except:
-                    logging.error('Error Caught')
+                    logging.error('Error Caught D(Catchall)')
                     # reportError(Caught=True,
                     #             CaughtPrefix='+++',
                     #             CaughtCode='992',
@@ -488,7 +489,13 @@ niceprint('retry TESTS')
 retry_niceprint('Hello...')
 retry_niceprint(None)
 print retry_divmod([5, 3])
-retry_divmod([5, 'H'])
+try:
+    print retry_divmod([5, 'H'])
+except:
+    logging.error('Error Caught (Overall Catchall)... Continuing')
+finally:
+    logging.error('...Continuing')
+    
 
 # =============================================================================
 # Read Config from config.ini file
