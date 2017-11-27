@@ -232,6 +232,8 @@ class UPLDRConstants:
 
 # -----------------------------------------------------------------------------
 # Global Variables
+# CODING: Consider moving them into Class UPLDRConstants!!!
+#
 #   nutime       = for working with time module (import time)
 #   nuflickr     = object for flickr API module (import flickrapi)
 #   flick        = Class Uploadr (created in the Main code)
@@ -462,7 +464,9 @@ def retry(attempts=3, waittime=5):
                     #                               e.args[0]),
                     #             NicePrint=errordict[1]['NicePrint'])
                     # Release the lock on error.
-                    self.useDBLock(lock, False)
+                    # CODING: Check how to handle this particular scenario.
+                    flick.useDBLock(nulockDB, False)
+                    # self.useDBLock( lock, True)
                 except:
                     logging.error('Error Caught D(Catchall)')
                     # reportError(Caught=True,
