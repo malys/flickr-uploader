@@ -478,11 +478,17 @@ def retry(attempts=3, waittime=5):
 # Sample 
 @retry(attempts=3, waittime=2)
 def retry_niceprint(argslist):
-    return niceprint(*argslist)
+    return niceprint(argslist)
+
+@retry(attempts=3, waittime=2)
+def retry_divmod(argslist):
+    return divmod(*argslist)
 
 niceprint('retry TESTS')
 retry_niceprint('Hello...')
 retry_niceprint(None)
+retry_divmod([5, 3])
+retry_divmod([5, 'H'])
 
 # =============================================================================
 # Read Config from config.ini file
