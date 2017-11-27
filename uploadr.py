@@ -393,29 +393,25 @@ def reportError(Caught=False, CaughtPrefix='', CaughtCode=0, CaughtMsg='',
 #
 # retries execution of a function
 #
-ListDict {'Caught':False, 'CaughtPrefix':'', 'CaughtCode':0, 'CaughtMsg':'',
-'NicePrint':False,
-'exceptUse':False, 'exceptCode':0, 'exceptMsg':'',
-'exceptSysInfo':''}
-def retry(attempts=3, waittime=5,
-          errorlistdict=[{'Caught':False, 'CaughtPrefix':'',
-                          'CaughtCode':0, 'CaughtMsg':'',
-                          'NicePrint':False,
-                          'exceptUse':False,
-                          'exceptCode':0, 'exceptMsg':'',
-                          'exceptSysInfo':''},
-                         {'Caught':False, 'CaughtPrefix':'',
-                          'CaughtCode':0, 'CaughtMsg':'',
-                          'NicePrint':False,
-                          'exceptUse':False,
-                          'exceptCode':0, 'exceptMsg':'',
-                          'exceptSysInfo':''},
-                         {'Caught':False, 'CaughtPrefix':'',
-                          'CaughtCode':0, 'CaughtMsg':'',
-                          'NicePrint':False,
-                          'exceptUse':False,
-                          'exceptCode':0, 'exceptMsg':'',
-                          'exceptSysInfo':''}):
+def retry(attempts=3, waittime=5):
+          # errorlistdict=[{'Caught':False, 'CaughtPrefix':'',
+          #                 'CaughtCode':0, 'CaughtMsg':'',
+          #                 'NicePrint':False,
+          #                 'exceptUse':False,
+          #                 'exceptCode':0, 'exceptMsg':'',
+          #                 'exceptSysInfo':''},
+          #                {'Caught':False, 'CaughtPrefix':'',
+          #                 'CaughtCode':0, 'CaughtMsg':'',
+          #                 'NicePrint':False,
+          #                 'exceptUse':False,
+          #                 'exceptCode':0, 'exceptMsg':'',
+          #                 'exceptSysInfo':''},
+          #                {'Caught':False, 'CaughtPrefix':'',
+          #                 'CaughtCode':0, 'CaughtMsg':'',
+          #                 'NicePrint':False,
+          #                 'exceptUse':False,
+          #                 'exceptCode':0, 'exceptMsg':'',
+          #                 'exceptSysInfo':''}):
     """
     Catches exceptions while running a supplied function
     Re-runs it for times while sleeping X seconds in-between
@@ -424,42 +420,64 @@ def retry(attempts=3, waittime=5,
     def wrapper_fn(f):
         @wraps(f)
         def new_wrapper(*args,**kwargs):
-            for i in range(times):
+            if LOGGING_LEVEL <= logging.INFO:
+                if args is not None:
+                    logging.info('Function:[{!s}] Rretry control'
+                                 'Max Attempts:[{!s}] Waittime:[{!s}]'
+                                 .format(f.__name__, attempts, waittime))                    
+                    for i, a in enumerate(args):
+                        print('Retry wrapper: i=[{!s}] a=[{!s}]'.format(i, a))
+            for i in range(attempts):
                 try:
-                    print 'try %s' % (i + 1)
+                    logging.info('Function:[{!s}] Attempt:[{!s}] of [{!s}]'
+                                 .format(f.__name__, i+1, attempts))
                     return f(*args,**kwargs)
                 except Exception as e:
                     print 'Exception caught'
                     error = e
                 except flickrapi.exceptions.FlickrError as ex:
-                    reportError(Caught=errordict[0]['Caught'],
-                                CaughtPrefix=errordict[0]['CaughtPrefix'],
-                                CaughtCode=errordict[0]['CaughtCode'],
-                                CaughtMsg=errordict[0]['CaughtMsg'],
-                                exceptUse=errordict[0]['exceptUse'],
-                                exceptCode=ex.code,
-                                exceptMsg=ex,
-                                NicePrint=errordict[0]['NicePrint'],
-                                exceptSysInfo=errordict[0]['exceptSysInfo'])
+                    logging.error(ex)
+                    # reportError(Caught=errordict[0]['Caught'],
+                    #             CaughtPrefix=errordict[0]['CaughtPrefix'],
+                    #             CaughtCode=errordict[0]['CaughtCode'],
+                    #             CaughtMsg=errordict[0]['CaughtMsg'],
+                    #             exceptUse=errordict[0]['exceptUse'],
+                    #             exceptCode=ex.code,
+                    #             exceptMsg=ex,
+                    #             NicePrint=errordict[0]['NicePrint'],
+                    #             exceptSysInfo=errordict[0]['exceptSysInfo'])
                 except lite.Error as e:
-                    reportError(Caught=errordict[1]['Caught'],
-                                CaughtPrefix=errordict[1]['CaughtPrefix'],
-                                CaughtCode=errordict[1]['CaughtCode'],
-                                CaughtMsg='{!s}: [{!s}]'
-                                          .format(errordict[1]['CaughtMsg'],
-                                                  e.args[0]),
-                                NicePrint=errordict[1]['NicePrint'])
+                    logging.error(e)
+                    # reportError(Caught=errordict[1]['Caught'],
+                    #             CaughtPrefix=errordict[1]['CaughtPrefix'],
+                    #             CaughtCode=errordict[1]['CaughtCode'],
+                    #             CaughtMsg='{!s}: [{!s}]'
+                    #                       .format(errordict[1]['CaughtMsg'],
+                    #                               e.args[0]),
+                    #             NicePrint=errordict[1]['NicePrint'])
                     # Release the lock on error.
                     self.useDBLock(lock, False)
                 except:
-                    reportError(Caught=True,
-                                CaughtPrefix='+++',
-                                CaughtCode='992',
-                                CaughtMsg='Caught exception in XXXX',
-                                exceptSysInfo=True)                    
+                    logging.error('Error Caught')
+                    # reportError(Caught=True,
+                    #             CaughtPrefix='+++',
+                    #             CaughtCode='992',
+                    #             CaughtMsg='Caught exception in XXXX',
+                    #             exceptSysInfo=True)
+                sleep(waittime)
             raise error
         return new_wrapper
     return wrapper_fn
+
+# -----------------------------------------------------------------------------
+# Sample 
+@retry(attempts=3, waittime=2)
+def retry_niceprint(argslit):
+    return niceprint(*argslist)
+
+niceprint('retry TESTS')
+retry_niceprint('Hello...')
+retry_niceprint(None)
 
 # =============================================================================
 # Read Config from config.ini file
