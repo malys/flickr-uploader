@@ -477,7 +477,7 @@ def retry(attempts=3, waittime=5):
 # -----------------------------------------------------------------------------
 # Sample 
 @retry(attempts=3, waittime=2)
-def retry_niceprint(argslit):
+def retry_niceprint(argslist):
     return niceprint(*argslist)
 
 niceprint('retry TESTS')
