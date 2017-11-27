@@ -420,6 +420,10 @@ def retry(attempts=3, waittime=5):
     def wrapper_fn(f):
         @wraps(f)
         def new_wrapper(*args,**kwargs):
+            
+            rtime = time
+            error = None
+            
             if LOGGING_LEVEL <= logging.INFO:
                 if args is not None:
                     logging.info('Function:[{!s}] Rretry control'
@@ -433,10 +437,10 @@ def retry(attempts=3, waittime=5):
                                  .format(f.__name__, i+1, attempts))
                     return f(*args,**kwargs)
                 except Exception as e:
-                    print 'Exception caught'
+                    logging.error('Error code: [{!s}]'.format(e))
                     error = e
                 except flickrapi.exceptions.FlickrError as ex:
-                    logging.error(ex)
+                    logging.error('Error code: [{!s}]'.format(ex))
                     # reportError(Caught=errordict[0]['Caught'],
                     #             CaughtPrefix=errordict[0]['CaughtPrefix'],
                     #             CaughtCode=errordict[0]['CaughtCode'],
@@ -447,7 +451,8 @@ def retry(attempts=3, waittime=5):
                     #             NicePrint=errordict[0]['NicePrint'],
                     #             exceptSysInfo=errordict[0]['exceptSysInfo'])
                 except lite.Error as e:
-                    logging.error(e)
+                    logging.error('Error code: [{!s}]'.format(e))
+                    error = e
                     # reportError(Caught=errordict[1]['Caught'],
                     #             CaughtPrefix=errordict[1]['CaughtPrefix'],
                     #             CaughtCode=errordict[1]['CaughtCode'],
@@ -464,7 +469,7 @@ def retry(attempts=3, waittime=5):
                     #             CaughtCode='992',
                     #             CaughtMsg='Caught exception in XXXX',
                     #             exceptSysInfo=True)
-                sleep(waittime)
+                rtime.sleep(waittime)
             raise error
         return new_wrapper
     return wrapper_fn
