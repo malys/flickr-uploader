@@ -178,6 +178,8 @@ import xml
 import os.path
 import logging
 import pprint
+# For repeating functions
+from functools import wraps
 
 # =============================================================================
 # Init code
@@ -385,6 +387,79 @@ def reportError(Caught=False, CaughtPrefix='', CaughtCode=0, CaughtMsg='',
     sys.stderr.flush()
     if NicePrint is not None and NicePrint:
         sys.stdout.flush()
+
+# -----------------------------------------------------------------------------
+# retry
+#
+# retries execution of a function
+#
+ListDict {'Caught':False, 'CaughtPrefix':'', 'CaughtCode':0, 'CaughtMsg':'',
+'NicePrint':False,
+'exceptUse':False, 'exceptCode':0, 'exceptMsg':'',
+'exceptSysInfo':''}
+def retry(attempts=3, waittime=5,
+          errorlistdict=[{'Caught':False, 'CaughtPrefix':'',
+                          'CaughtCode':0, 'CaughtMsg':'',
+                          'NicePrint':False,
+                          'exceptUse':False,
+                          'exceptCode':0, 'exceptMsg':'',
+                          'exceptSysInfo':''},
+                         {'Caught':False, 'CaughtPrefix':'',
+                          'CaughtCode':0, 'CaughtMsg':'',
+                          'NicePrint':False,
+                          'exceptUse':False,
+                          'exceptCode':0, 'exceptMsg':'',
+                          'exceptSysInfo':''},
+                         {'Caught':False, 'CaughtPrefix':'',
+                          'CaughtCode':0, 'CaughtMsg':'',
+                          'NicePrint':False,
+                          'exceptUse':False,
+                          'exceptCode':0, 'exceptMsg':'',
+                          'exceptSysInfo':''}):
+    """
+    Catches exceptions while running a supplied function
+    Re-runs it for times while sleeping X seconds in-between
+    outputs 3 types of errors (coming from the parameters)
+    """
+    def wrapper_fn(f):
+        @wraps(f)
+        def new_wrapper(*args,**kwargs):
+            for i in range(times):
+                try:
+                    print 'try %s' % (i + 1)
+                    return f(*args,**kwargs)
+                except Exception as e:
+                    print 'Exception caught'
+                    error = e
+                except flickrapi.exceptions.FlickrError as ex:
+                    reportError(Caught=errordict[0]['Caught'],
+                                CaughtPrefix=errordict[0]['CaughtPrefix'],
+                                CaughtCode=errordict[0]['CaughtCode'],
+                                CaughtMsg=errordict[0]['CaughtMsg'],
+                                exceptUse=errordict[0]['exceptUse'],
+                                exceptCode=ex.code,
+                                exceptMsg=ex,
+                                NicePrint=errordict[0]['NicePrint'],
+                                exceptSysInfo=errordict[0]['exceptSysInfo'])
+                except lite.Error as e:
+                    reportError(Caught=errordict[1]['Caught'],
+                                CaughtPrefix=errordict[1]['CaughtPrefix'],
+                                CaughtCode=errordict[1]['CaughtCode'],
+                                CaughtMsg='{!s}: [{!s}]'
+                                          .format(errordict[1]['CaughtMsg'],
+                                                  e.args[0]),
+                                NicePrint=errordict[1]['NicePrint'])
+                    # Release the lock on error.
+                    self.useDBLock(lock, False)
+                except:
+                    reportError(Caught=True,
+                                CaughtPrefix='+++',
+                                CaughtCode='992',
+                                CaughtMsg='Caught exception in XXXX',
+                                exceptSysInfo=True)                    
+            raise error
+        return new_wrapper
+    return wrapper_fn
 
 # =============================================================================
 # Read Config from config.ini file
