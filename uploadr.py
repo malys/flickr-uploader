@@ -487,7 +487,7 @@ def retry_divmod(argslist):
 niceprint('retry TESTS')
 retry_niceprint('Hello...')
 retry_niceprint(None)
-retry_divmod([5, 3])
+print retry_divmod([5, 3])
 retry_divmod([5, 'H'])
 
 # =============================================================================
