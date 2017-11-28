@@ -232,6 +232,8 @@ class UPLDRConstants:
 
 # -----------------------------------------------------------------------------
 # Global Variables
+# CODING: Consider moving them into Class UPLDRConstants!!!
+#
 #   nutime       = for working with time module (import time)
 #   nuflickr     = object for flickr API module (import flickrapi)
 #   flick        = Class Uploadr (created in the Main code)
@@ -393,29 +395,25 @@ def reportError(Caught=False, CaughtPrefix='', CaughtCode=0, CaughtMsg='',
 #
 # retries execution of a function
 #
-ListDict {'Caught':False, 'CaughtPrefix':'', 'CaughtCode':0, 'CaughtMsg':'',
-'NicePrint':False,
-'exceptUse':False, 'exceptCode':0, 'exceptMsg':'',
-'exceptSysInfo':''}
-def retry(attempts=3, waittime=5,
-          errorlistdict=[{'Caught':False, 'CaughtPrefix':'',
-                          'CaughtCode':0, 'CaughtMsg':'',
-                          'NicePrint':False,
-                          'exceptUse':False,
-                          'exceptCode':0, 'exceptMsg':'',
-                          'exceptSysInfo':''},
-                         {'Caught':False, 'CaughtPrefix':'',
-                          'CaughtCode':0, 'CaughtMsg':'',
-                          'NicePrint':False,
-                          'exceptUse':False,
-                          'exceptCode':0, 'exceptMsg':'',
-                          'exceptSysInfo':''},
-                         {'Caught':False, 'CaughtPrefix':'',
-                          'CaughtCode':0, 'CaughtMsg':'',
-                          'NicePrint':False,
-                          'exceptUse':False,
-                          'exceptCode':0, 'exceptMsg':'',
-                          'exceptSysInfo':''}):
+def retry(attempts=3, waittime=5):
+          # errorlistdict=[{'Caught':False, 'CaughtPrefix':'',
+          #                 'CaughtCode':0, 'CaughtMsg':'',
+          #                 'NicePrint':False,
+          #                 'exceptUse':False,
+          #                 'exceptCode':0, 'exceptMsg':'',
+          #                 'exceptSysInfo':''},
+          #                {'Caught':False, 'CaughtPrefix':'',
+          #                 'CaughtCode':0, 'CaughtMsg':'',
+          #                 'NicePrint':False,
+          #                 'exceptUse':False,
+          #                 'exceptCode':0, 'exceptMsg':'',
+          #                 'exceptSysInfo':''},
+          #                {'Caught':False, 'CaughtPrefix':'',
+          #                 'CaughtCode':0, 'CaughtMsg':'',
+          #                 'NicePrint':False,
+          #                 'exceptUse':False,
+          #                 'exceptCode':0, 'exceptMsg':'',
+          #                 'exceptSysInfo':''}):
     """
     Catches exceptions while running a supplied function
     Re-runs it for times while sleeping X seconds in-between
@@ -424,42 +422,84 @@ def retry(attempts=3, waittime=5,
     def wrapper_fn(f):
         @wraps(f)
         def new_wrapper(*args,**kwargs):
-            for i in range(times):
+            
+            rtime = time
+            error = None
+            
+            if LOGGING_LEVEL <= logging.WARNING:
+                if args is not None:
+                    logging.warning('Function:[{!s}] Rretry control'
+                                    'Max Attempts:[{!s}] Waittime:[{!s}]'
+                                    .format(f.__name__, attempts, waittime))                    
+                    for i, a in enumerate(args):
+                        logging.warning('Retry wrapper: arg[{!s}]={!s}'
+                                        .format(i, a))
+            for i in range(attempts):
                 try:
-                    print 'try %s' % (i + 1)
+                    logging.warning('Function:[{!s}] Attempt:[{!s}] of [{!s}]'
+                                    .format(f.__name__, i+1, attempts))
                     return f(*args,**kwargs)
                 except Exception as e:
-                    print 'Exception caught'
+                    logging.error('Error code A: [{!s}]'.format(e))
                     error = e
                 except flickrapi.exceptions.FlickrError as ex:
-                    reportError(Caught=errordict[0]['Caught'],
-                                CaughtPrefix=errordict[0]['CaughtPrefix'],
-                                CaughtCode=errordict[0]['CaughtCode'],
-                                CaughtMsg=errordict[0]['CaughtMsg'],
-                                exceptUse=errordict[0]['exceptUse'],
-                                exceptCode=ex.code,
-                                exceptMsg=ex,
-                                NicePrint=errordict[0]['NicePrint'],
-                                exceptSysInfo=errordict[0]['exceptSysInfo'])
+                    logging.error('Error code B: [{!s}]'.format(ex))
+                    # reportError(Caught=errordict[0]['Caught'],
+                    #             CaughtPrefix=errordict[0]['CaughtPrefix'],
+                    #             CaughtCode=errordict[0]['CaughtCode'],
+                    #             CaughtMsg=errordict[0]['CaughtMsg'],
+                    #             exceptUse=errordict[0]['exceptUse'],
+                    #             exceptCode=ex.code,
+                    #             exceptMsg=ex,
+                    #             NicePrint=errordict[0]['NicePrint'],
+                    #             exceptSysInfo=errordict[0]['exceptSysInfo'])
                 except lite.Error as e:
-                    reportError(Caught=errordict[1]['Caught'],
-                                CaughtPrefix=errordict[1]['CaughtPrefix'],
-                                CaughtCode=errordict[1]['CaughtCode'],
-                                CaughtMsg='{!s}: [{!s}]'
-                                          .format(errordict[1]['CaughtMsg'],
-                                                  e.args[0]),
-                                NicePrint=errordict[1]['NicePrint'])
+                    logging.error('Error code C: [{!s}]'.format(e))
+                    error = e
+                    # reportError(Caught=errordict[1]['Caught'],
+                    #             CaughtPrefix=errordict[1]['CaughtPrefix'],
+                    #             CaughtCode=errordict[1]['CaughtCode'],
+                    #             CaughtMsg='{!s}: [{!s}]'
+                    #                       .format(errordict[1]['CaughtMsg'],
+                    #                               e.args[0]),
+                    #             NicePrint=errordict[1]['NicePrint'])
                     # Release the lock on error.
-                    self.useDBLock(lock, False)
+                    # CODING: Check how to handle this particular scenario.
+                    flick.useDBLock(nulockDB, False)
+                    # self.useDBLock( lock, True)
                 except:
-                    reportError(Caught=True,
-                                CaughtPrefix='+++',
-                                CaughtCode='992',
-                                CaughtMsg='Caught exception in XXXX',
-                                exceptSysInfo=True)                    
+                    logging.error('Error Caught D(Catchall)')
+                    # reportError(Caught=True,
+                    #             CaughtPrefix='+++',
+                    #             CaughtCode='992',
+                    #             CaughtMsg='Caught exception in XXXX',
+                    #             exceptSysInfo=True)
+                rtime.sleep(waittime)
             raise error
         return new_wrapper
     return wrapper_fn
+
+# -----------------------------------------------------------------------------
+# Sample 
+@retry(attempts=3, waittime=2)
+def retry_niceprint(argslist):
+    return niceprint(argslist)
+
+@retry(attempts=3, waittime=2)
+def retry_divmod(argslist):
+    return divmod(*argslist)
+
+niceprint('retry TESTS')
+retry_niceprint('Hello...')
+retry_niceprint(None)
+print retry_divmod([5, 3])
+try:
+    print retry_divmod([5, 'H'])
+except:
+    logging.error('Error Caught (Overall Catchall)... Continuing')
+finally:
+    logging.error('...Continuing')
+    
 
 # =============================================================================
 # Read Config from config.ini file
