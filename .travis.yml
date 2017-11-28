@@ -88,8 +88,8 @@ script:
 # First RUN -------------------------------------------------------------------
 #  - coverage run -a --concurrency multiprocessing uploadr.py $VerboseVar -p 2
   - coverage run -a --concurrency multiprocessing uploadr.py $VerboseVar $UploadrOptions > /home/travis/build/oPromessa/flickr-uploader/nohup.log 2> /home/travis/build/oPromessa/flickr-uploader/nohup.err
-  - tail -60 /home/travis/build/oPromessa/flickr-uploader/nohup.log
-  - tail -60 /home/travis/build/oPromessa/flickr-uploader/nohup.err
+  - tail -10 /home/travis/build/oPromessa/flickr-uploader/nohup.log
+  - tail -10 /home/travis/build/oPromessa/flickr-uploader/nohup.err
   
   - coverage combine
   - coverage report -m uploadr.py
@@ -100,8 +100,10 @@ script:
   - if [[ $TestScenario == Replace ]]; then cp "./tests/Test Photo Library/ReplaceTest/file00053809264.jpg.ForReplace" "./tests/Test Photo Library/Pics/file00053809264.jpg"; fi
   - if [[ $TestScenario == RemoveReplace ]]; then rm "./tests/Test Photo Library/photo.jpg"; fi
   - if [[ $TestScenario == RemoveReplace ]]; then cp "./tests/Test Photo Library/ReplaceTest/file00053809264.jpg.ForReplace" "./tests/Test Photo Library/Pics/file00053809264.jpg"; fi
-  - coverage run -a --concurrency multiprocessing uploadr.py $VerboseVar $UploadrOptions
-
+  - coverage run -a --concurrency multiprocessing uploadr.py $VerboseVar $UploadrOptions >> /home/travis/build/oPromessa/flickr-uploader/nohup.log 2>> /home/travis/build/oPromessa/flickr-uploader/nohup.err
+  - tail -10 /home/travis/build/oPromessa/flickr-uploader/nohup.log
+  - tail -10 /home/travis/build/oPromessa/flickr-uploader/nohup.err
+  
   - coverage combine
   - coverage report -m uploadr.py
 
