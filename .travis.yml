@@ -11,7 +11,7 @@ python:
 
 before_install:
   - echo -e "machine github.com\n  login $CI_USER\n  password $CI_USER_PASSWORD" >> ~/.netrc
-  - echo -e "files:\n  - /home/travis/build/oPromessa/flickr-uploader/nohup.err\n  - /home/travis/build/oPromessa/flickr-uploader/nohup.log\ndestination:\n  host: logs6.papertrailapp.com\n  port: 35899\n  protocol: tls\n" >> ~/syslog2.yml
+  - echo -e "files:\n  - /home/travis/build/oPromessa/flickr-uploader/nohup.err\n  - /home/travis/build/oPromessa/flickr-uploader/nohup.log\ndestination:\n  $PT_HOSTNAME\n  $PT_PORT\n  $PT_PROTOCOL\n" > ~/syslog2.yml
   - cat ~/syslog2.yml  
   
 # =============================================================================
