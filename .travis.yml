@@ -10,7 +10,9 @@ python:
 #  - "nightly"
 
 before_install:
+# For use with wget into github account
   - echo -e "machine github.com\n  login $CI_USER\n  password $CI_USER_PASSWORD" >> ~/.netrc
+
   - echo -e "files:\n  - /home/travis/build/oPromessa/flickr-uploader/nohup.err\n  - /home/travis/build/oPromessa/flickr-uploader/nohup.log\ndestination:\n  $PT_HOSTNAME\n  $PT_PORT\n  $PT_PROTOCOL\n" > ~/syslog2.yml
   - cat ~/syslog2.yml  
   
@@ -18,11 +20,13 @@ before_install:
 # command to install dependencies
 install:
   - pip install -r requirements.txt
+# Get deletr. For future use to delete all pics frmo Flickr prior to a run
   - wget https://github.com/oPromessa/flickr-deletr/archive/master.tar.gz -O flickr-deletr-master.tar.gz
   - tar zxvf flickr-deletr-master.tar.gz
+# Get papertrail.com remote_syslog2
   - wget https://github.com/papertrail/remote_syslog2/releases/download/v0.19/remote_syslog_linux_i386.tar.gz -O remote_syslog_linux_i386.tar.gz
   - tar zxvf remote_syslog_linux_i386.tar.gz
-  - ls -la remote_syslog
+  #- ls -la remote_syslog
   #- ls -la
   
 # =============================================================================
@@ -34,7 +38,8 @@ env:
     - LANG=en_US.utf8
 # Set to -v for Verbose option of uploadr
     - VerboseVar=-v
-    - BadFilesVar=-b  
+    - BadFilesVar=-b
+# Tail $TAIL_LINES for when use Papertrail
   matrix:
 # TestScenario: Help, Delete DryRun, BadFiles, MultiProcessing, Remove, Replace, RemoveReplace
 # Help

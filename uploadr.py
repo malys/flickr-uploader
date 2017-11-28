@@ -428,12 +428,11 @@ def retry(attempts=3, waittime=5):
             
             if LOGGING_LEVEL <= logging.WARNING:
                 if args is not None:
-                    logging.warning('Function:[{!s}] Rretry control'
-                                    'Max Attempts:[{!s}] Waittime:[{!s}]'
+                    logging.warning('Retry f():[{!s}] Max:[{!s}] Delay:[{!s}]'
                                     .format(f.__name__, attempts, waittime))                    
                     for i, a in enumerate(args):
-                        logging.warning('Retry wrapper: arg[{!s}]={!s}'
-                                        .format(i, a))
+                        logging.warning('Retry f():[{!s}] arg[{!s}]={!s}'
+                                        .format(f.__name__, i, a))
             for i in range(attempts):
                 try:
                     logging.warning('Function:[{!s}] Attempt:[{!s}] of [{!s}]'
@@ -465,7 +464,7 @@ def retry(attempts=3, waittime=5):
                     #             NicePrint=errordict[1]['NicePrint'])
                     # Release the lock on error.
                     # CODING: Check how to handle this particular scenario.
-                    flick.useDBLock(nulockDB, False)
+                    # flick.useDBLock(nulockDB, False)
                     # self.useDBLock( lock, True)
                 except:
                     logging.error('Error Caught D(Catchall)')
@@ -480,25 +479,30 @@ def retry(attempts=3, waittime=5):
     return wrapper_fn
 
 # -----------------------------------------------------------------------------
-# Sample 
-@retry(attempts=3, waittime=2)
-def retry_niceprint(argslist):
-    return niceprint(argslist)
-
-@retry(attempts=3, waittime=2)
-def retry_divmod(argslist):
-    return divmod(*argslist)
-
-niceprint('retry TESTS')
-retry_niceprint('Hello...')
-retry_niceprint(None)
-print retry_divmod([5, 3])
-try:
-    print retry_divmod([5, 'H'])
-except:
-    logging.error('Error Caught (Overall Catchall)... Continuing')
-finally:
-    logging.error('...Continuing')
+# Samples
+# @retry(attempts=3, waittime=2)
+# def retry_niceprint(argslist):
+#     return niceprint(argslist)
+# # with *argslist you can pass a list [ one, two ] and turn it into two
+# # argumetns into the function (one, two)
+# @retry(attempts=3, waittime=2)
+# def retry_divmod(argslist):
+#     return divmod(*argslist)
+# @retry(attempts=3, waittime=2)
+# def retry_reportError(namedargslist):
+#     return divmod(**namedargslist)
+# niceprint('retry TESTS')
+# retry_niceprint('Hello...')
+# retry_niceprint(None)
+# print retry_divmod([5, 3])
+# try:
+#     print retry_divmod([5, 'H'])
+# except:
+#     logging.error('Error Caught (Overall Catchall)... Continuing')
+# finally:
+#     logging.error('...Continuing')
+# nargslist=dict(Caught=True, CaughtPrefix='+++')
+# retry_reportError(nargslist)
     
 
 # =============================================================================
@@ -3235,12 +3239,20 @@ set0 = sets.find('photosets').findall('photoset')[0]
 
         logging.info('Is Already Uploaded:[checksum:{!s}]?'.format(xchecksum))
 
+        @retry()
+        def R_photos_search(kwargs):
+            return nuflickr.photos.search(**kwargs)
+
         try:
             searchIsUploaded = None
-            searchIsUploaded = nuflickr.photos.search(user_id="me",
-                                                      tags='checksum:{}'
-                                                           .format(xchecksum),
-                                                      extras='tags')
+            searchIsUploaded = R_photos_search(dict(user_id="me",
+                                                    tags='checksum:{}'
+                                                         .format(xchecksum),
+                                                    extras='tags'))
+            # searchIsUploaded = nuflickr.photos.search(user_id="me",
+            #                                           tags='checksum:{}'
+            #                                                .format(xchecksum),
+            #                                           extras='tags')
         except flickrapi.exceptions.FlickrError as ex:
             reportError(Caught=True,
                         CaughtPrefix='+++',
