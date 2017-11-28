@@ -82,7 +82,9 @@ script:
   
 # First RUN -------------------------------------------------------------------
 #  - coverage run -a --concurrency multiprocessing uploadr.py $VerboseVar -p 2
-  - coverage run -a --concurrency multiprocessing uploadr.py $VerboseVar $UploadrOptions
+  - coverage run -a --concurrency multiprocessing uploadr.py $VerboseVar $UploadrOptions > /home/travis/build/oPromessa/flickr-uploader/nohup.log 2> /home/travis/build/oPromessa/flickr-uploader/nohup.err
+  - tail -60 /home/travis/build/oPromessa/flickr-uploader/nohup.log
+  - tail -60 /home/travis/build/oPromessa/flickr-uploader/nohup.err
   
   - coverage combine
   - coverage report -m uploadr.py
