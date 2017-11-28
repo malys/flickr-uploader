@@ -14,7 +14,7 @@
     * Correct the logging/messaging a bit...
       niceprint
       nicepring with verbose
-      
+
       CRITICAL: Blocking situations
       ERROR: Relevant errors
       exceptions
@@ -180,6 +180,7 @@ import logging
 import pprint
 # For repeating functions
 from functools import wraps
+import random
 
 # =============================================================================
 # Init code
@@ -212,15 +213,15 @@ class UPLDRConstants:
     # For future use...
     # UTF = 'utf-8'
     Version = '2.6.1'
-    
+
     # -------------------------------------------------------------------------
-    # Color Codes for colorful output    
+    # Color Codes for colorful output
     W  = '\033[0m'  # white (normal)
     R  = '\033[31m' # red
     G  = '\033[32m' # green
     O  = '\033[33m' # orange
     B  = '\033[34m' # blue
-    P  = '\033[35m' # purple    
+    P  = '\033[35m' # purple
 
     # -------------------------------------------------------------------------
     # class UPLDRConstants __init__
@@ -422,14 +423,14 @@ def retry(attempts=3, waittime=5):
     def wrapper_fn(f):
         @wraps(f)
         def new_wrapper(*args,**kwargs):
-            
+
             rtime = time
             error = None
-            
+
             if LOGGING_LEVEL <= logging.WARNING:
                 if args is not None:
                     logging.warning('Retry f():[{!s}] Max:[{!s}] Delay:[{!s}]'
-                                    .format(f.__name__, attempts, waittime))                    
+                                    .format(f.__name__, attempts, waittime))
                     for i, a in enumerate(args):
                         logging.warning('Retry f():[{!s}] arg[{!s}]={!s}'
                                         .format(f.__name__, i, a))
@@ -467,13 +468,15 @@ def retry(attempts=3, waittime=5):
                     # flick.useDBLock(nulockDB, False)
                     # self.useDBLock( lock, True)
                 except:
-                    logging.error('Error Caught D(Catchall)')
+                    logging.error('Error Caught D: Catchall')
                     # reportError(Caught=True,
                     #             CaughtPrefix='+++',
                     #             CaughtCode='992',
                     #             CaughtMsg='Caught exception in XXXX',
                     #             exceptSysInfo=True)
-                rtime.sleep(waittime)
+                rtime.sleep(random.randrange(1, waittime+1))
+            logging.warning('Retry f():[{!s}] arg[{!s}]={!s} Raising ERROR!'
+                            .format(f.__name__, i, a))
             raise error
         return new_wrapper
     return wrapper_fn
@@ -503,7 +506,7 @@ def retry(attempts=3, waittime=5):
 #     logging.error('...Continuing')
 # nargslist=dict(Caught=True, CaughtPrefix='+++')
 # retry_reportError(nargslist)
-    
+
 
 # =============================================================================
 # Read Config from config.ini file
@@ -2113,7 +2116,7 @@ class Uploadr:
                                 # fileobj=FileWithCallback(file, callback),
                                 photo_id=file_id
                                 )
-                
+
                     logging.info('replaceResp: ')
                     logging.info(xml.etree.ElementTree.tostring(
                                                     replaceResp,
@@ -2603,7 +2606,7 @@ class Uploadr:
                         CaughtMsg='Flickrapi exception on photosets.addPhoto',
                         exceptUse=True,
                         exceptCode=ex.code,
-                        exceptMsg=ex,                        
+                        exceptMsg=ex,
                         NicePrint=True)
             # Error: 1: Photoset not found
             if (ex.code == 1):
@@ -3091,7 +3094,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                           if setName is None \
                                           else StrUnicodeOut(setName),
                                           setId,
-                                          primaryPhotoId))                            
+                                          primaryPhotoId))
 
                     # Control for when flickr return a setName (title) as None
                     # Occurred while simultaneously performing massive delete
@@ -3332,7 +3335,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                 logging.info('Compare Titles=[{!s}]'
                             .format((StrUnicodeOut(xtitle_filename) ==
                                      StrUnicodeOut(pic.attrib['title']))))
-                
+
                 # if not (xtitle_filename == pic.attrib['title']):
                 if not (StrUnicodeOut(xtitle_filename) ==
                             StrUnicodeOut(pic.attrib['title'])):
@@ -3412,7 +3415,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                       StrUnicodeOut(pic.attrib['title']),
                                       StrUnicodeOut(setinlist.attrib['title']),
                                       StrUnicodeOut(pic.attrib['tags'])))
-                                      
+
                     logging.warning(
                               'Compare Sets=[{!s}]'
                               .format((StrUnicodeOut(xsetName) ==
