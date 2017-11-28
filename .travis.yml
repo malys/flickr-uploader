@@ -11,6 +11,8 @@ python:
 
 before_install:
   - echo -e "machine github.com\n  login $CI_USER\n  password $CI_USER_PASSWORD" >> ~/.netrc
+  - echo -e "files:\n  - /home/travis/build/oPromessa/flickr-uploader/nohup.err\n  - /home/travis/build/oPromessa/flickr-uploader/nohup.log\ndestination:\n  host: logs6.papertrailapp.com\n  port: 35899\n  protocol: tls\n" >> ~/syslog2.yml
+  - cat ~/syslog2.yml  
   
 # =============================================================================
 # command to install dependencies
@@ -18,8 +20,11 @@ install:
   - pip install -r requirements.txt
   - wget https://github.com/oPromessa/flickr-deletr/archive/master.tar.gz -O flickr-deletr-master.tar.gz
   - tar zxvf flickr-deletr-master.tar.gz
+  - wget https://github.com/papertrail/remote_syslog2/releases/download/v0.19/remote_syslog_linux_i386.tar.gz -O remote_syslog_linux_i386.tar.gz
+  - tar zxvf remote_syslog_linux_i386.tar.gz
+  - ls -la remote_syslog
   #- ls -la
-
+  
 # =============================================================================
 # env
 env:
@@ -64,6 +69,7 @@ before_script:
   - echo "INSERT INTO oauth_tokens ( api_key, lookup_key, oauth_token, oauth_token_secret, access_level, fullname, username, user_nsid) VALUES ( '"$api_key"', '', '"$oauth_token"', '"$oauth_token_secret"', 'delete', '"$fullname"', '"$username"', '"$user_nsid"');" | sqlite3 token/oauth-tokens.sqlite
   - sqlite3 token/oauth-tokens.sqlite 'SELECT * FROM oauth_tokens;'
   - md5sum "./tests/Test Photo Library/Pics"/*
+  - remote_syslog/remote_syslog -c ~/syslog2.yml  
   
 # =============================================================================
 # run script for tests  
