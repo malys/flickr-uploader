@@ -3645,74 +3645,70 @@ set0 = sets.find('photosets').findall('photoset')[0]
         global nuflickr
 
         if (args.verbose):
-            niceprint('photos_set_date: photo_id=[{!s}] date_taken=[{!s}]'
+            niceprint('Setting Date photo_id=[{!s}] date_taken=[{!s}]'
                       .format(photo_id, datetxt))
-        logging.warning('photos_set_date photo_id=[{!s}] date_taken=[{!s}]'
+        logging.warning('Setting Date photo_id=[{!s}] date_taken=[{!s}]'
                         .format(photo_id, datetxt))
 
         @retry(attempts=3, waittime=10, randtime=True)
         def R_photos_setdates(kwargs):
             return nuflickr.photos.setdates(**kwargs)
 
-            logging.warning('Setting Date:[{!s}]...'
-                            '[{!s}/{!s} attempts].'
-                            .format(datetxt, x, MAX_UPLOAD_ATTEMPTS))
-            try:
-                respDate = None
-                respDate = R_photos_setdates(photo_id=photo_id,
-                                             date_taken='{!s}'.format(datetxt),
-                                             date_taken_granularity=0)
-                
-                # respDate = nuflickr.photos.setdates(
-                #                     photo_id=photo_id,
-                #                     date_taken='{!s}'.format(datetxt),
-                #                     date_taken_granularity=0)
-                logging.info('Output for {!s}:'.format('respDate'))
-                logging.info(xml.etree.ElementTree.tostring(
-                                        respDate,
-                                        encoding='utf-8',
-                                        method='xml'))
+        try:
+            respDate = None
+            respDate = R_photos_setdates(photo_id=photo_id,
+                                         date_taken='{!s}'.format(datetxt),
+                                         date_taken_granularity=0)
+            
+            # respDate = nuflickr.photos.setdates(
+            #                     photo_id=photo_id,
+            #                     date_taken='{!s}'.format(datetxt),
+            #                     date_taken_granularity=0)
+            logging.info('Output for {!s}:'.format('respDate'))
+            logging.info(xml.etree.ElementTree.tostring(
+                                    respDate,
+                                    encoding='utf-8',
+                                    method='xml'))
 
-                if (args.verbose):
-                    niceprint('Set Date Response:[{!s}]'
-                              .format(self.isGood(respDate)))
+            if (args.verbose):
+                niceprint('Set Date Response:[{!s}]'
+                          .format(self.isGood(respDate)))
 
-
-            except flickrapi.exceptions.FlickrError as ex:
-                reportError(Caught=True,
-                            CaughtPrefix='+++',
-                            CaughtCode='210',
-                            CaughtMsg='Flickrapi exception on photos.setdates',
-                            exceptUse=True,
-                            exceptCode=ex.code,
-                            exceptMsg=ex,
-                            NicePrint=True)
-                # logging.error('Sleep 10 and try to set date again.')
-                # niceprint('Sleep 10 and try to set date again.')
-                # nutime.sleep(10)
-            except (IOError, httplib.HTTPException):
-                reportError(Caught=True,
-                            CaughtPrefix='+++',
-                            CaughtCode='211',
-                            CaughtMsg='Caught IOError, HTTP exception'
-                                      'on photos.setdates',
-                            NicePrint=True)
-                # logging.error('Sleep 10 and try to set date again.')
-                # niceprint('Sleep 10 and try to set date again.')
-                # nutime.sleep(10)
-            except:
-                reportError(Caught=True,
-                            CaughtPrefix='+++',
-                            CaughtCode='212',
-                            CaughtMsg='Caught exception on photos.setdates',
-                            NicePrint=True,
-                            exceptSysInfo=True)
-                # logging.error('Sleep 10 and try to set date again.')
-                # niceprint('Sleep 10 and try to set date again.')
-                # nutime.sleep(10)
-            finally:
-                if (respDate is not None) and self.isGood(respDate):
-                    logging.debug('Set Date Response: OK!')
+        except flickrapi.exceptions.FlickrError as ex:
+            reportError(Caught=True,
+                        CaughtPrefix='+++',
+                        CaughtCode='210',
+                        CaughtMsg='Flickrapi exception on photos.setdates',
+                        exceptUse=True,
+                        exceptCode=ex.code,
+                        exceptMsg=ex,
+                        NicePrint=True)
+            # logging.error('Sleep 10 and try to set date again.')
+            # niceprint('Sleep 10 and try to set date again.')
+            # nutime.sleep(10)
+        except (IOError, httplib.HTTPException):
+            reportError(Caught=True,
+                        CaughtPrefix='+++',
+                        CaughtCode='211',
+                        CaughtMsg='Caught IOError, HTTP exception'
+                                  'on photos.setdates',
+                        NicePrint=True)
+            # logging.error('Sleep 10 and try to set date again.')
+            # niceprint('Sleep 10 and try to set date again.')
+            # nutime.sleep(10)
+        except:
+            reportError(Caught=True,
+                        CaughtPrefix='+++',
+                        CaughtCode='212',
+                        CaughtMsg='Caught exception on photos.setdates',
+                        NicePrint=True,
+                        exceptSysInfo=True)
+            # logging.error('Sleep 10 and try to set date again.')
+            # niceprint('Sleep 10 and try to set date again.')
+            # nutime.sleep(10)
+        finally:
+            if (respDate is not None) and self.isGood(respDate):
+                logging.debug('Set Date Response: OK!')
 
         return respDate
 
