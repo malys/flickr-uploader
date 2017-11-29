@@ -213,6 +213,8 @@ class UPLDRConstants:
     # For future use...
     # UTF = 'utf-8'
     Version = '2.6.1'
+    
+    Run = eval(time.strftime('%j+%H*100+%M'))
 
     # -------------------------------------------------------------------------
     # Color Codes for colorful output
@@ -304,8 +306,9 @@ def niceprint(s):
         [2017.11.19 01:53:57]:[PID       ][PRINT   ]:[uploadr] Some Message
         Accounts for UTF-8 Messages
     """
-    print('{}[{!s}]:[{!s:11s}]{}[{!s:8s}]:[{!s}] {!s}'.format(
+    print('{}[{!s}][{!s}]:[{!s:11s}]{}[{!s:8s}]:[{!s}] {!s}'.format(
             UPLDRConstants.G,
+            UPLDRConstants.Run,
             nutime.strftime(UPLDRConstants.TimeFormat),
             os.getpid(),
             UPLDRConstants.W,
@@ -623,7 +626,8 @@ LOGGING_LEVEL = int(LOGGING_LEVEL)
 logging.basicConfig(stream=sys.stderr,
                     level=int(LOGGING_LEVEL),
                     datefmt=UPLDRConstants.TimeFormat,
-                    format=UPLDRConstants.P+
+                    format=UPLDRConstants.P+'['+
+                           str(UPLDRConstants.Run)+']'+
                            '[%(asctime)s]:[%(processName)-11s]'+
                            UPLDRConstants.W+
                            '[%(levelname)-8s]:[%(name)s] %(message)s')
