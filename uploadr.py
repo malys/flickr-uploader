@@ -120,6 +120,7 @@
     * Prefix coding for some output messages:
         *****   Section informative
         ===     Multiprocessing related
+        ___     Retry related (check retry function)
         +++     Exceptions handling related
         +++ DB  Database Exceptions handling related
         xxx     Error related
@@ -399,7 +400,7 @@ def reportError(Caught=False, CaughtPrefix='', CaughtCode=0, CaughtMsg='',
 #
 # retries execution of a function
 #
-def retry(attempts=3, waittime=5):
+def retry(attempts=3, waittime=5, randtime=False):
           # errorlistdict=[{'Caught':False, 'CaughtPrefix':'',
           #                 'CaughtCode':0, 'CaughtMsg':'',
           #                 'NicePrint':False,
@@ -422,6 +423,10 @@ def retry(attempts=3, waittime=5):
     Catches exceptions while running a supplied function
     Re-runs it for times while sleeping X seconds in-between
     outputs 3 types of errors (coming from the parameters)
+    
+    attempts = Max Number of Attempts
+    waittime = Wait time in between Attempts
+    randtime = Randomize the Wait time from 1 to randtime for each Attempt
     """
     def wrapper_fn(f):
         @wraps(f)
@@ -432,8 +437,10 @@ def retry(attempts=3, waittime=5):
 
             if LOGGING_LEVEL <= logging.WARNING:
                 if args is not None:
-                    logging.warning('Retry f():[{!s}] Max:[{!s}] Delay:[{!s}]'
-                                    .format(f.__name__, attempts, waittime))
+                    logging.warning('___Retry f():[{!s}]'
+                                    'Max:[{!s}] Delay:[{!s}] Rnd[{!s}]'
+                                    .format(f.__name__, attempts,
+                                            waittime, randtime))
                     for i, a in enumerate(args):
                         logging.warning('Retry f():[{!s}] arg[{!s}]={!s}'
                                         .format(f.__name__, i, a))
@@ -446,7 +453,7 @@ def retry(attempts=3, waittime=5):
                     logging.error('Error code A: [{!s}]'.format(e))
                     error = e
                 except flickrapi.exceptions.FlickrError as ex:
-                    logging.error('Error code B: [{!s}]'.format(ex))
+                    logging.error('___Retry: Error code B: [{!s}]'.format(ex))
                     # reportError(Caught=errordict[0]['Caught'],
                     #             CaughtPrefix=errordict[0]['CaughtPrefix'],
                     #             CaughtCode=errordict[0]['CaughtCode'],
@@ -457,7 +464,7 @@ def retry(attempts=3, waittime=5):
                     #             NicePrint=errordict[0]['NicePrint'],
                     #             exceptSysInfo=errordict[0]['exceptSysInfo'])
                 except lite.Error as e:
-                    logging.error('Error code C: [{!s}]'.format(e))
+                    logging.error('___Retry: Error code C: [{!s}]'.format(e))
                     error = e
                     # reportError(Caught=errordict[1]['Caught'],
                     #             CaughtPrefix=errordict[1]['CaughtPrefix'],
@@ -471,14 +478,19 @@ def retry(attempts=3, waittime=5):
                     # flick.useDBLock(nulockDB, False)
                     # self.useDBLock( lock, True)
                 except:
-                    logging.error('Error Caught D: Catchall')
+                    logging.error('___Retry: Error Caught D: Catchall')
                     # reportError(Caught=True,
                     #             CaughtPrefix='+++',
                     #             CaughtCode='992',
                     #             CaughtMsg='Caught exception in XXXX',
                     #             exceptSysInfo=True)
-                rtime.sleep(random.randrange(1, waittime+1))
-            logging.warning('Retry f():[{!s}] arg[{!s}]={!s} Raising ERROR!'
+                logging.warning('Function:[{!s}] Waiting:[{!s}] Rnd:[{!s}]'
+                                .format(f.__name__, waittime, randtime))
+                if randtime:
+                    rtime.sleep(random.randrange(1, waittime+1))
+                else:
+                    rtime.sleep(waittime)
+            logging.warning('___Retry f():[{!s}] arg[{!s}]={!s} Raising ERROR!'
                             .format(f.__name__, i, a))
             raise error
         return new_wrapper
@@ -487,19 +499,8 @@ def retry(attempts=3, waittime=5):
 # -----------------------------------------------------------------------------
 # Samples
 # @retry(attempts=3, waittime=2)
-# def retry_niceprint(argslist):
-#     return niceprint(argslist)
-# # with *argslist you can pass a list [ one, two ] and turn it into two
-# # argumetns into the function (one, two)
-# @retry(attempts=3, waittime=2)
 # def retry_divmod(argslist):
 #     return divmod(*argslist)
-# @retry(attempts=3, waittime=2)
-# def retry_reportError(namedargslist):
-#     return divmod(**namedargslist)
-# niceprint('retry TESTS')
-# retry_niceprint('Hello...')
-# retry_niceprint(None)
 # print retry_divmod([5, 3])
 # try:
 #     print retry_divmod([5, 'H'])
@@ -1848,6 +1849,9 @@ class Uploadr:
 
                             # on error, check if exists a photo
                             # with file_checksum
+                            # CODING: Revise and simplify this code
+                            # CODING: Possibly use is_photo_already_loaded
+                            # CODING: but checking without SET
                             search_result = self.photos_search(file_checksum)
                             if not self.isGood(search_result):
                                 raise IOError(search_result)
@@ -3246,7 +3250,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
 
         logging.info('Is Already Uploaded:[checksum:{!s}]?'.format(xchecksum))
 
-        @retry()
+        @retry(attempts=3, waittime=10, randtime=True)
         def R_photos_search(kwargs):
             return nuflickr.photos.search(**kwargs)
 
@@ -3348,10 +3352,15 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                          StrUnicodeOut(pic.attrib['title'])))
                     continue
 
+                @retry(attempts=3, waittime=8, randtime=True)
+                def R_photos_getAllContexts(kwargs):
+                    return nuflickr.photos.getAllContexts(**kwargs)
+
                 try:
                     resp = None
-                    resp = nuflickr.photos.getAllContexts(
-                                                    photo_id=pic.attrib['id'])
+                    resp = R_photos_getAllContexts(photo_id=pic.attrib['id'])
+                    # resp = nuflickr.photos.getAllContexts(
+                    #                                 photo_id=pic.attrib['id'])
                 except flickrapi.exceptions.FlickrError as ex:
                     reportError(Caught=True,
                                 CaughtPrefix='+++',
@@ -3561,7 +3570,13 @@ set0 = sets.find('photosets').findall('photoset')[0]
 
         global nuflickr
 
-        notinsetResp = nuflickr.photos.getNotInSet(per_page=per_page)
+        @retry(attempts=2, waittime=12, randtime=False)
+        def R_photos_getNotInSet(kwargs):
+            return nuflickr.photos.getNotInSet(**kwargs)        
+
+        notinsetResp = R_photos_getNotInSet(per_page=per_page)
+        
+        # notinsetResp = nuflickr.photos.getNotInSet(per_page=per_page)
 
         return notinsetResp
 
@@ -3635,17 +3650,23 @@ set0 = sets.find('photosets').findall('photoset')[0]
         logging.warning('photos_set_date photo_id=[{!s}] date_taken=[{!s}]'
                         .format(photo_id, datetxt))
 
-        for x in range(0, MAX_UPLOAD_ATTEMPTS):
-            respDate = None
-            if (x > 0):
-                logging.warning('Re-Setting Date:[{!s}]...'
-                                '[{!s}/{!s} attempts].'
-                                .format(datetxt, x, MAX_UPLOAD_ATTEMPTS))
+        @retry(attempts=3, waittime=10, randtime=True)
+        def R_photos_setdates(kwargs):
+            return nuflickr.photos.setdates(**kwargs)
+
+            logging.warning('Setting Date:[{!s}]...'
+                            '[{!s}/{!s} attempts].'
+                            .format(datetxt, x, MAX_UPLOAD_ATTEMPTS))
             try:
-                respDate = nuflickr.photos.setdates(
-                                    photo_id=photo_id,
-                                    date_taken='{!s}'.format(datetxt),
-                                    date_taken_granularity=0)
+                respDate = None
+                respDate = R_photos_setdates(photo_id=photo_id,
+                                             date_taken='{!s}'.format(datetxt),
+                                             date_taken_granularity=0)
+                
+                # respDate = nuflickr.photos.setdates(
+                #                     photo_id=photo_id,
+                #                     date_taken='{!s}'.format(datetxt),
+                #                     date_taken_granularity=0)
                 logging.info('Output for {!s}:'.format('respDate'))
                 logging.info(xml.etree.ElementTree.tostring(
                                         respDate,
@@ -3656,9 +3677,6 @@ set0 = sets.find('photosets').findall('photoset')[0]
                     niceprint('Set Date Response:[{!s}]'
                               .format(self.isGood(respDate)))
 
-                if (respDate is not None) and self.isGood(respDate):
-                    logging.debug('Set Date Response: OK: BREAK')
-                    break
 
             except flickrapi.exceptions.FlickrError as ex:
                 reportError(Caught=True,
@@ -3669,32 +3687,32 @@ set0 = sets.find('photosets').findall('photoset')[0]
                             exceptCode=ex.code,
                             exceptMsg=ex,
                             NicePrint=True)
-                logging.error('Sleep 10 and try to set date again.')
-                niceprint('Sleep 10 and try to set date again.')
-                nutime.sleep(10)
+                # logging.error('Sleep 10 and try to set date again.')
+                # niceprint('Sleep 10 and try to set date again.')
+                # nutime.sleep(10)
             except (IOError, httplib.HTTPException):
                 reportError(Caught=True,
                             CaughtPrefix='+++',
                             CaughtCode='211',
-                            CaughtMsg='Caught IOError, HTTP exception',
+                            CaughtMsg='Caught IOError, HTTP exception'
+                                      'on photos.setdates',
                             NicePrint=True)
-                logging.error('Sleep 10 and try to set date again.')
-                niceprint('Sleep 10 and try to set date again.')
-                nutime.sleep(10)
+                # logging.error('Sleep 10 and try to set date again.')
+                # niceprint('Sleep 10 and try to set date again.')
+                # nutime.sleep(10)
             except:
                 reportError(Caught=True,
                             CaughtPrefix='+++',
                             CaughtCode='212',
-                            CaughtMsg='Caught exception',
+                            CaughtMsg='Caught exception on photos.setdates',
                             NicePrint=True,
                             exceptSysInfo=True)
-                logging.error('Sleep 10 and try to set date again.')
-                niceprint('Sleep 10 and try to set date again.')
-                nutime.sleep(10)
-
-            if (respDate is not None) and self.isGood(respDate):
-                logging.info('Set Date Response: OK: BREAK')
-                break
+                # logging.error('Sleep 10 and try to set date again.')
+                # niceprint('Sleep 10 and try to set date again.')
+                # nutime.sleep(10)
+            finally:
+                if (respDate is not None) and self.isGood(respDate):
+                    logging.debug('Set Date Response: OK!')
 
         return respDate
 
@@ -3775,34 +3793,58 @@ set0 = sets.find('photosets').findall('photoset')[0]
         # Total photos not on Sets/Albums on FLickr
         # (per_page=1 as only the header is required to obtain total):
         #       find('photos').attrib['total']
-        res = self.photos_get_not_in_set(1)
-        if not self.isGood(res):
-            raise IOError(res)
-        logging.debug('Output for get_not_in_set:')
-        logging.debug(xml.etree.ElementTree.tostring(
-                                res,
-                                encoding='utf-8',
-                                method='xml'))
+        try:
+            res = self.photos_get_not_in_set(1)
 
-        countnotinsets = 0
-        countnotinsets = int(format(res.find('photos').attrib['total']))
-        logging.debug('Photos not in sets on flickr: {!s}'
-                      .format(countnotinsets))
-
-        # Print total stats counters
-        niceprint('\n  Initial Found Files:[{!s:>6s}]\n'
-                  '          - Bad Files:[{!s:>6s}] = [{!s:>6s}] \n'
-                  '          Please note some Bad files may no longer exist!\n'
-                  'Photos count:\n'
-                  '                Local:[{!s:>6s}] \n'
-                  '               Flickr:[{!s:>6s}] \n'
-                  'Not in sets on Flickr:[{!s:>6s}]'
-                  .format(str(InitialFoundFiles),
-                          str(BadFilesCount),
-                          str(InitialFoundFiles-BadFilesCount),
-                          str(countlocal),
-                          str(countflickr),
-                          str(countnotinsets)))
+        except flickrapi.exceptions.FlickrError as ex:
+            reportError(Caught=True,
+                        CaughtPrefix='+++',
+                        CaughtCode='400',
+                        CaughtMsg='Flickrapi exception on '
+                                  'getNotInSet',
+                        exceptUse=True,
+                        exceptCode=ex.code,
+                        exceptMsg=ex)
+        except (IOError, httplib.HTTPException):
+            reportError(Caught=True,
+                        CaughtPrefix='+++',
+                        CaughtCode='401',
+                        CaughtMsg='Caught IO/HTTP Error in '
+                                  'getNotInSet')
+        except:
+            reportError(Caught=True,
+                        CaughtPrefix='+++',
+                        CaughtCode='402',
+                        CaughtMsg='Caught exception in '
+                                  'getNotInSet',
+                        exceptSysInfo=True)
+        finally:
+            logging.debug('Output for get_not_in_set:')
+            logging.debug(xml.etree.ElementTree.tostring(
+                                    res,
+                                    encoding='utf-8',
+                                    method='xml'))            
+            countnotinsets = 0
+            if self.isGood(res):
+                countnotinsets = int(format(
+                                        res.find('photos').attrib['total']))
+                logging.debug('Photos not in sets on flickr: {!s}'
+                              .format(countnotinsets))
+    
+            # Print total stats counters
+            niceprint('\n  Initial Found Files:[{!s:>6s}]\n'
+                      '          - Bad Files:[{!s:>6s}] = [{!s:>6s}] \n'
+                      '          Please note some Bad files may no longer exist!\n'
+                      'Photos count:\n'
+                      '                Local:[{!s:>6s}] \n'
+                      '               Flickr:[{!s:>6s}] \n'
+                      'Not in sets on Flickr:[{!s:>6s}]'
+                      .format(str(InitialFoundFiles),
+                              str(BadFilesCount),
+                              str(InitialFoundFiles-BadFilesCount),
+                              str(countlocal),
+                              str(countflickr),
+                              str(countnotinsets)))
 
         # List pics not in sets (if within a parameter)
         # Maximum allowed per_page by Flickr is 500.
