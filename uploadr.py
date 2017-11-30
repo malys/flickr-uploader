@@ -3358,7 +3358,8 @@ set0 = sets.find('photosets').findall('photoset')[0]
 
                 try:
                     resp = None
-                    resp = R_photos_getAllContexts(photo_id=pic.attrib['id'])
+                    resp = R_photos_getAllContexts(
+                                            dict(photo_id=pic.attrib['id']))
                     # resp = nuflickr.photos.getAllContexts(
                     #                                 photo_id=pic.attrib['id'])
                 except flickrapi.exceptions.FlickrError as ex:
@@ -3574,7 +3575,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
         def R_photos_getNotInSet(kwargs):
             return nuflickr.photos.getNotInSet(**kwargs)        
 
-        notinsetResp = R_photos_getNotInSet(per_page=per_page)
+        notinsetResp = R_photos_getNotInSet(dict(per_page=per_page))
         
         # notinsetResp = nuflickr.photos.getNotInSet(per_page=per_page)
 
@@ -3656,9 +3657,10 @@ set0 = sets.find('photosets').findall('photoset')[0]
 
         try:
             respDate = None
-            respDate = R_photos_setdates(photo_id=photo_id,
-                                         date_taken='{!s}'.format(datetxt),
-                                         date_taken_granularity=0)
+            respDate = R_photos_setdates(
+                                dict(photo_id=photo_id,
+                                     date_taken='{!s}'.format(datetxt),
+                                     date_taken_granularity=0))
             
             # respDate = nuflickr.photos.setdates(
             #                     photo_id=photo_id,
