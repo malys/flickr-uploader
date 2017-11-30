@@ -215,7 +215,7 @@ class UPLDRConstants:
     # UTF = 'utf-8'
     Version = '2.6.1'
     # Identify the execution Run of this process
-    Run = eval(time.strftime('%j+%H*100+%M'))
+    Run = eval(time.strftime('int(%j)+int(%H)*100+int(%M)')) 
 
     # -------------------------------------------------------------------------
     # Color Codes for colorful output
