@@ -16,6 +16,6 @@ def test_RUN():
                 # xRun = eval(('int("{}")+int("{:0>2d}")*100+int("{:0>2d}")'.format(j, h, m)))
                 # Run = eval(time.strftime('int("%j")+int("%H")*100+int("%M")'))
                 # print Run, xRun
-                assert (1 <= eval(('int("{}")+int("{:0>2d}")*100+int("{:0>2d}")'.format(j, h, m))) <= 2724) == True
-                assert (1 <= eval(time.strftime('int("%j")+int("%H")*100+int("%M")')) <= 2724) == True
+                assert (1 <= eval(('int("{}")+int("{:0>2d}")*100+int("{:0>2d}")'.format(j, h, m))) <= 2725) == True
+                assert (1 <= eval(time.strftime('int("%j")+int("%H")*100+int("%M")')) <= 2725) == True
 
