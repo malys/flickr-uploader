@@ -216,7 +216,7 @@ class UPLDRConstants:
     # UTF = 'utf-8'
     Version = '2.6.1'
     # Identify the execution Run of this process
-    Run = eval(time.strftime('int(%j)+int(%H)*100+int(%M)')) 
+    Run = eval(time.strftime('int("%j")+int("%H")*100+int("%M")')) 
 
     # -------------------------------------------------------------------------
     # Color Codes for colorful output
@@ -443,7 +443,7 @@ def retry(attempts=3, waittime=5, randtime=False):
                                     .format(f.__name__, attempts,
                                             waittime, randtime))
                     for i, a in enumerate(args):
-                        logging.warning('Retry f():[{!s}] arg[{!s}]={!s}'
+                        logging.warning('___Retry f():[{!s}] arg[{!s}]={!s}'
                                         .format(f.__name__, i, a))
             for i in range(attempts):
                 try:
@@ -2390,7 +2390,9 @@ class Uploadr:
         Creates on flickrdb local database a SetName(Album)
         with Primary photo Id.
 
-        Assigns Primary phoot Id to set on the local DB.
+        Assigns Primary photo Id to set on the local DB.
+        
+        Also updates photo DB entry with its set_id
         """
 
         logging.warning('Adding set: [{!s}] to database log.'
@@ -2413,13 +2415,12 @@ class Uploadr:
 
         try:
             cur.execute('UPDATE files SET set_id = ? WHERE files_id = ?',
-                    (setId, primaryPhotoId))
+                        (setId, primaryPhotoId))
         except lite.Error, e:
             reportError(Caught=True,
                 CaughtPrefix='+++ DB',
                 CaughtCode='093',
-                CaughtMsg='DB error on UPDATE: [{!s}]'
-                          .format(e.args[0]),
+                CaughtMsg='DB error on UPDATE: [{!s}]'.format(e.args[0]),
                 NicePrint=True)
 
         con.commit()
@@ -2432,7 +2433,8 @@ class Uploadr:
     def isGood(self, res):
         """ isGood
 
-            Returns true if attrib['stat'] == "ok" for a given XML object
+            If res is b=not None it will return true...
+            if res.attrib['stat'] == "ok" for a given XML object
         """
         if (res is None):
             return False
@@ -2542,6 +2544,10 @@ class Uploadr:
         if args.dry_run:
                 return True
 
+        @retry(attempts=3, waittime=10, randtime=True)
+        def R_photosets_addPhoto(kwargs):
+            return nuflickr.photosets.addPhoto(**kwargs)
+
         try:
             con = lite.connect(DB_PATH)
             con.text_factory = str
@@ -2551,9 +2557,9 @@ class Uploadr:
                          .format(setId, file[0]))
             # REMARK Result for Error 3 (Photo already in set)
             # is passed via exception and so it is handled there
-            addPhotoResp = nuflickr.photosets.addPhoto(
-                                photoset_id=str(setId),
-                                photo_id=str(file[0]))
+            addPhotoResp = None
+            addPhotoResp = R_photosets_addPhoto(photoset_id=str(setId),
+                                                photo_id=str(file[0]))
 
             logging.info('addPhotoResp: ')
             logging.info(xml.etree.ElementTree.tostring(
@@ -2576,15 +2582,16 @@ class Uploadr:
                                 CaughtMsg='DB error on UPDATE files: [{!s}]'
                                           .format(e.args[0]),
                                 NicePrint=True)
-            # CODING check incorrect use of resp and how to handle return
-            # error codes from flickr... via exception?
+            # CODING how to handle return error code from flickr...
+            # via <err code> or via exception?
 # <?xml version="1.0" encoding="utf-8" ?>
 # <rsp stat="fail">
 #   <err code="1" msg="Photoset not found" />
 # </rsp>
             else:
-                if (addPhotoResp['code'] == 1):
-                    niceprint('Photoset not found, creating new set...')
+                if (addPhotoResp.find('err').attrib['code'] == 1):
+                    niceprint('(VIA RETURN FAIL) '
+                              'Photoset not found, creating new set...')
                     if FULL_SET_NAME:
                         setName = os.path.relpath(os.path.dirname(file[1]),
                                                   unicode(FILES_DIR, 'utf-8'))
@@ -2592,12 +2599,22 @@ class Uploadr:
                         head, setName = os.path.split(os.path.dirname(file[1]))
 
                     self.createSet(setName, file[0], cur, con)
-                elif (addPhotoResp['code'] == 3):
-                    niceprint('Photo already in set... updating DB')
-                    niceprint('[{!s}] ... updating DB'
-                              .format(addPhotoResp['message']))
-                    cur.execute('UPDATE files SET set_id = ? '
-                                'WHERE files_id = ?', (setId, file[0]))
+                elif (addPhotoResp.find('err').attrib['code'] == 3):
+                    try:
+                        niceprint('(VIA RETURN FAIL) '
+                                  'Photo already in set... updating DB')
+                        niceprint('[{!s}] ... updating DB'
+                                  .format(addPhotoResp['message']))
+                        cur.execute('UPDATE files SET set_id = ? '
+                                    'WHERE files_id = ?', (setId, file[0]))
+                        con.commit()
+                    except lite.Error, e:
+                        reportError(Caught=True,
+                                    CaughtPrefix='+++ DB',
+                                    CaughtCode='109',
+                                    CaughtMsg='DB error on UPDATE SET: [{!s}]'
+                                              .format(e.args[0]),
+                                    NicePrint=True)
                 else:
                     reportError(exceptUse=False,
                                 exceptCode=addPhotoResp['code']
@@ -2619,7 +2636,8 @@ class Uploadr:
                         NicePrint=True)
             # Error: 1: Photoset not found
             if (ex.code == 1):
-                niceprint('Photoset not found, creating new set...')
+                niceprint('(VIA EXCEPTION) '
+                          'Photoset not found, creating new set...')
                 if FULL_SET_NAME:
                     setName = os.path.relpath(os.path.dirname(file[1]),
                                               unicode(FILES_DIR, 'utf-8'))
@@ -2630,7 +2648,8 @@ class Uploadr:
             # Error: 3: Photo Already in set
             elif (ex.code == 3):
                 try:
-                    niceprint('Photo already in set... updating DB'
+                    niceprint('(VIA EXCEPTION) '
+                              'Photo already in set... updating DB'
                               'set_id=[{!s}] photo_id=[{!s}]'
                               .format(setId, file[0]))
                     cur.execute('UPDATE files SET set_id = ? '
@@ -2684,40 +2703,16 @@ class Uploadr:
         if args.dry_run:
             return True
 
+        @retry(attempts=3, waittime=10, randtime=True)
+        def R_photosets_create(kwargs):
+            return nuflickr.photosets.create(**kwargs)
+
         try:
-            createResp = nuflickr.photosets.create(
-                            title=setName,
-                            primary_photo_id=str(primaryPhotoId))
-            logging.warning('createResp: ')
-            logging.warning(xml.etree.ElementTree.tostring(createResp,
-                                                           encoding='utf-8',
-                                                           method='xml'))
-
-            if (self.isGood(createResp)):
-                logging.warning('createResp["photoset"]["id"]:[{!s}]'
-                                .format(createResp.find('photoset')
-                                        .attrib['id']))
-                self.logSetCreation(createResp.find('photoset').attrib['id'],
-                                    setName,
-                                    primaryPhotoId,
-                                    cur,
-                                    con)
-                return createResp.find('photoset').attrib['id']
-            else:
-                logging.warning('createResp: ')
-                logging.warning(xml.etree.ElementTree.tostring(
-                                                    createResp,
-                                                    encoding='utf-8',
-                                                    method='xml'))
-                reportError(exceptUse=False,
-                            exceptCode=createResp['code']
-                                       if 'code' in createResp
-                                       else createResp,
-                            exceptMsg=createResp['message']
-                                      if 'message' in createResp
-                                      else createResp,
-                            NicePrint=True)
-
+            createResp = None
+            createResp = R_photosets_create(
+                                        title=setName,
+                                        primary_photo_id=str(primaryPhotoId))
+    
         except flickrapi.exceptions.FlickrError as ex:
             reportError(Caught=True,
                         CaughtPrefix='+++',
@@ -2756,6 +2751,31 @@ class Uploadr:
                         CaughtMsg='Caught exception in createSet',
                         NicePrint=True,
                         exceptSysInfo=True)
+        finally:
+            if (self.isGood(createResp)):
+                logging.warning('createResp["photoset"]["id"]:[{!s}]'
+                                .format(createResp.find('photoset')
+                                        .attrib['id']))
+                self.logSetCreation(createResp.find('photoset').attrib['id'],
+                                    setName,
+                                    primaryPhotoId,
+                                    cur,
+                                    con)
+                return createResp.find('photoset').attrib['id']
+            else:
+                logging.warning('createResp: ')
+                logging.warning(xml.etree.ElementTree.tostring(
+                                                    createResp,
+                                                    encoding='utf-8',
+                                                    method='xml'))
+                reportError(exceptUse=False,
+                            exceptCode=createResp['code']
+                                       if 'code' in createResp
+                                       else createResp,
+                            exceptMsg=createResp['message']
+                                      if 'message' in createResp
+                                      else createResp,
+                            NicePrint=True)
 
         return False
 
