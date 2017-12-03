@@ -446,7 +446,7 @@ def retry(attempts=3, waittime=5, randtime=False):
                     for i, a in enumerate(args):
                         logging.warning('___Retry f():[{!s}] arg[{!s}]={!s}'
                                         .format(f.__name__, i, a))
-            for i in range(attempts):
+            for i in range(attempts if attempts > 0 else 1):
                 try:
                     logging.warning('Function:[{!s}] Attempt:[{!s}] of [{!s}]'
                                     .format(f.__name__, i+1, attempts))
@@ -489,7 +489,10 @@ def retry(attempts=3, waittime=5, randtime=False):
                 logging.warning('Function:[{!s}] Waiting:[{!s}] Rnd:[{!s}]'
                                 .format(f.__name__, waittime, randtime))
                 if randtime:
-                    rtime.sleep(random.randrange(1, waittime+1))
+                    rtime.sleep(random.randrange(1,
+                                                 (waittime+1)
+                                                 if waittime >= 1
+                                                 else 2))
                 else:
                     rtime.sleep(waittime)
             logging.warning('___Retry f():[{!s}] arg[{!s}]={!s} Raising ERROR!'
@@ -2542,7 +2545,7 @@ class Uploadr:
         if args.dry_run:
                 return True
 
-        @retry(attempts=2, waittime=1, randtime=False)
+        @retry(attempts=2, waittime=0, randtime=False)
         def R_photosets_addPhoto(kwargs):
             return nuflickr.photosets.addPhoto(**kwargs)
 
