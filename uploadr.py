@@ -2558,8 +2558,8 @@ class Uploadr:
             # REMARK Result for Error 3 (Photo already in set)
             # is passed via exception and so it is handled there
             addPhotoResp = None
-            addPhotoResp = R_photosets_addPhoto(photoset_id=str(setId),
-                                                photo_id=str(file[0]))
+            addPhotoResp = R_photosets_addPhoto(dict(photoset_id=str(setId),
+                                                     photo_id=str(file[0])))
 
             logging.info('addPhotoResp: ')
             logging.info(xml.etree.ElementTree.tostring(
@@ -2709,9 +2709,9 @@ class Uploadr:
 
         try:
             createResp = None
-            createResp = R_photosets_create(
+            createResp = R_photosets_create(dict(
                                         title=setName,
-                                        primary_photo_id=str(primaryPhotoId))
+                                        primary_photo_id=str(primaryPhotoId)))
     
         except flickrapi.exceptions.FlickrError as ex:
             reportError(Caught=True,
