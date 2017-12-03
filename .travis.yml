@@ -94,12 +94,11 @@ script:
   - coverage combine
   - coverage report -m uploadr.py
   - sleep 5
-
 # Second RUN ------------------------------------------------------------------
   - if [[ $TestScenario == Remove ]]; then rm "./tests/Test Photo Library/photo.jpg"; fi
-  - if [[ $TestScenario == Replace ]]; then cp "./tests/Test Photo Library/ReplaceTest/file00053809264.jpg.ForReplace" "./tests/Test Photo Library/Pics/file00053809264.jpg"; fi
+  - if [[ $TestScenario == Replace ]]; then cp "./tests/Test Photo Library/ReplaceTest/file_35.jpg.ForReplace" "./tests/Test Photo Library/Pics/file_35.jpg"; fi
   - if [[ $TestScenario == RemoveReplace ]]; then rm "./tests/Test Photo Library/photo.jpg"; fi
-  - if [[ $TestScenario == RemoveReplace ]]; then cp "./tests/Test Photo Library/ReplaceTest/file00053809264.jpg.ForReplace" "./tests/Test Photo Library/Pics/file00053809264.jpg"; fi
+  - if [[ $TestScenario == RemoveReplace ]]; then cp "./tests/Test Photo Library/ReplaceTest/file_35.jpg.ForReplace" "./tests/Test Photo Library/Pics/file_35.jpg"; fi
   - coverage run -a --concurrency multiprocessing uploadr.py $VerboseVar $UploadrOptions >> /home/travis/build/oPromessa/flickr-uploader/nohup.log 2>> /home/travis/build/oPromessa/flickr-uploader/nohup.err
   - tail -10 /home/travis/build/oPromessa/flickr-uploader/nohup.log
   - tail -10 /home/travis/build/oPromessa/flickr-uploader/nohup.err

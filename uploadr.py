@@ -13,7 +13,7 @@
     Area for my personal notes on on-going work! Please ignore!
     * Correct the logging/messaging a bit...
       niceprint
-      nicepring with verbose
+      niceprint with verbose
 
       CRITICAL: Blocking situations
       ERROR: Relevant errors
@@ -28,6 +28,7 @@
 
     * +++#121: Caught exception in addFiletoSet occurred 6 in 5200 times.
     * Error 181 occurs in multiprocessing mode! under TravisCI! Strange!
+       * Changed to retry with random delay in-between paralell function calls    
     * CHANGE -S OPTION TO SET IF ONE SHOULD SEARCH PRIOR TO LOADING...As it may
       take a long time! Need to check.
     * Test deleted file from local which is also deleted from flickr
@@ -3250,7 +3251,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
 
         logging.info('Is Already Uploaded:[checksum:{!s}]?'.format(xchecksum))
 
-        @retry(attempts=3, waittime=10, randtime=True)
+        @retry(attempts=3, waittime=20, randtime=True)
         def R_photos_search(kwargs):
             return nuflickr.photos.search(**kwargs)
 
@@ -3745,8 +3746,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                 cur = con.cursor()
                 cur.execute("SELECT Count(*) FROM files")
                 countlocal = cur.fetchone()[0]
-                if LOGGING_LEVEL <= logging.DEBUG:
-                    niceprint('Total photos on local: {}'.format(countlocal))
+                logging.info('Total photos on local: {}'.format(countlocal))
             except lite.Error as e:
                 reportError(Caught=True,
                             CaughtPrefix='+++ DB',
@@ -3762,9 +3762,8 @@ set0 = sets.find('photosets').findall('photoset')[0]
                 cur = con.cursor()
                 cur.execute("SELECT Count(*) FROM badfiles")
                 BadFilesCount = cur.fetchone()[0]
-                if LOGGING_LEVEL <= logging.DEBUG:
-                    niceprint('Total badfiles count on local: {}'
-                              .format(BadFilesCount))
+                logging.info('Total badfiles count on local: {}'
+                             .format(BadFilesCount))
             except lite.Error as e:
                 reportError(Caught=True,
                             CaughtPrefix='+++ DB',
