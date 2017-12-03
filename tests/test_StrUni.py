@@ -1,6 +1,7 @@
 # content of test_StrUni.py
 
 import StrUni
+import time
 
 def test_Unicode():
     for i in range(1,127):
@@ -8,8 +9,8 @@ def test_Unicode():
         assert StrUni.isThisStringUnicode(unicode(chr(i).decode('utf-8'))) == True
         
 def test_RUN():
-    for j in range(1,366):
-        for h in range(23):
+    for j in range(1,366+1):
+        for h in range(24):
             for m in range(60):
                 # print('{}.{:0>2d}.{:0>2d}'.format(j, h, m))
                 # xRun = eval(('int("{}")+int("{:0>2d}")*100+int("{:0>2d}")'.format(j, h, m)))
