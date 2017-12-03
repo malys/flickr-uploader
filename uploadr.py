@@ -28,7 +28,7 @@
 
     * +++#121: Caught exception in addFiletoSet occurred 6 in 5200 times.
     * Error 181 occurs in multiprocessing mode! under TravisCI! Strange!
-       * Changed to retry with random delay in-between paralell function calls    
+       * Changed to retry with random delay in-between paralell function calls
     * CHANGE -S OPTION TO SET IF ONE SHOULD SEARCH PRIOR TO LOADING...As it may
       take a long time! Need to check.
     * Test deleted file from local which is also deleted from flickr
@@ -216,16 +216,16 @@ class UPLDRConstants:
     # UTF = 'utf-8'
     Version = '2.6.1'
     # Identify the execution Run of this process
-    Run = eval(time.strftime('int("%j")+int("%H")*100+int("%M")')) 
+    Run = eval(time.strftime('int("%j")+int("%H")*100+int("%M")'))
 
     # -------------------------------------------------------------------------
     # Color Codes for colorful output
-    W  = '\033[0m'  # white (normal)
-    R  = '\033[31m' # red
-    G  = '\033[32m' # green
-    O  = '\033[33m' # orange
-    B  = '\033[34m' # blue
-    P  = '\033[35m' # purple
+    W = '\033[0m'    # white (normal)
+    R = '\033[31m'   # red
+    G = '\033[32m'   # green
+    O = '\033[33m'   # orange
+    B = '\033[34m'   # blue
+    P = '\033[35m'   # purple
 
     # -------------------------------------------------------------------------
     # class UPLDRConstants __init__
@@ -396,6 +396,7 @@ def reportError(Caught=False, CaughtPrefix='', CaughtCode=0, CaughtMsg='',
     if NicePrint is not None and NicePrint:
         sys.stdout.flush()
 
+
 # -----------------------------------------------------------------------------
 # retry
 #
@@ -424,21 +425,21 @@ def retry(attempts=3, waittime=5, randtime=False):
     Catches exceptions while running a supplied function
     Re-runs it for times while sleeping X seconds in-between
     outputs 3 types of errors (coming from the parameters)
-    
+
     attempts = Max Number of Attempts
     waittime = Wait time in between Attempts
     randtime = Randomize the Wait time from 1 to randtime for each Attempt
     """
     def wrapper_fn(f):
         @wraps(f)
-        def new_wrapper(*args,**kwargs):
+        def new_wrapper(*args, **kwargs):
 
             rtime = time
             error = None
 
             if LOGGING_LEVEL <= logging.WARNING:
                 if args is not None:
-                    logging.warning('___Retry f():[{!s}]'
+                    logging.warning('___Retry f():[{!s}] '
                                     'Max:[{!s}] Delay:[{!s}] Rnd[{!s}]'
                                     .format(f.__name__, attempts,
                                             waittime, randtime))
@@ -449,7 +450,7 @@ def retry(attempts=3, waittime=5, randtime=False):
                 try:
                     logging.warning('Function:[{!s}] Attempt:[{!s}] of [{!s}]'
                                     .format(f.__name__, i+1, attempts))
-                    return f(*args,**kwargs)
+                    return f(*args, **kwargs)
                 except Exception as e:
                     logging.error('Error code A: [{!s}]'.format(e))
                     error = e
@@ -628,10 +629,10 @@ LOGGING_LEVEL = int(LOGGING_LEVEL)
 logging.basicConfig(stream=sys.stderr,
                     level=int(LOGGING_LEVEL),
                     datefmt=UPLDRConstants.TimeFormat,
-                    format=UPLDRConstants.P+'['+
-                           str(UPLDRConstants.Run)+']'+
-                           '[%(asctime)s]:[%(processName)-11s]'+
-                           UPLDRConstants.W+
+                    format=UPLDRConstants.P+'[' +
+                           str(UPLDRConstants.Run)+']' +
+                           '[%(asctime)s]:[%(processName)-11s]' +
+                           UPLDRConstants.W +
                            '[%(levelname)-8s]:[%(name)s] %(message)s')
 # =============================================================================
 # Test section for logging.
@@ -2307,9 +2308,6 @@ class Uploadr:
 
         niceprint('Deleting file:[{!s}]'
                   .format(StrUnicodeOut(file[1])))
-                  # .format(file[1].encode('utf-8')
-                  #         if isThisStringUnicode(file[1])
-                  #         else file[1]))
 
         success = False
 
@@ -2391,7 +2389,7 @@ class Uploadr:
         with Primary photo Id.
 
         Assigns Primary photo Id to set on the local DB.
-        
+
         Also updates photo DB entry with its set_id
         """
 
@@ -2544,7 +2542,7 @@ class Uploadr:
         if args.dry_run:
                 return True
 
-        @retry(attempts=3, waittime=10, randtime=True)
+        @retry(attempts=2, waittime=1, randtime=False)
         def R_photosets_addPhoto(kwargs):
             return nuflickr.photosets.addPhoto(**kwargs)
 
@@ -2712,7 +2710,7 @@ class Uploadr:
             createResp = R_photosets_create(dict(
                                         title=setName,
                                         primary_photo_id=str(primaryPhotoId)))
-    
+
         except flickrapi.exceptions.FlickrError as ex:
             reportError(Caught=True,
                         CaughtPrefix='+++',
@@ -3119,8 +3117,8 @@ set0 = sets.find('photosets').findall('photoset')[0]
                         niceprint('setName=[{!s}] '
                                   'setId=[{!s}] '
                                   'primaryPhotoId=[{!s}]'
-                                  .format('None' \
-                                          if setName is None \
+                                  .format('None'
+                                          if setName is None
                                           else StrUnicodeOut(setName),
                                           setId,
                                           primaryPhotoId))
@@ -3594,10 +3592,10 @@ set0 = sets.find('photosets').findall('photoset')[0]
 
         @retry(attempts=2, waittime=12, randtime=False)
         def R_photos_getNotInSet(kwargs):
-            return nuflickr.photos.getNotInSet(**kwargs)        
+            return nuflickr.photos.getNotInSet(**kwargs)
 
         notinsetResp = R_photos_getNotInSet(dict(per_page=per_page))
-        
+
         # notinsetResp = nuflickr.photos.getNotInSet(per_page=per_page)
 
         return notinsetResp
@@ -3682,7 +3680,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                 dict(photo_id=photo_id,
                                      date_taken='{!s}'.format(datetxt),
                                      date_taken_granularity=0))
-            
+
             # respDate = nuflickr.photos.setdates(
             #                     photo_id=photo_id,
             #                     date_taken='{!s}'.format(datetxt),
@@ -3840,18 +3838,18 @@ set0 = sets.find('photosets').findall('photoset')[0]
             logging.debug(xml.etree.ElementTree.tostring(
                                     res,
                                     encoding='utf-8',
-                                    method='xml'))            
+                                    method='xml'))
             countnotinsets = 0
             if self.isGood(res):
                 countnotinsets = int(format(
                                         res.find('photos').attrib['total']))
                 logging.debug('Photos not in sets on flickr: {!s}'
                               .format(countnotinsets))
-    
+
             # Print total stats counters
             niceprint('\n  Initial Found Files:[{!s:>6s}]\n'
                       '          - Bad Files:[{!s:>6s}] = [{!s:>6s}] \n'
-                      '          Please note some Bad files may no longer exist!\n'
+                      '          Note: some Bad files may no longer exist!\n'
                       'Photos count:\n'
                       '                Local:[{!s:>6s}] \n'
                       '               Flickr:[{!s:>6s}] \n'
