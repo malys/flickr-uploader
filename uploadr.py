@@ -489,12 +489,12 @@ def retry(attempts=3, waittime=5, randtime=False):
                 logging.warning('Function:[{!s}] Waiting:[{!s}] Rnd:[{!s}]'
                                 .format(f.__name__, waittime, randtime))
                 if randtime:
-                    rtime.sleep(random.randrange(1,
+                    rtime.sleep(random.randrange(0,
                                                  (waittime+1)
-                                                 if waittime >= 1
-                                                 else 2))
+                                                 if waittime >= 0
+                                                 else 1))
                 else:
-                    rtime.sleep(waittime)
+                    rtime.sleep(waittime if waittime >= 0 else 0)
             logging.warning('___Retry f():[{!s}] arg[{!s}]={!s} Raising ERROR!'
                             .format(f.__name__, i, a))
             raise error
