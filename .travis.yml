@@ -136,5 +136,6 @@ deploy:
   provider: heroku
   api_key: $HEROKU_API_KEY
   #app: uploadr-showcase
-  #on:
-  #  repo: oPromessa/flickr-upload
+  on:
+    branch: paralell-createSets
+    #repo: oPromessa/flickr-uploadr
