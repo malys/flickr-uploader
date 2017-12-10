@@ -543,7 +543,7 @@ DB_PATH = eval(config.get('Config', 'DB_PATH'))
 try:
     TOKEN_CACHE = eval(config.get('Config', 'TOKEN_CACHE'))
 # CODING: Should extend this control to other parameters (Enhancement #7)
-except (ConfigParser.NoOptionError, ConfigParser.NoOptionError), err:
+except (ConfigParser.NoOptionError, ConfigParser.NoOptionError) as err:
     sys.stderr.write('[{!s}]:[{!s}][WARNING ]:[uploadr] ({!s}) TOKEN_CACHE '
                      'not defined or incorrect on INI file: [{!s}]. '
                      'Assuming default value [{!s}].\n'
@@ -2406,7 +2406,7 @@ class Uploadr:
             cur.execute('INSERT INTO sets (set_id, name, primary_photo_id) '
                         'VALUES (?,?,?)',
                         (setId, setName, primaryPhotoId))
-        except lite.Error, e:
+        except lite.Error as e:
             reportError(Caught=True,
                 CaughtPrefix='+++ DB',
                 CaughtCode='092',
@@ -2417,7 +2417,7 @@ class Uploadr:
         try:
             cur.execute('UPDATE files SET set_id = ? WHERE files_id = ?',
                         (setId, primaryPhotoId))
-        except lite.Error, e:
+        except lite.Error as e:
             reportError(Caught=True,
                 CaughtPrefix='+++ DB',
                 CaughtCode='093',
@@ -2609,7 +2609,7 @@ class Uploadr:
                         cur.execute('UPDATE files SET set_id = ? '
                                     'WHERE files_id = ?', (setId, file[0]))
                         con.commit()
-                    except lite.Error, e:
+                    except lite.Error as e:
                         reportError(Caught=True,
                                     CaughtPrefix='+++ DB',
                                     CaughtCode='109',
@@ -2656,7 +2656,7 @@ class Uploadr:
                     cur.execute('UPDATE files SET set_id = ? '
                                 'WHERE files_id = ?', (setId, file[0]))
                     con.commit()
-                except lite.Error, e:
+                except lite.Error as e:
                     reportError(Caught=True,
                                 CaughtPrefix='+++ DB',
                                 CaughtCode='110',
@@ -2669,7 +2669,7 @@ class Uploadr:
                             exceptMsg=ex,
                             NicePrint=True,
                             exceptSysInfo=True)
-        except lite.Error, e:
+        except lite.Error as e:
             reportError(Caught=True,
                         CaughtPrefix='+++ DB',
                         CaughtCode='120',
@@ -2848,7 +2848,7 @@ class Uploadr:
             # Closing DB connection
             if con is not None:
                 con.close()
-        except lite.Error, e:
+        except lite.Error as e:
             reportError(Caught=True,
                        CaughtPrefix='+++ DB',
                        CaughtCode='145',
@@ -2905,7 +2905,7 @@ class Uploadr:
             # Closing DB connection
             if con is not None:
                 con.close()
-        except lite.Error, e:
+        except lite.Error as e:
             reportError(Caught=True,
                         CaughtPrefix='+++ DB',
                         CaughtCode='148',
@@ -3913,7 +3913,7 @@ if __name__ == "__main__":
     f = open(LOCK_PATH, 'w')
     try:
         fcntl.lockf(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except IOError, e:
+    except IOError as e:
         if e.errno == errno.EAGAIN:
             sys.stderr.write('[{!s}] Script already running.\n'
                              .format(
