@@ -131,12 +131,10 @@ after_script:
   - sqlite3 flickrdb 'SELECT sets.set_id, sets.name, count(*) FROM sets, files WHERE sets.set_id = files.set_id GROUP BY 1, 2;'
   - sqlite3 flickrdb 'SELECT sets.set_id, sets.name, files_id, path FROM sets, files WHERE sets.set_id = files.set_id ORDER BY sets.set_id, path;'
 
-
+# Deploy to Heroku ------------------------------------------------------------
 deploy:
   provider: heroku
-  api_key:
-    secure: $HEROKU_API_KEY
+  api_key: $HEROKU_API_KEY
   #app: uploadr-showcase
   #on:
   #  repo: oPromessa/flickr-upload
-
