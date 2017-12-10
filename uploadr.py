@@ -156,7 +156,10 @@
 # Import section
 #
 # Check if it is still required
-import httplib
+try:
+    import httplib as httplib # Python 2
+except ImportError:
+    import http.client as httplib # Python 3
 import sys
 import argparse
 import mimetypes
