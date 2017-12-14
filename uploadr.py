@@ -937,8 +937,8 @@ class Uploadr:
     # If available, obtains the flicrapi Cached Token from local file.
     #
     # Returns
-    #   true: if global token is defined and allows flicrk 'delete' operation
-    #   false: if global token is not defined or flicrk 'delete' is not allowed
+    #   True: if global token is defined and allows flicrk 'delete' operation
+    #   False: if global token is not defined or flicrk 'delete' is not allowed
     #
     def checkToken(self):
         """ checkToken
@@ -1452,8 +1452,8 @@ class Uploadr:
     # isFileIgnored
     #
     # Check if a filename is within the list of EXCLUDED_FOLDERS. Returns:
-    #   true = if filename's folder is within one of the EXCLUDED_FOLDERS
-    #   false = if filename's folder not on one of the EXCLUDED_FOLDERS
+    #   True = if filename's folder is within one of the EXCLUDED_FOLDERS
+    #   False = if filename's folder not on one of the EXCLUDED_FOLDERS
     #
     def isFileIgnored(self, filename):
         """ isFileIgnored
@@ -2751,7 +2751,7 @@ class Uploadr:
                           .format(primaryPhotoId,
                                   StrUnicodeOut(setName)))
                 
-                return false
+                return False
 
         except:
             reportError(Caught=True,
