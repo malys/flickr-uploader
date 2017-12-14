@@ -68,8 +68,8 @@ before_script:
   - pwd
 #  - ls -laR
   - cp tests/uploadr.ini .
-# Attention to the use of the version number on the path. Do I still need it?
-#  - cp tests/uploadr.ini /home/travis/virtualenv/python2.7.14/bin/uploadr.ini
+# cp uploadr.ini to python/bin folder (use python version) to run pytest --doctest-modules 
+  - cp tests/uploadr.ini /home/travis/virtualenv/python2.7.14/bin/uploadr.ini
   - grep FILES_DIR uploadr.ini
 #  - cat uploadr.ini
   - echo "INSERT INTO oauth_tokens ( api_key, lookup_key, oauth_token, oauth_token_secret, access_level, fullname, username, user_nsid) VALUES ( '"$api_key"', '', '"$oauth_token"', '"$oauth_token_secret"', 'delete', '"$fullname"', '"$username"', '"$user_nsid"');" | sqlite3 token/oauth-tokens.sqlite
