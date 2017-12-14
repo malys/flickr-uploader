@@ -214,7 +214,7 @@ class UPLDRConstants:
     TimeFormat = '%Y.%m.%d %H:%M:%S'
     # For future use...
     # UTF = 'utf-8'
-    Version = '2.6.1'
+    Version = '2.6.3'
     # Identify the execution Run of this process
     Run = eval(time.strftime('int("%j")+int("%H")*100+int("%M")'))
 
@@ -543,7 +543,7 @@ DB_PATH = eval(config.get('Config', 'DB_PATH'))
 try:
     TOKEN_CACHE = eval(config.get('Config', 'TOKEN_CACHE'))
 # CODING: Should extend this control to other parameters (Enhancement #7)
-except (ConfigParser.NoOptionError, ConfigParser.NoOptionError), err:
+except (ConfigParser.NoOptionError, ConfigParser.NoOptionError) as err:
     sys.stderr.write('[{!s}]:[{!s}][WARNING ]:[uploadr] ({!s}) TOKEN_CACHE '
                      'not defined or incorrect on INI file: [{!s}]. '
                      'Assuming default value [{!s}].\n'
@@ -937,8 +937,8 @@ class Uploadr:
     # If available, obtains the flicrapi Cached Token from local file.
     #
     # Returns
-    #   true: if global token is defined and allows flicrk 'delete' operation
-    #   false: if global token is not defined or flicrk 'delete' is not allowed
+    #   True: if global token is defined and allows flicrk 'delete' operation
+    #   False: if global token is not defined or flicrk 'delete' is not allowed
     #
     def checkToken(self):
         """ checkToken
@@ -1452,8 +1452,8 @@ class Uploadr:
     # isFileIgnored
     #
     # Check if a filename is within the list of EXCLUDED_FOLDERS. Returns:
-    #   true = if filename's folder is within one of the EXCLUDED_FOLDERS
-    #   false = if filename's folder not on one of the EXCLUDED_FOLDERS
+    #   True = if filename's folder is within one of the EXCLUDED_FOLDERS
+    #   False = if filename's folder not on one of the EXCLUDED_FOLDERS
     #
     def isFileIgnored(self, filename):
         """ isFileIgnored
@@ -1713,15 +1713,15 @@ class Uploadr:
                                                                file,
                                                                file_checksum,
                                                                setName)
-            niceprint('is_photo_already_uploaded:[{!s}] '
-                      'count:[{!s}] pic:[{!s}] '
-                      'row is None == [{!s}]'
-                      .format(isLoaded, isCount, isfile_id, row is None))
+            logging.warning('is_photo_already_uploaded:[{!s}] '
+                            'count:[{!s}] pic:[{!s}] '
+                            'row is None == [{!s}]'
+                            .format(isLoaded, isCount, isfile_id, row is None))
             if isLoaded and row is None:
                 # Insert into DB files
-                niceprint('ALREADY LOADED. '
-                          'DO NOT PERFORM ANYTHING ELSE. '
-                          'ROW IS NONE... UPDATING DATABASE')
+                logging.warning('ALREADY LOADED. '
+                                'DO NOT PERFORM ANYTHING ELSE. '
+                                'ROW IS NONE... UPDATING DATABASE')
                 dbInsertIntoFiles(lock, isfile_id, file,
                                   file_checksum, last_modified)
 
@@ -1734,6 +1734,12 @@ class Uploadr:
                               .format(StrUnicodeOut(file)))
                     niceprint('On Album:[{!s}]...'
                               .format(StrUnicodeOut(setName)))
+
+                logging.warning('Uploading file:[{!s}]... '
+                                'On Album:[{!s}]...'
+                                .format(StrUnicodeOut(file),
+                                        StrUnicodeOut(setName)))
+
                 # CODING focus this try and not cover so much code!
                 try:
                     if args.title:  # Replace
@@ -2406,7 +2412,7 @@ class Uploadr:
             cur.execute('INSERT INTO sets (set_id, name, primary_photo_id) '
                         'VALUES (?,?,?)',
                         (setId, setName, primaryPhotoId))
-        except lite.Error, e:
+        except lite.Error as e:
             reportError(Caught=True,
                 CaughtPrefix='+++ DB',
                 CaughtCode='092',
@@ -2417,7 +2423,7 @@ class Uploadr:
         try:
             cur.execute('UPDATE files SET set_id = ? WHERE files_id = ?',
                         (setId, primaryPhotoId))
-        except lite.Error, e:
+        except lite.Error as e:
             reportError(Caught=True,
                 CaughtPrefix='+++ DB',
                 CaughtCode='093',
@@ -2609,7 +2615,7 @@ class Uploadr:
                         cur.execute('UPDATE files SET set_id = ? '
                                     'WHERE files_id = ?', (setId, file[0]))
                         con.commit()
-                    except lite.Error, e:
+                    except lite.Error as e:
                         reportError(Caught=True,
                                     CaughtPrefix='+++ DB',
                                     CaughtCode='109',
@@ -2656,7 +2662,7 @@ class Uploadr:
                     cur.execute('UPDATE files SET set_id = ? '
                                 'WHERE files_id = ?', (setId, file[0]))
                     con.commit()
-                except lite.Error, e:
+                except lite.Error as e:
                     reportError(Caught=True,
                                 CaughtPrefix='+++ DB',
                                 CaughtCode='110',
@@ -2669,7 +2675,7 @@ class Uploadr:
                             exceptMsg=ex,
                             NicePrint=True,
                             exceptSysInfo=True)
-        except lite.Error, e:
+        except lite.Error as e:
             reportError(Caught=True,
                         CaughtPrefix='+++ DB',
                         CaughtCode='120',
@@ -2737,13 +2743,15 @@ class Uploadr:
                           'and local file.'
                           .format(primaryPhotoId,
                                   StrUnicodeOut(setName)))
-                logging.warning(
+                logging.error(
                           'Primary photo [{!s}] for Set [{!s}] '
-                          'does not exist on Flickr'
+                          'does not exist on Flickr. '
                           'Probably deleted from Flickr but still on local db '
                           'and local file.'
-                          .format(StrUnicodeOut(setName),
-                                  primaryPhotoId))
+                          .format(primaryPhotoId,
+                                  StrUnicodeOut(setName)))
+                
+                return False
 
         except:
             reportError(Caught=True,
@@ -2765,18 +2773,21 @@ class Uploadr:
                 return createResp.find('photoset').attrib['id']
             else:
                 logging.warning('createResp: ')
-                logging.warning(xml.etree.ElementTree.tostring(
-                                                    createResp,
-                                                    encoding='utf-8',
-                                                    method='xml'))
-                reportError(exceptUse=False,
-                            exceptCode=createResp['code']
-                                       if 'code' in createResp
-                                       else createResp,
-                            exceptMsg=createResp['message']
-                                      if 'message' in createResp
-                                      else createResp,
-                            NicePrint=True)
+                if createResp is None:
+                    logging.warning('None')
+                else:
+                    logging.warning(xml.etree.ElementTree.tostring(
+                                                        createResp,
+                                                        encoding='utf-8',
+                                                        method='xml'))
+                    reportError(exceptUse=False,
+                                exceptCode=createResp['code']
+                                           if 'code' in createResp
+                                           else createResp,
+                                exceptMsg=createResp['message']
+                                          if 'message' in createResp
+                                          else createResp,
+                                NicePrint=True)
 
         return False
 
@@ -2848,7 +2859,7 @@ class Uploadr:
             # Closing DB connection
             if con is not None:
                 con.close()
-        except lite.Error, e:
+        except lite.Error as e:
             reportError(Caught=True,
                        CaughtPrefix='+++ DB',
                        CaughtCode='145',
@@ -2905,7 +2916,7 @@ class Uploadr:
             # Closing DB connection
             if con is not None:
                 con.close()
-        except lite.Error, e:
+        except lite.Error as e:
             reportError(Caught=True,
                         CaughtPrefix='+++ DB',
                         CaughtCode='148',
@@ -3913,7 +3924,7 @@ if __name__ == "__main__":
     f = open(LOCK_PATH, 'w')
     try:
         fcntl.lockf(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except IOError, e:
+    except IOError as e:
         if e.errno == errno.EAGAIN:
             sys.stderr.write('[{!s}] Script already running.\n'
                              .format(
