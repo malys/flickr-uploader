@@ -214,7 +214,7 @@ class UPLDRConstants:
     TimeFormat = '%Y.%m.%d %H:%M:%S'
     # For future use...
     # UTF = 'utf-8'
-    Version = '2.6.1'
+    Version = '2.6.3'
     # Identify the execution Run of this process
     Run = eval(time.strftime('int("%j")+int("%H")*100+int("%M")'))
 
@@ -1713,15 +1713,15 @@ class Uploadr:
                                                                file,
                                                                file_checksum,
                                                                setName)
-            niceprint('is_photo_already_uploaded:[{!s}] '
-                      'count:[{!s}] pic:[{!s}] '
-                      'row is None == [{!s}]'
-                      .format(isLoaded, isCount, isfile_id, row is None))
+            logging.warning('is_photo_already_uploaded:[{!s}] '
+                            'count:[{!s}] pic:[{!s}] '
+                            'row is None == [{!s}]'
+                            .format(isLoaded, isCount, isfile_id, row is None))
             if isLoaded and row is None:
                 # Insert into DB files
-                niceprint('ALREADY LOADED. '
-                          'DO NOT PERFORM ANYTHING ELSE. '
-                          'ROW IS NONE... UPDATING DATABASE')
+                logging.warning('ALREADY LOADED. '
+                                'DO NOT PERFORM ANYTHING ELSE. '
+                                'ROW IS NONE... UPDATING DATABASE')
                 dbInsertIntoFiles(lock, isfile_id, file,
                                   file_checksum, last_modified)
 
@@ -1734,6 +1734,12 @@ class Uploadr:
                               .format(StrUnicodeOut(file)))
                     niceprint('On Album:[{!s}]...'
                               .format(StrUnicodeOut(setName)))
+
+                logging.warning('Uploading file:[{!s}]... '
+                                'On Album:[{!s}]...'
+                                .format(StrUnicodeOut(file),
+                                        StrUnicodeOut(setName)))
+
                 # CODING focus this try and not cover so much code!
                 try:
                     if args.title:  # Replace
@@ -2737,13 +2743,15 @@ class Uploadr:
                           'and local file.'
                           .format(primaryPhotoId,
                                   StrUnicodeOut(setName)))
-                logging.warning(
+                logging.error(
                           'Primary photo [{!s}] for Set [{!s}] '
-                          'does not exist on Flickr'
+                          'does not exist on Flickr. '
                           'Probably deleted from Flickr but still on local db '
                           'and local file.'
-                          .format(StrUnicodeOut(setName),
-                                  primaryPhotoId))
+                          .format(primaryPhotoId,
+                                  StrUnicodeOut(setName)))
+                
+                return false
 
         except:
             reportError(Caught=True,
@@ -2765,18 +2773,21 @@ class Uploadr:
                 return createResp.find('photoset').attrib['id']
             else:
                 logging.warning('createResp: ')
-                logging.warning(xml.etree.ElementTree.tostring(
-                                                    createResp,
-                                                    encoding='utf-8',
-                                                    method='xml'))
-                reportError(exceptUse=False,
-                            exceptCode=createResp['code']
-                                       if 'code' in createResp
-                                       else createResp,
-                            exceptMsg=createResp['message']
-                                      if 'message' in createResp
-                                      else createResp,
-                            NicePrint=True)
+                if createResp is None:
+                    logging.WARNING('None')
+                else:
+                    logging.warning(xml.etree.ElementTree.tostring(
+                                                        createResp,
+                                                        encoding='utf-8',
+                                                        method='xml'))
+                    reportError(exceptUse=False,
+                                exceptCode=createResp['code']
+                                           if 'code' in createResp
+                                           else createResp,
+                                exceptMsg=createResp['message']
+                                          if 'message' in createResp
+                                          else createResp,
+                                NicePrint=True)
 
         return False
 
