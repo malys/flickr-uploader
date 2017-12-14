@@ -2774,7 +2774,7 @@ class Uploadr:
             else:
                 logging.warning('createResp: ')
                 if createResp is None:
-                    logging.WARNING('None')
+                    logging.warning('None')
                 else:
                     logging.warning(xml.etree.ElementTree.tostring(
                                                         createResp,
