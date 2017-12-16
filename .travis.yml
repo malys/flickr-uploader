@@ -66,10 +66,12 @@ env:
 # Use environment secure variable for private settings
 before_script:
   - pwd
+  - pythonVersion=`python -V 2>&1 | cut -d\  -f2`
+  - echo $pythonVersion
 #  - ls -laR
   - cp tests/uploadr.ini .
 # cp uploadr.ini to python/bin folder (use python version) to run pytest --doctest-modules 
-  - cp tests/uploadr.ini /home/travis/virtualenv/python2.7.14/bin/uploadr.ini
+  - cp tests/uploadr.ini /home/travis/virtualenv/python$pythonVersion/bin/uploadr.ini
   - grep FILES_DIR uploadr.ini
 #  - cat uploadr.ini
   - echo "INSERT INTO oauth_tokens ( api_key, lookup_key, oauth_token, oauth_token_secret, access_level, fullname, username, user_nsid) VALUES ( '"$api_key"', '', '"$oauth_token"', '"$oauth_token_secret"', 'delete', '"$fullname"', '"$username"', '"$user_nsid"');" | sqlite3 token/oauth-tokens.sqlite
@@ -138,5 +140,5 @@ deploy:
   api_key: $HEROKU_API_KEY
   #app: uploadr-showcase
   on:
-    branch: parallel-createSets
+    branch: do-not-load-duplicates
     #repo: oPromessa/flickr-uploadr

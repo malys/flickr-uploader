@@ -11,6 +11,7 @@
     Some giberish. Please ignore!
     -----------------------------
     Area for my personal notes on on-going work! Please ignore!
+    * Ensure return fail handling via exception; via <err code xml> to be removed
     * Correct the logging/messaging a bit...
       niceprint
       niceprint with verbose
@@ -26,16 +27,11 @@
       INFO: relevant output of variables
       DEBUG: entering and existing functions
 
-    * +++#121: Caught exception in addFiletoSet occurred 6 in 5200 times.
-    * Error 181 occurs in multiprocessing mode! under TravisCI! Strange!
-       * Changed to retry with random delay in-between paralell function calls
     * CHANGE -S OPTION TO SET IF ONE SHOULD SEARCH PRIOR TO LOADING...As it may
       take a long time! Need to check.
     * Test deleted file from local which is also deleted from flickr
     * In multiprocessing mode photo.search seems to fail
-    * on deleteFile... else for errors!
     * Change code to insert on database prior to upload and then update result
-    * Search and eliminate: # CODING check line above and remove next line
     * Protect all DB access( single processing or multiprocessing) with:
       And even more:
         try:
@@ -2298,7 +2294,7 @@ class Uploadr:
     #
     # When EXCLUDED_FOLDERS defintion changes. You can run the -g
     # or --remove-ignored option in order to remove files previously loaded
-    # files from
+    # files from flickr
     #
     def deleteFile(self, file, cur):
         """ deleteFile
@@ -2314,15 +2310,19 @@ class Uploadr:
             niceprint('Dry Run Deleting file:[{!s}]'
                       .format(StrUnicodeOut(file[1])))
             return True
+        
+        @retry(attempts=2, waittime=2, randtime=False)
+        def R_photos_delete(kwargs):
+            return nuflickr.photos.delete(**kwargs)        
 
-        niceprint('Deleting file:[{!s}]'
-                  .format(StrUnicodeOut(file[1])))
+        niceprint('Deleting file:[{!s}]'.format(StrUnicodeOut(file[1])))
 
         success = False
 
         try:
-            deleteResp = nuflickr.photos.delete(
-                                        photo_id=str(file[0]))
+            deleteResp = None
+            deleteResp = R_photos_delete(dict(photo_id=str(file[0])))
+
             logging.info('Output for {!s}:'.format('deleteResp'))
             logging.info(xml.etree.ElementTree.tostring(
                                     deleteResp,
@@ -2347,40 +2347,51 @@ class Uploadr:
                 niceprint("Successful deletion.")
                 success = True
             else:
+                reportError(Caught=True,
+                            CaughtPrefix='xxx',
+                            CaughtCode='089',
+                            CaughtMsg='Failed delete photo (deleteFile)',
+                            NicePrint=True)                    
                 # CODING: Change this to deleteResp
                 # Detect error #1 via exception format(ex.code) == '1'
-                # or via analysis of XML reply?
-# <?xml version="1.0" encoding="utf-8" ?>
-# <rsp stat="fail">
-#   <err code="1" msg="Photo "123" not found (invalid ID)" />
-# </rsp>
-                if (deleteResp['code'] == 1):
-                    # File already removed from Flicker
-                    try:
-                        cur.execute("DELETE FROM files WHERE files_id = ?",
-                                    (file[0],))
-                    except lite.Error as e:
-                        reportError(Caught=True,
-                                    CaughtPrefix='+++ DB',
-                                    CaughtCode='090',
-                                    CaughtMsg='Error: DELETE FROM files:[{!s}]'
-                                              .format(e.args[0]),
-                                    NicePrint=True)
-                else:
-                    reportError(exceptUse=False,
-                                exceptCode=deleteResp['code']
-                                           if 'code' in deleteResp
-                                           else deleteResp,
-                                exceptMsg=deleteResp['message']
-                                          if 'message' in deleteResp
-                                          else deleteResp,
+                # or via analysis of XML reply? Confirmed: via except
+                # <?xml version="1.0" encoding="utf-8" ?>
+                # <rsp stat="fail">
+                #   <err code="1" msg="Photo "123" not found (invalid ID)" />
+                # </rsp>
+        except flickrapi.exceptions.FlickrError as ex:
+            reportError(Caught=True,
+                        CaughtPrefix='+++',
+                        CaughtCode='090',
+                        CaughtMsg='Flickrapi exception on photos.delete',
+                        exceptUse=True,
+                        exceptCode=ex.code,
+                        exceptMsg=ex,
+                        NicePrint=True)            
+            # Error: 1: File already removed from Flickr
+            if (ex.code == 1):
+                try:
+                    cur.execute("DELETE FROM files WHERE files_id = ?",
+                                (file[0],))
+                except lite.Error as e:
+                    reportError(Caught=True,
+                                CaughtPrefix='+++ DB',
+                                CaughtCode='091',
+                                CaughtMsg='Error: DELETE FROM files:[{!s}]'
+                                          .format(e.args[0]),
                                 NicePrint=True)
+            else:                
+                reportError(Caught=True,
+                            CaughtPrefix='xxx',
+                            CaughtCode='092',
+                            CaughtMsg='Failed delete photo (deleteFile)',
+                            NicePrint=True)                            
         except:
             # If you get 'attempt to write a readonly database', set 'admin'
             # as owner of the DB file (fickerdb) and 'users' as group
             reportError(Caught=True,
                         CaughtPrefix='+++',
-                        CaughtCode='091',
+                        CaughtCode='093',
                         CaughtMsg='Caught exception in deleteFile',
                         exceptSysInfo=True)
 
@@ -2415,7 +2426,7 @@ class Uploadr:
         except lite.Error as e:
             reportError(Caught=True,
                 CaughtPrefix='+++ DB',
-                CaughtCode='092',
+                CaughtCode='094',
                 CaughtMsg='DB error on INSERT: [{!s}]'
                           .format(e.args[0]),
                 NicePrint=True)
@@ -2426,7 +2437,7 @@ class Uploadr:
         except lite.Error as e:
             reportError(Caught=True,
                 CaughtPrefix='+++ DB',
-                CaughtCode='093',
+                CaughtCode='095',
                 CaughtMsg='DB error on UPDATE: [{!s}]'.format(e.args[0]),
                 NicePrint=True)
 
@@ -2568,7 +2579,7 @@ class Uploadr:
             addPhotoResp = R_photosets_addPhoto(dict(photoset_id=str(setId),
                                                      photo_id=str(file[0])))
 
-            logging.info('addPhotoResp: ')
+            logging.info('Output for addPhotoResp:')
             logging.info(xml.etree.ElementTree.tostring(
                                                 addPhotoResp,
                                                 encoding='utf-8',
@@ -2585,53 +2596,23 @@ class Uploadr:
                 except lite.Error as e:
                     reportError(Caught=True,
                                 CaughtPrefix='+++ DB',
-                                CaughtCode='095',
+                                CaughtCode='096',
                                 CaughtMsg='DB error on UPDATE files: [{!s}]'
                                           .format(e.args[0]),
                                 NicePrint=True)
-            # CODING how to handle return error code from flickr...
-            # via <err code> or via exception?
-# <?xml version="1.0" encoding="utf-8" ?>
-# <rsp stat="fail">
-#   <err code="1" msg="Photoset not found" />
-# </rsp>
             else:
-                if (addPhotoResp.find('err').attrib['code'] == 1):
-                    niceprint('(VIA RETURN FAIL) '
-                              'Photoset not found, creating new set...')
-                    if FULL_SET_NAME:
-                        setName = os.path.relpath(os.path.dirname(file[1]),
-                                                  unicode(FILES_DIR, 'utf-8'))
-                    else:
-                        head, setName = os.path.split(os.path.dirname(file[1]))
+                reportError(Caught=True,
+                            CaughtPrefix='xxx',
+                            CaughtCode='097',
+                            CaughtMsg='Failed add photo to set (addFiletoSet)',
+                            NicePrint=True)
 
-                    self.createSet(setName, file[0], cur, con)
-                elif (addPhotoResp.find('err').attrib['code'] == 3):
-                    try:
-                        niceprint('(VIA RETURN FAIL) '
-                                  'Photo already in set... updating DB')
-                        niceprint('[{!s}] ... updating DB'
-                                  .format(addPhotoResp['message']))
-                        cur.execute('UPDATE files SET set_id = ? '
-                                    'WHERE files_id = ?', (setId, file[0]))
-                        con.commit()
-                    except lite.Error as e:
-                        reportError(Caught=True,
-                                    CaughtPrefix='+++ DB',
-                                    CaughtCode='109',
-                                    CaughtMsg='DB error on UPDATE SET: [{!s}]'
-                                              .format(e.args[0]),
-                                    NicePrint=True)
-                else:
-                    reportError(exceptUse=False,
-                                exceptCode=addPhotoResp['code']
-                                           if 'code' in addPhotoResp
-                                           else addPhotoResp,
-                                exceptMsg=addPhotoResp['message']
-                                          if 'message' in addPhotoResp
-                                          else addPhotoResp,
-                                NicePrint=True)
-
+            # CODING how to handle return error code from flickr via flickrapi?
+            # via <err code> or via exception? Confirmed: via exception!
+            # <?xml version="1.0" encoding="utf-8" ?>
+            # <rsp stat="fail">
+            #   <err code="1" msg="Photoset not found" />
+            # </rsp>
         except flickrapi.exceptions.FlickrError as ex:
             reportError(Caught=True,
                         CaughtPrefix='+++',
@@ -2643,8 +2624,7 @@ class Uploadr:
                         NicePrint=True)
             # Error: 1: Photoset not found
             if (ex.code == 1):
-                niceprint('(VIA EXCEPTION) '
-                          'Photoset not found, creating new set...')
+                niceprint('Photoset not found, creating new set...')
                 if FULL_SET_NAME:
                     setName = os.path.relpath(os.path.dirname(file[1]),
                                               unicode(FILES_DIR, 'utf-8'))
@@ -2655,8 +2635,7 @@ class Uploadr:
             # Error: 3: Photo Already in set
             elif (ex.code == 3):
                 try:
-                    niceprint('(VIA EXCEPTION) '
-                              'Photo already in set... updating DB'
+                    niceprint('Photo already in set... updating DB'
                               'set_id=[{!s}] photo_id=[{!s}]'
                               .format(setId, file[0]))
                     cur.execute('UPDATE files SET set_id = ? '
@@ -2670,11 +2649,11 @@ class Uploadr:
                                           .format(e.args[0]),
                                 NicePrint=True)
             else:
-                reportError(exceptUse=True,
-                            exceptCode=ex.code,
-                            exceptMsg=ex,
-                            NicePrint=True,
-                            exceptSysInfo=True)
+                reportError(Caught=True,
+                            CaughtPrefix='xxx',
+                            CaughtCode='111',
+                            CaughtMsg='Failed add photo to set (addFiletoSet)',
+                            NicePrint=True)
         except lite.Error as e:
             reportError(Caught=True,
                         CaughtPrefix='+++ DB',
@@ -2750,7 +2729,7 @@ class Uploadr:
                           'and local file.'
                           .format(primaryPhotoId,
                                   StrUnicodeOut(setName)))
-                
+
                 return False
 
         except:
@@ -3283,6 +3262,8 @@ set0 = sets.find('photosets').findall('photoset')[0]
 
         logging.info('Is Already Uploaded:[checksum:{!s}]?'.format(xchecksum))
 
+        # CODING: Used with a big random waitime to avoid errors in
+        # multiprocessing mode.
         @retry(attempts=3, waittime=20, randtime=True)
         def R_photos_search(kwargs):
             return nuflickr.photos.search(**kwargs)

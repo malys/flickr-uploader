@@ -1,10 +1,10 @@
 # flickr-uploader
 ----------------
-by oPromessa, 2017, V2.5.10
+by oPromessa, 2017, V2.6.3
 
-## IMPORTANT NOTE: WORK IN PROGRESS...
-* Being updated to use sybrenstuvel's flickrapi and OAuth...
-* V2.4.1 would be good for use and testing.
+## IMPORTANT NOTE: (MOST OF THE WORK DONE). MORE IN PROGRESS...
+* Updated to use sybrenstuvel's flickrapi and OAuth...
+* V2.6.3 would be good for use and testing.
 
 ## Description
 --------------
@@ -17,6 +17,7 @@ local storage.
 -----------
 * Uploads both images and movies (JPG, PNG, GIF, AVI, MOV, 3GP files)
    * Personnaly I avoid PNG files which do not support EXIF info
+* Multiple loadings in parallel is available (check -p option)
 * Stores image information locally using a simple SQLite database
 * Creates "Sets" based on the folder name the media is in
   (getting existing sets from Flickr is managed also)
@@ -64,8 +65,8 @@ $ cd
 $ mkdir dev
 $ cd dev
 ```
-Download get-pip.py and extract here to run setup
-Make sure to use the --prefix parameter
+Download get-pip.py and extract to ~/dev to run setup
+*Make sure to use the --prefix parameter*
 ```bash
 $ python get-pip.py --prefix=~/apps/Python
 Collecting pip
@@ -80,8 +81,8 @@ Collecting wheel
 Installing collected packages: pip, setuptools, wheel
     Successfully installed pip setuptools wheel
 ```
-Download flickrapi-2.3.tar.gz and extract here to run setup
-Make sure to use the --prefix parameter
+Download flickrapi-2.3.tar.gz and extract to ~/dev to run setup
+*Make sure to use the --prefix parameter*
 ```bash
 $ python setup.py install --prefix=~/apps/Python
 python setup.py install --prefix=~/apps/Python
@@ -224,4 +225,5 @@ And enjoy!!!
 
 * Q: How to automate it with a Synology NAS ?
 * A: First you will need to run script at least one time in a ssh client to get the token file.
+     Refer to the "Task Scheduler (cron)" section above.
      Then with DSM 6.1, create an automate task, make it run once a day for example, and put this in the textbox without quotes "path_to_your_python_program path_to_your_script". For example, assuming you installed Python package from Synocommunity, command should look like "/usr/local/python/bin/python /volume1/script/flickr-uploader/uploadr.py".
