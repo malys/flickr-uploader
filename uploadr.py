@@ -152,7 +152,10 @@
 # Import section
 #
 # Check if it is still required
-import httplib
+try:
+    import httplib as httplib # Python 2
+except ImportError:
+    import http.client as httplib # Python 3
 import sys
 import argparse
 import mimetypes
@@ -165,6 +168,10 @@ import errno
 import subprocess
 import re
 import ConfigParser
+try:
+    import ConfigParser as ConfigParser # Python 2
+except ImportError:
+    import configparser as ConfigParser # Python 3
 import multiprocessing
 import flickrapi
 import xml
