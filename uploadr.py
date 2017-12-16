@@ -167,7 +167,6 @@ import fcntl
 import errno
 import subprocess
 import re
-import ConfigParser
 try:
     import ConfigParser as ConfigParser # Python 2
 except ImportError:
