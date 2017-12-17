@@ -281,6 +281,9 @@ def isThisStringUnicode(s):
 
     """
     # CODING: Python 2 and 3 compatibility
+    # CODING: On Python 3 shoudl always return False to return s
+    # in the example
+    #    s.encode('utf-8') if isThisStringUnicode(s) else s   
     if isinstance(s, unicode if sys.version_info < (3, ) else str):
         return True
     elif isinstance(s, str):

@@ -22,7 +22,7 @@ install:
   - pip install -r requirements.txt
 # Get deletr. For future use to delete all pics frmo Flickr prior to a run
   - wget https://github.com/oPromessa/flickr-deletr/archive/master.tar.gz -O flickr-deletr-master.tar.gz
-  - tar zxvf flickr-deletr-master.tar.gz
+#  - tar zxvf flickr-deletr-master.tar.gz
 # Get papertrail.com remote_syslog2
   - wget https://github.com/papertrail/remote_syslog2/releases/download/v0.19/remote_syslog_linux_i386.tar.gz -O remote_syslog_linux_i386.tar.gz
   - tar zxvf remote_syslog_linux_i386.tar.gz
