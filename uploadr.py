@@ -149,9 +149,15 @@
 """
 
 # ----------------------------------------------------------------------------
+# Import section for Python 2 and 3 compatible code
+# from __future__ import absolute_import, division, print_function, unicode_literals
+from __future__ import division    # This way: 3 / 2 == 1.5; 3 // 2 == 1
+
+# ----------------------------------------------------------------------------
 # Import section
 #
-# Check if it is still required
+# Check if it is still required httplib
+#     Only use is for exception httplib.HTTPException
 try:
     import httplib as httplib # Python 2
 except ImportError:
@@ -274,7 +280,8 @@ def isThisStringUnicode(s):
                                  else file))
 
     """
-    if isinstance(s, unicode):
+    # CODING: Python 2 and 3 compatibility
+    if isinstance(s, unicode if sys.version_info < (3, ) else str):
         return True
     elif isinstance(s, str):
         return False
@@ -563,7 +570,10 @@ TOKEN_PATH = eval(config.get('Config', 'TOKEN_PATH'))
 inEXCLUDED_FOLDERS = eval(config.get('Config', 'EXCLUDED_FOLDERS'))
 EXCLUDED_FOLDERS = []
 for folder in inEXCLUDED_FOLDERS:
-    EXCLUDED_FOLDERS.append(unicode(folder, 'utf-8'))
+    # CODING: Python 2 and 3 compatibility
+    EXCLUDED_FOLDERS.append(unicode(folder, 'utf-8')
+                            if sys.version_info < (3, )
+                            else str(folder))
     if LOGGING_LEVEL <= logging.INFO:
         sys.stderr.write('[{!s}]:[{!s}][INFO    ]:[uploadr] '
                          'folder from EXCLUDED_FOLDERS:[{!s}]\n'
@@ -1149,8 +1159,8 @@ class Uploadr:
                 nurunning = multiprocessing.Value('i', 0)
                 numutex = multiprocessing.Lock()
 
-                sz = (len(changedMedia) / int(args.processes)) \
-                     if ((len(changedMedia) / int(args.processes)) > 0) \
+                sz = (len(changedMedia) // int(args.processes)) \
+                     if ((len(changedMedia) // int(args.processes)) > 0) \
                      else 1
 
                 logging.debug('len(changedMedia):[{!s}] '
@@ -3320,7 +3330,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                                      encoding='utf-8',
                                                      method='xml'))
 
-        # Number of pics with pecified checksum
+        # Number of pics with specified checksum
         returnPhotoUploaded = int(searchIsUploaded
                                   .find('photos').attrib['total'])
 
