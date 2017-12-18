@@ -281,7 +281,7 @@ def isThisStringUnicode(s):
 
     """
     # CODING: Python 2 and 3 compatibility
-    # CODING: On Python 3 shoudl always return False to return s
+    # CODING: On Python 3 should always return False to return s
     # in the example
     #    s.encode('utf-8') if isThisStringUnicode(s) else s   
     if isinstance(s, unicode if sys.version_info < (3, ) else str):
@@ -545,9 +545,11 @@ if not INIFiles:
                                           'uploadr.ini')))
     sys.exit()
 if config.has_option('Config', 'FILES_DIR'):
-    FILES_DIR = eval(config.get('Config', 'FILES_DIR'))
+    FILES_DIR = unicode(eval(config.get('Config', 'FILES_DIR')), 'utf-8') \
+                if sys.version_info < (3, ) \
+                else str(eval(config.get('Config', 'FILES_DIR')))
 else:
-    FILES_DIR = ""
+    FILES_DIR = unicode('', 'utf-8') if sys.version_info < (3, ) else str('')
 FLICKR = eval(config.get('Config', 'FLICKR'))
 SLEEP_TIME = eval(config.get('Config', 'SLEEP_TIME'))
 DRIP_TIME = eval(config.get('Config', 'DRIP_TIME'))
@@ -1308,7 +1310,7 @@ class Uploadr:
                       .format(StrUnicodeOut(ext)))
 
             for dirpath, dirnames, filenames in os.walk(
-                                                unicode(FILES_DIR, 'utf-8'),
+                                                FILES_DIR,
                                                 followlinks=True):
                 if '.picasaoriginals' in dirnames:
                     dirnames.remove('.picasaoriginals')
@@ -1429,7 +1431,7 @@ class Uploadr:
 
         files = []
         for dirpath, dirnames, filenames in\
-                os.walk(unicode(FILES_DIR, 'utf-8'), followlinks=True):
+                os.walk(FILES_DIR, followlinks=True):
             for f in filenames:
                 filePath = os.path.join(dirpath, f)
                 if self.isFileIgnored(filePath):
@@ -1680,7 +1682,7 @@ class Uploadr:
 
         if FULL_SET_NAME:
             setName = os.path.relpath(os.path.dirname(file),
-                                      unicode(FILES_DIR, 'utf-8'))
+                                      FILES_DIR)
         else:
             head, setName = os.path.split(os.path.dirname(file))
 
@@ -2526,7 +2528,7 @@ class Uploadr:
                 if FULL_SET_NAME:
                     # row[1] = path for the file from table files
                     setName = os.path.relpath(os.path.dirname(row[1]),
-                                              unicode(FILES_DIR, 'utf-8'))
+                                              FILES_DIR)
                 else:
                     # row[1] = path for the file from table files
                     head, setName = os.path.split(os.path.dirname(row[1]))
@@ -2646,7 +2648,7 @@ class Uploadr:
                 niceprint('Photoset not found, creating new set...')
                 if FULL_SET_NAME:
                     setName = os.path.relpath(os.path.dirname(file[1]),
-                                              unicode(FILES_DIR, 'utf-8'))
+                                              FILES_DIR)
                 else:
                     head, setName = os.path.split(os.path.dirname(file[1]))
 
