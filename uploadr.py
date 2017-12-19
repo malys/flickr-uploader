@@ -543,7 +543,7 @@ if not INIFiles:
                              os.getpid(),
                              os.path.join(os.path.dirname(sys.argv[0]),
                                           'uploadr.ini')))
-    sys.exit()
+    sys.exit(2)
 if config.has_option('Config', 'FILES_DIR'):
     FILES_DIR = unicode(eval(config.get('Config', 'FILES_DIR')), 'utf-8') \
                 if sys.version_info < (3, ) \
@@ -898,19 +898,38 @@ class Uploadr:
         print(authorize_url)
 
         # Prompt for verifier code from the user
-        verifier = unicode(raw_input('Verifier code: '))
+        try: input = raw_input
+        except NameError: pass
+        # verifier = unicode(raw_input('Verifier code: '))
+        #if isinstance(s, unicode if sys.version_info < (3, ) else str):
+
+        verifier = unicode(input('Verifier code: ')) \
+                   if sys.version_info < (3, ) \
+                   else input('Verifier code: ')
 
         logging.warning('Verifier: {!s}'.format(verifier))
 
         # Trade the request token for an access token
-        print(nuflickr.get_access_token(verifier))
+        try:
+            nuflickr.get_access_token(verifier)
+        except flickrapi.exceptions.FlickrError as ex: 
+            reportError(Caught=True,
+                        CaughtPrefix='+++',
+                        CaughtCode='005',
+                        CaughtMsg='Flickrapi exception on get_access_token. '
+                                  'Exiting...',
+                        exceptUse=True,
+                        exceptCode=ex.code,
+                        exceptMsg=ex,
+                        NicePrint=True,
+                        exceptSysInfo=True)
+            sys.exit(2)
 
-        if LOGGING_LEVEL <= logging.WARNING:
-            logging.critical('{!s} with {!s} permissions: {!s}'.format(
-                                        'Check Authentication',
-                                        'delete',
-                                        nuflickr.token_valid(perms='delete')))
-            logging.critical('Token Cache: {!s}', nuflickr.token_cache.token)
+        niceprint('{!s} with {!s} permissions: {!s}'.format(
+                                    'Check Authentication',
+                                    'delete',
+                                    nuflickr.token_valid(perms='delete')))
+        # logging.critical('Token Cache: {!s}', nuflickr.token_cache.token)
 
     # -------------------------------------------------------------------------
     # getCachedToken
@@ -2869,7 +2888,7 @@ class Uploadr:
 
             if con is not None:
                 con.close()
-            sys.exit(1)
+            sys.exit(2)
         finally:
             niceprint('Completed database setup')
 
@@ -2925,7 +2944,7 @@ class Uploadr:
                         NicePrint=True)
             if con is not None:
                 con.close()
-            sys.exit(1)
+            sys.exit(2)
         finally:
             niceprint('Completed cleaning up badfiles table from the database')
 
@@ -4013,18 +4032,18 @@ if __name__ == "__main__":
         niceprint('Please configure the name of the folder [FILES_DIR] '
                   'in the INI file [normally uploadr.ini], '
                   'with media available to sync with Flickr.')
-        sys.exit()
+        sys.exit(2)
     else:
         if not os.path.isdir(FILES_DIR):
             niceprint('Please configure the name of an existant folder '
                       'in the INI file [normally uploadr.ini] '
                       'with media available to sync with Flickr.')
-            sys.exit()
+            sys.exit(2)
 
     if FLICKR["api_key"] == "" or FLICKR["secret"] == "":
         niceprint('Please enter an API key and secret in the configuration '
                   'script file, normaly uploadr.ini (see README).')
-        sys.exit()
+        sys.exit(2)
 
     # Instantiate class Uploadr
     logging.debug('Instantiating the Main class flick = Uploadr()')
