@@ -764,7 +764,7 @@ class Uploadr:
         if not mimetypes.types_map['.3gp'] == 'video/3gpp':
             reportError(Caught=True,
                         CaughtPrefix='xxx',
-                        CaughtCode='003',
+                        CaughtCode='001',
                         CaughtMsg='Not able to add mimetype'
                                   ' ''video/3gp''/''.3gp'' correctly',
                         NicePrint=True)
@@ -817,7 +817,7 @@ class Uploadr:
                 except:
                     reportError(Caught=True,
                                 CaughtPrefix='+++ ',
-                                CaughtCode='001',
+                                CaughtCode='002',
                                 CaughtMsg='Caught an exception lock.acquire',
                                 NicePrint=True,
                                 exceptSysInfo=True)
@@ -832,7 +832,7 @@ class Uploadr:
                 except:
                     reportError(Caught=True,
                                 CaughtPrefix='+++ ',
-                                CaughtCode='002',
+                                CaughtCode='003',
                                 CaughtMsg='Caught an exception lock.release',
                                 NicePrint=True,
                                 exceptSysInfo=True)
