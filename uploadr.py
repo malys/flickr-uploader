@@ -1475,16 +1475,16 @@ class Uploadr:
                     if (fileSize < FILE_MAX_SIZE):
                         files.append(
                             os.path.normpath(
-                                dirpath.encode('utf-8') +
-                                "/" +
-                                f.encode(' utf-8')).replace("'", "\'"))
+                                StrUnicodeOut(dirpath) +
+                                StrUnicodeOut("/") +
+                                StrUnicodeOut(f).replace("'", "\'")))
                     else:
                         niceprint('Skipping file due to '
                                   'size restriction: [{!s}]'.format(
                                         os.path.normpath(
-                                            dirpath.encode('utf-8') +
-                                            '/' +
-                                            f.encode('utf-8'))))
+                                            StrUnicodeOut(dirpath) +
+                                            StrUnicodeOut('/') +
+                                            StrUnicodeOut(f))))
         files.sort()
         if LOGGING_LEVEL <= logging.DEBUG:
             niceprint('Pretty Print Output for {!s}:'.format('files'))
