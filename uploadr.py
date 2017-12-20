@@ -11,6 +11,9 @@
     Some giberish. Please ignore!
     -----------------------------
     Area for my personal notes on on-going work! Please ignore!
+    * CODING: Should extend this control to other parameters (Enhancement #7)
+        Check error:  DuplicateSectionError or DuplicateOptionError.
+        Check also: api_key. KeyError(key)
     * Ensure return fail handling via exception; via <err code xml> to be removed
     * Correct the logging/messaging a bit...
       niceprint
@@ -283,9 +286,14 @@ def isThisStringUnicode(s):
     # CODING: Python 2 and 3 compatibility
     # CODING: On Python 3 should always return False to return s
     # in the example
-    #    s.encode('utf-8') if isThisStringUnicode(s) else s   
-    if isinstance(s, unicode if sys.version_info < (3, ) else str):
-        return True
+    #    s.encode('utf-8') if isThisStringUnicode(s) else s
+    if sys.version_info < (3, ):
+        if isinstance(s, unicode):
+            return True
+        elif isinstance(s, str):
+            return False
+        else:
+            return False
     elif isinstance(s, str):
         return False
     else:
