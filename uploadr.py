@@ -905,15 +905,10 @@ class Uploadr:
         authorize_url = nuflickr.auth_url(perms=u'delete')
         print(authorize_url)
 
-        # Prompt for verifier code from the user
-        try: input = raw_input
-        except NameError: pass
-        # verifier = unicode(raw_input('Verifier code: '))
-        #if isinstance(s, unicode if sys.version_info < (3, ) else str):
-
-        verifier = unicode(input('Verifier code: ')) \
+        # Prompt for verifier code from the user.
+        verifier = unicode(raw_input('Verifier code (NNN-NNN-NNN): ')) \
                    if sys.version_info < (3, ) \
-                   else input('Verifier code: ')
+                   else input('Verifier code (NNN-NNN-NNN): ')
 
         logging.warning('Verifier: {!s}'.format(verifier))
 
