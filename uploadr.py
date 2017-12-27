@@ -11,6 +11,9 @@
     Some giberish. Please ignore!
     -----------------------------
     Area for my personal notes on on-going work! Please ignore!
+    * On first authenticate... removedeletemedia seems to fail
+    * Python 3: on Removing media... row(1).decode...
+    * Python 3: check encode and decode...
     * CODING: Should extend this control to other parameters (Enhancement #7)
         Check error:  DuplicateSectionError or DuplicateOptionError.
         Check also: api_key. KeyError(key)
