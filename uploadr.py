@@ -767,7 +767,7 @@ class Uploadr:
         Gets FlickrAPI cached token, if available.
         Adds .3gp mimetime as video.
         """
-        
+
         # get self.token/nuflickr from Cache (getCachedToken)
         self.token = self.getCachedToken()
 
@@ -921,7 +921,7 @@ class Uploadr:
         # Trade the request token for an access token
         try:
             nuflickr.get_access_token(verifier)
-        except flickrapi.exceptions.FlickrError as ex: 
+        except flickrapi.exceptions.FlickrError as ex:
             reportError(Caught=True,
                         CaughtPrefix='+++',
                         CaughtCode='005',
@@ -1085,7 +1085,7 @@ class Uploadr:
                               .format(e.args[0]),
                     NicePrint=True)
                 if con is not None:
-                    con.close()                
+                    con.close()
                 return False
 
             count = 0
@@ -2372,10 +2372,10 @@ class Uploadr:
             niceprint('Dry Run Deleting file:[{!s}]'
                       .format(StrUnicodeOut(file[1])))
             return True
-        
+
         @retry(attempts=2, waittime=2, randtime=False)
         def R_photos_delete(kwargs):
-            return nuflickr.photos.delete(**kwargs)        
+            return nuflickr.photos.delete(**kwargs)
 
         niceprint('Deleting file:[{!s}]'.format(StrUnicodeOut(file[1])))
 
@@ -2413,7 +2413,7 @@ class Uploadr:
                             CaughtPrefix='xxx',
                             CaughtCode='089',
                             CaughtMsg='Failed delete photo (deleteFile)',
-                            NicePrint=True)                    
+                            NicePrint=True)
                 # CODING: Change this to deleteResp
                 # Detect error #1 via exception format(ex.code) == '1'
                 # or via analysis of XML reply? Confirmed: via except
@@ -2429,7 +2429,7 @@ class Uploadr:
                         exceptUse=True,
                         exceptCode=ex.code,
                         exceptMsg=ex,
-                        NicePrint=True)            
+                        NicePrint=True)
             # Error: 1: File already removed from Flickr
             if (ex.code == 1):
                 try:
@@ -2442,12 +2442,12 @@ class Uploadr:
                                 CaughtMsg='Error: DELETE FROM files:[{!s}]'
                                           .format(e.args[0]),
                                 NicePrint=True)
-            else:                
+            else:
                 reportError(Caught=True,
                             CaughtPrefix='xxx',
                             CaughtCode='092',
                             CaughtMsg='Failed delete photo (deleteFile)',
-                            NicePrint=True)                            
+                            NicePrint=True)
         except:
             # If you get 'attempt to write a readonly database', set 'admin'
             # as owner of the DB file (fickerdb) and 'users' as group
