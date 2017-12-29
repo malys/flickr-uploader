@@ -757,7 +757,6 @@ class Uploadr:
 
     # Flicrk connection authentication token
     token = None
-    perms = ""
 
     # -------------------------------------------------------------------------
     # class Uploadr __init__
@@ -765,8 +764,11 @@ class Uploadr:
     def __init__(self):
         """ class Uploadr __init__
 
-        get self.token from Cache (getCachedToken)
+        Gets FlickrAPI cached token, if available.
+        Adds .3gp mimetime as video.
         """
+        
+        # get self.token/nuflickr from Cache (getCachedToken)
         self.token = self.getCachedToken()
 
         # Add mimetype .3gp to allow detection of .3gp as video
@@ -892,11 +894,12 @@ class Uploadr:
     #
     def authenticate(self):
         """
-        Authenticate user so we can upload files
+        Authenticate user so we can upload files.
+        Assumes the cached token is not available or valid.
         """
         global nuflickr
 
-        # instantiate nuflickr for connection to flickr via flickrapi
+        # Instantiate nuflickr for connection to flickr via flickrapi
         nuflickr = flickrapi.FlickrAPI(FLICKR["api_key"],
                                        FLICKR["secret"],
                                        token_cache_location=TOKEN_CACHE)
@@ -940,8 +943,9 @@ class Uploadr:
     # -------------------------------------------------------------------------
     # getCachedToken
     #
-    # If available, obtains the flicrapi Cached Token from local file.
-    # Saves the token on the Class global variable "token"
+    # If available, obtains the flickrapi Cached Token from local file.
+    # Saves the token on the Class variable "token"
+    # Saves the token on the global variable nuflickr.
     #
     def getCachedToken(self):
         """
@@ -956,8 +960,7 @@ class Uploadr:
                                        token_cache_location=TOKEN_CACHE)
 
         try:
-            # CODING: If token is cached does it make sense to check
-            # if permissions are correct?
+            # Check if token permissions are correct.
             if nuflickr.token_valid(perms='delete'):
                 logging.info('Cached token obtained: {!s}'
                              .format(nuflickr.token_cache.token))
@@ -968,7 +971,7 @@ class Uploadr:
         except:
             reportError(Caught=True,
                         CaughtPrefix='+++',
-                        CaughtCode='009',
+                        CaughtCode='007',
                         CaughtMsg='Unexpected error in token_valid',
                         exceptSysInfo=True)
             raise
@@ -976,7 +979,7 @@ class Uploadr:
     # -------------------------------------------------------------------------
     # checkToken
     #
-    # If available, obtains the flicrapi Cached Token from local file.
+    # If available, obtains the flickrapi Cached Token from local file.
     #
     # Returns
     #   True: if global token is defined and allows flicrk 'delete' operation
@@ -991,16 +994,15 @@ class Uploadr:
         global nuflickr
 
         logging.warning('checkToken:(self.token is None):[{!s}]'
-                        .format(self.token is None))
+                        'checkToken:(nuflickr is None):[{!s}]'
+                        'checkToken:(nuflickr.token_cache.token is None):'
+                        '[{!s}]'
+                        .format(self.token is None,
+                                nuflickr is None,
+                                nuflickr.token_cache.token is None))
 
-        logging.warning('checkToken:(nuflickr is None):[{!s}]'
-                        .format(nuflickr is None))
-
-        logging.warning('checkToken:'
-                        '(nuflickr.token_cache.token is None):[{!s}]'
-                        .format(nuflickr.token_cache.token is None))
-
-        if (self.token is None):
+        # if (self.token is None):
+        if (nuflickr.token_cache.token is None):
             return False
         else:
             return True
@@ -1036,7 +1038,9 @@ class Uploadr:
                               .format(StrUnicodeOut(row[0]),
                                       StrUnicodeOut(row[1])))
                 # row[1] is photo_id
-                if (self.isFileIgnored(row[1].decode('utf-8'))):
+                if (self.isFileIgnored(row[1].decode('utf-8')
+                                       if isThisStringUnicode(row[1])
+                                       else row[1])):
                     self.deleteFile(row, cur)
 
         # Closing DB connection
@@ -1067,16 +1071,28 @@ class Uploadr:
         con.text_factory = str
 
         with con:
-            cur = con.cursor()
-            cur.execute("SELECT files_id, path FROM files")
-            rows = cur.fetchall()
-
-            niceprint('[{!s}] will be checked for Removal...'
-                      .format(str(len(rows))))
+            try:
+                cur = con.cursor()
+                cur.execute("SELECT files_id, path FROM files")
+                rows = cur.fetchall()
+                niceprint('[{!s}] will be checked for Removal...'
+                          .format(str(len(rows))))
+            except lite.Error as e:
+                reportError(Caught=True,
+                    CaughtPrefix='+++ DB',
+                    CaughtCode='008',
+                    CaughtMsg='DB error on SELECT: [{!s}]'
+                              .format(e.args[0]),
+                    NicePrint=True)
+                if con is not None:
+                    con.close()                
+                return False
 
             count = 0
             for row in rows:
-                if (not os.path.isfile(row[1].decode('utf-8'))):
+                if (not os.path.isfile(row[1].decode('utf-8')
+                                       if isThisStringUnicode(row[1])
+                                       else row[1])):
                     success = self.deleteFile(row, cur)
                     logging.warning('deleteFile result: {!s}'.format(success))
                     count = count + 1
@@ -3991,7 +4007,7 @@ if __name__ == "__main__":
     # when you change EXCLUDED_FOLDERS setting
     parser.add_argument('-g', '--remove-ignored', action='store_true',
                         help='Remove previously uploaded files, that are '
-                             'now being ignored due to change of the INI '
+                             'now being excluded due to change of the INI '
                              'file configuration EXCLUDED_FOLDERS')
     # used in printStat function
     parser.add_argument('-l', '--list-photos-not-in-set',
@@ -4064,10 +4080,11 @@ if __name__ == "__main__":
         # Will run in daemon mode every SLEEP_TIME seconds
         logging.warning('Will run in daemon mode every {!s} seconds'
                         .format(SLEEP_TIME))
+        logging.WARNING('Make sure you have previously authenticated!')
         flick.run()
     else:
         niceprint("Checking if token is available... if not will authenticate")
-        if not flick.checkToken():
+        if (not flick.checkToken()):
             flick.authenticate()
 
         flick.removeUselessSetsTable()

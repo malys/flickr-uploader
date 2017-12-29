@@ -39,6 +39,7 @@ env:
 # Set to -v for Verbose option of uploadr
     - VerboseVar=-v
     - BadFilesVar=-b
+    - ExcludedVar=-g
 # Tail $TAIL_LINES for when use Papertrail
   matrix:
 # TestScenario: Help, Delete DryRun, BadFiles, MultiProcessing, Remove, Replace, RemoveReplace
@@ -58,7 +59,8 @@ env:
     #- TestScenario=Replace UploadrOptions="$VerboseVar $BadFilesVar"
 # RemoveReplace
     - TestScenario=RemoveReplace UploadrOptions="$VerboseVar $BadFilesVar"
-
+# ExcludedFolders
+    - TestScenario=ExcludedFolders UploadrOptions="$VerboseVar $BadFilesVar $ExcludedVar"
 # =============================================================================
 # before_script
 # Get database token ready
@@ -108,6 +110,16 @@ script:
   
   - coverage combine
   - coverage report -m uploadr.py
+  - sleep 5
+
+# EXCLUDED RUN
+  - if [[ $TestScenario == ExcludedFolders ]]; then cp "./tests/uploadr_excluded.ini ./uploadr.ini"; fi
+  - if [[ $TestScenario == ExcludedFolders ]]; then coverage run -a --concurrency multiprocessing uploadr.py $VerboseVar $UploadrOptions >> /home/travis/build/oPromessa/flickr-uploader/nohup.log 2>> /home/travis/build/oPromessa/flickr-uploader/nohup.err; fi
+  - if [[ $TestScenario == ExcludedFolders ]]; then tail -10 /home/travis/build/oPromessa/flickr-uploader/nohup.log; fi
+  - if [[ $TestScenario == ExcludedFolders ]]; then tail -10 /home/travis/build/oPromessa/flickr-uploader/nohup.err; fi
+
+  - if [[ $TestScenario == ExcludedFolders ]]; then coverage combine; fi
+  - if [[ $TestScenario == ExcludedFolders ]]; then coverage report -m uploadr.py; fi
 
 # pytest --flakes (Code analysis) ---------------------------------------------
   - pytest -v --flakes
