@@ -80,7 +80,8 @@ before_script:
   - sqlite3 token/oauth-tokens.sqlite 'SELECT * FROM oauth_tokens;'
   - md5sum "./tests/Test Photo Library/Pics"/*
   - remote_syslog/remote_syslog -c ~/syslog2.yml
-  - echo Python Version: $TRAVIS_PYTHON_VERSION
+  - echo Travis Python Version
+  - echo ${TRAVIS_PYTHON_VERSION}
 
 # =============================================================================
 # run script for tests
