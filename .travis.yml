@@ -40,7 +40,8 @@ env:
     - VerboseVar=-v
     - BadFilesVar=-b
     - ExcludedVar=-g
-# Tail $TAIL_LINES for when use Papertrail
+# Tail $TAIL_LINES for output logging    
+    - TAIL_LINES=20
   matrix:
 # TestScenario: Help, Delete DryRun, BadFiles, MultiProcessing, Remove, Replace, RemoveReplace
 # Help
@@ -95,8 +96,8 @@ script:
 # First RUN -------------------------------------------------------------------
 #  - coverage run -a --concurrency multiprocessing uploadr.py $VerboseVar -p 2
   - coverage run -a --concurrency multiprocessing uploadr.py $VerboseVar $UploadrOptions > /home/travis/build/oPromessa/flickr-uploader/nohup.log 2> /home/travis/build/oPromessa/flickr-uploader/nohup.err
-  - tail -10 /home/travis/build/oPromessa/flickr-uploader/nohup.log
-  - tail -10 /home/travis/build/oPromessa/flickr-uploader/nohup.err
+  - tail -$TAIL_LINES /home/travis/build/oPromessa/flickr-uploader/nohup.log
+  - tail -$TAIL_LINES /home/travis/build/oPromessa/flickr-uploader/nohup.err
 
   - coverage combine
   - coverage report -m uploadr.py
@@ -107,8 +108,8 @@ script:
   - if [[ $TestScenario == RemoveReplace ]]; then rm "./tests/Test Photo Library/photo.jpg"; fi
   - if [[ $TestScenario == RemoveReplace ]]; then cp "./tests/Test Photo Library/ReplaceTest/file_35.jpg.ForReplace" "./tests/Test Photo Library/Pics/file_35.jpg"; fi
   - coverage run -a --concurrency multiprocessing uploadr.py $VerboseVar $UploadrOptions >> /home/travis/build/oPromessa/flickr-uploader/nohup.log 2>> /home/travis/build/oPromessa/flickr-uploader/nohup.err
-  - tail -10 /home/travis/build/oPromessa/flickr-uploader/nohup.log
-  - tail -10 /home/travis/build/oPromessa/flickr-uploader/nohup.err
+  - tail -$TAIL_LINES /home/travis/build/oPromessa/flickr-uploader/nohup.log
+  - tail -$TAIL_LINES /home/travis/build/oPromessa/flickr-uploader/nohup.err
 
   - coverage combine
   - coverage report -m uploadr.py
@@ -117,8 +118,8 @@ script:
 # EXCLUDED RUN
   - if [[ $TestScenario == ExcludedFolders ]]; then cp ./tests/uploadr_excluded.ini ./uploadr.ini; fi
   - if [[ $TestScenario == ExcludedFolders ]]; then coverage run -a --concurrency multiprocessing uploadr.py $VerboseVar $UploadrOptions >> /home/travis/build/oPromessa/flickr-uploader/nohup.log 2>> /home/travis/build/oPromessa/flickr-uploader/nohup.err; fi
-  - if [[ $TestScenario == ExcludedFolders ]]; then tail -10 /home/travis/build/oPromessa/flickr-uploader/nohup.log; fi
-  - if [[ $TestScenario == ExcludedFolders ]]; then tail -10 /home/travis/build/oPromessa/flickr-uploader/nohup.err; fi
+  - if [[ $TestScenario == ExcludedFolders ]]; then tail -$TAIL_LINES /home/travis/build/oPromessa/flickr-uploader/nohup.log; fi
+  - if [[ $TestScenario == ExcludedFolders ]]; then tail -$TAIL_LINES /home/travis/build/oPromessa/flickr-uploader/nohup.err; fi
 
   - if [[ $TestScenario == ExcludedFolders ]]; then coverage combine; fi
   - if [[ $TestScenario == ExcludedFolders ]]; then coverage report -m uploadr.py; fi
@@ -155,5 +156,6 @@ deploy:
   api_key: $HEROKU_API_KEY
   #app: uploadr-showcase
   on:
-    branch: do-not-load-duplicates
+    branch: master
+    #branch: do-not-load-duplicates
     #repo: oPromessa/flickr-uploadr

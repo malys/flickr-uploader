@@ -1040,7 +1040,9 @@ class Uploadr:
                 logging.debug('type(row[1]):[{!s}]'.format(type(row[1])))
                 # row[0] is photo_id
                 # row[1] is filename
-                if (self.isFileIgnored(row[1])):
+                if (self.isFileIgnored(unicode(row[1], 'utf-8')
+                                       if sys.version_info < (3, )
+                                       else str(row[1]))):
                     self.deleteFile(row, cur)
 
         # Closing DB connection
