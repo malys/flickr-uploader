@@ -53,13 +53,13 @@ env:
 # Badfiles
     #- TestScenario=BadFiles UploadrOptions="$VerboseVar $BadFilesVar"
 # Multiprocessing
-    - TestScenario=MultiProcessing UploadrOptions="$VerboseVar $BadFilesVar -p 5"
+    - TestScenario=MultiProcessing UploadrOptions="$VerboseVar $BadFilesVar -p 10"
 # Remove
     #- TestScenario=Remove UploadrOptions="$VerboseVar $BadFilesVar"
 # Replace
     #- TestScenario=Replace UploadrOptions="$VerboseVar $BadFilesVar"
 # RemoveReplace
-    - TestScenario=RemoveReplace UploadrOptions="$VerboseVar $BadFilesVar"
+    - TestScenario=RemoveReplace UploadrOptions="$VerboseVar $BadFilesVar -p 5"
 # ExcludedFolders
     - TestScenario=ExcludedFolders UploadrOptions="$VerboseVar $BadFilesVar $ExcludedVar"
 # =============================================================================
@@ -79,7 +79,7 @@ before_script:
 #  - cat uploadr.ini
   - echo "INSERT INTO oauth_tokens ( api_key, lookup_key, oauth_token, oauth_token_secret, access_level, fullname, username, user_nsid) VALUES ( '"$api_key"', '', '"$oauth_token"', '"$oauth_token_secret"', 'delete', '"$fullname"', '"$username"', '"$user_nsid"');" | sqlite3 token/oauth-tokens.sqlite
   - sqlite3 token/oauth-tokens.sqlite 'SELECT * FROM oauth_tokens;'
-  - md5sum "./tests/Test Photo Library"/*
+  - find "./tests/Test Photo Library" -type f -exec md5sum '{}' \;
   - remote_syslog/remote_syslog -c ~/syslog2.yml
   - echo Travis Python Version
   - echo ${TRAVIS_PYTHON_VERSION}
@@ -143,7 +143,7 @@ script:
 
 after_script:
 # MD5SUM Output for REFERENCE -------------------------------------------------
-  - if [[ $TestScenario == RemoveReplace ]]; then md5sum "./tests/Test Photo Library"/*; fi
+  - if [[ $TestScenario == RemoveReplace ]]; then find "./tests/Test Photo Library" -type f -exec md5sum '{}' \; ; fi
 
 # DB OUTPUT for REFERENCE -----------------------------------------------------
   - sqlite3 flickrdb "SELECT *, datetime( last_modified, 'unixepoch', 'localtime') FROM files;"
