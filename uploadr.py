@@ -12,6 +12,7 @@
     -----------------------------
     Area for my personal notes on on-going work! Please ignore!
     * On first authenticate... removedeletemedia seems to fail
+    * Test if it Re-upload or not pictures removed from flickr Web interface.
     * CODING: Should extend this control to other parameters (Enhancement #7)
         Check error:  DuplicateSectionError or DuplicateOptionError.
         Check also: api_key. KeyError(key)
@@ -85,7 +86,6 @@
       uploadr WILL not delete the files.
     * Would be nice to update ALL tags on replacePhoto and not only the
       mandatory checksum tag as FLICKR maintains the tags from the first load.
-    * Does not Re-upload pictures removed from flickr.
     * If local flickrdb is deleted it will re-upload entire local Library.
       It would be interesting to attempt to rebuild local database. With the
       exception of tags (would require use of exiftool) almost all other
