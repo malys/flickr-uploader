@@ -93,9 +93,9 @@ script:
 # DELETE RUN ------------------------------------------------------------------
 # !!!!!!!!!!!!!!!!!!!!!!!!!! CAREFULL !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # COMPATIBLE WITH PYTHON 2.7 ONLY
-  - if [[ $TRAVIS_PYTHON_VERSION == 2* -a $DeleteAllFromFlickr == 1 ]]; then cp flickr-deletr-master/tests/uploadr.ini flickr-deletr-master/uploadr.ini; fi
-  - if [[ $TRAVIS_PYTHON_VERSION == 2* -a $DeleteAllFromFlickr == 1 ]]; then cp token/oauth-tokens.sqlite flickr-deletr-master/token/oauth-tokens.sqlite; fi
-  - if [[ $TRAVIS_PYTHON_VERSION == 2* -a $DeleteAllFromFlickr == 1 ]]; then coverage run -a --concurrency multiprocessing ./flickr-deletr-master/delete.py; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 2* && $DeleteAllFromFlickr == 1 ]]; then cp flickr-deletr-master/tests/uploadr.ini flickr-deletr-master/uploadr.ini; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 2* && $DeleteAllFromFlickr == 1 ]]; then cp token/oauth-tokens.sqlite flickr-deletr-master/token/oauth-tokens.sqlite; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 2* && $DeleteAllFromFlickr == 1 ]]; then coverage run -a --concurrency multiprocessing ./flickr-deletr-master/delete.py; fi
 
 # First RUN -------------------------------------------------------------------
 #  - coverage run -a --concurrency multiprocessing uploadr.py $VerboseVar -p 2
