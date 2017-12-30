@@ -131,10 +131,13 @@ script:
 
 # pytest --flakes (Code analysis) ---------------------------------------------
 # FOR NOW WITH PYTHON 2.* Versions only. Will edit tests for PYTHON 3.* Versions
-  - if [[ $TRAVIS_PYTHON_VERSION == 2* ]]; then pytest -v --flakes; fi
+#  - if [[ $TRAVIS_PYTHON_VERSION == 2* ]]; then pytest -v --flakes; fi
+  - pytest -v --flakes
+
 # FOR NOW WITH PYTHON 2.* Versions only. Will edit tests for PYTHON 3.* Versions
 #  - pytest -v # or py.test for Python versions 3.5 and below
-  - if [[ $TRAVIS_PYTHON_VERSION == 2* ]]; then pytest --doctest-modules; fi # Attempt to run test_*.txt with doctest
+#  - if [[ $TRAVIS_PYTHON_VERSION == 2* ]]; then pytest --doctest-modules; fi # Attempt to run test_*.txt with doctest
+  - pytest --doctest-modules # Attempt to run test_*.txt with doctest
 
 # Deleted Pics Non existant on FLickr -----------------------------------------
 # For testing a local deleted file also not available in flickr

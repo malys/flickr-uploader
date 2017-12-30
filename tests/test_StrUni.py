@@ -4,12 +4,20 @@ import StrUni
 import time
 
 def test_Unicode():
-    for i in range(1,127):
+    for i in range(1,1000):
         assert StrUni.isThisStringUnicode(chr(i)) == False
-        assert StrUni.isThisStringUnicode(unicode(chr(i).decode('utf-8'))) == True
+        if sys.version_info < (3, ):
+            if i < 255:
+                assert StrUni.isThisStringUnicode(
+                                       unicode(chr(i).decode('utf-8'))) == True
+        else:
+            assert StrUni.isThisStringUnicode(chr(i)) == False
+            
         
 def test_RUN():
-    assert (1 <= eval(time.strftime('int("%j")+int("%H")*100+int("%M")')) <= 2725) == True
+    assert (1 <=
+            eval(time.strftime('int("%j")+int("%H")*100+int("%M")'))
+            <= 2725) == True
     # for j in range(1,366+1):
     #     for h in range(24):
     #         for m in range(60):

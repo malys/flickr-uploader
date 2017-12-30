@@ -1,3 +1,4 @@
+>>> import sys
 >>> import StrUni
 >>> StrUni.isThisStringUnicode(u'Something')
 True
@@ -14,9 +15,9 @@ False
 >>> a = unicode('hello')
 >>> StrUni.isThisStringUnicode(a)
 True
->>> b = unicode('Árvore'.decode('utf-8'))
+>>> b = u'Árvore'
 >>> print('a:[{!s}] b:[{!s}]'.format(StrUni.StrUnicodeOut(a), StrUni.StrUnicodeOut(b)))
 a:[hello] b:[Árvore]
->>> c = unicode('Árvore'.decode('utf-8'))
+>>> c = unicode('Árvore'.decode('utf-8')) if sys.version_info < (2, 7) else b
 >>> print('c:[{!s}]'.format(StrUni.StrUnicodeOut(c)))
 c:[Árvore]
