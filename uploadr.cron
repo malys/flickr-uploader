@@ -20,7 +20,8 @@ export PYTHONPATH=~/apps/Python/lib/python2.7/site-packages
 echo Start
 date +"[%F %T] Start ----"
 # Set parameters as appropriate to your system
-python2.7 $FOLDER/uploadr.py -v -b -p 10 >>$FOLDER/uploadr.out 2>&1 
+# python2.7 $FOLDER/uploadr.py -v -b -p 10 >>$FOLDER/uploadr.out 2>&1 
+python2.7 $FOLDER/uploadr.py -v -b -p 10 >>$FOLDER/uploadr.out 2>>$FOLDER/uploadr.err
 echo Result
 echo $?
 echo End
