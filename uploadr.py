@@ -30,7 +30,7 @@
       INFO: relevant output of variables
       DEBUG: entering and existing functions
 
-    * CHANGE -S OPTION TO SET IF ONE SHOULD SEARCH PRIOR TO LOADING...As it may
+    * CHANGE -s OPTION TO SET IF ONE SHOULD SEARCH PRIOR TO LOADING...As it may
       take a long time! Need to check. Maybe not!
     * Test deleted file from local which is also deleted from flickr
     * Change code to insert on database prior to upload and then update result
