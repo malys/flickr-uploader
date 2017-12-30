@@ -1037,10 +1037,10 @@ class Uploadr:
                               'isFileIgnored?'
                               .format(StrUnicodeOut(row[0]),
                                       StrUnicodeOut(row[1])))
-                # row[1] is photo_id
-                if (self.isFileIgnored(row[1].decode('utf-8')
-                                       if isThisStringUnicode(row[1])
-                                       else row[1])):
+                logging.debug('type(row[1]):[{!s}]'.format(type(row[1])))
+                # row[0] is photo_id
+                # row[1] is filename
+                if (self.isFileIgnored(row[1])):
                     self.deleteFile(row, cur)
 
         # Closing DB connection
@@ -1519,8 +1519,10 @@ class Uploadr:
         Returns True if a file is within an EXCLUDED_FOLDERS directory/folder
         """
         for excluded_dir in EXCLUDED_FOLDERS:
+            logging.debug('type(excluded_dir):[{!s}]'.type(excluded_dir))
             logging.debug('is excluded_dir unicode?[{!s}]'
                           .format(isThisStringUnicode(excluded_dir)))
+            logging.debug('type(filename):[{!s}]'.type(filename))
             logging.debug('is filename unicode?[{!s}]'
                           .format(isThisStringUnicode(filename)))
             logging.debug('is os.path.dirname(filename) unicode?[{!s}]'
