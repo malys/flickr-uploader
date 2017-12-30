@@ -1,5 +1,6 @@
 # content of test_StrUni.py
 
+import sys
 import StrUni
 import time
 
