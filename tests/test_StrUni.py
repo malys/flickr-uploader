@@ -6,9 +6,9 @@ import time
 
 def test_Unicode():
     for i in range(1,500):
-        assert StrUni.isThisStringUnicode(chr(i)) == False
         if sys.version_info < (3, ):
             if i < 127:
+                assert StrUni.isThisStringUnicode(chr(i)) == False
                 assert StrUni.isThisStringUnicode(
                                        unicode(chr(i).decode('utf-8'))) == True
         else:
