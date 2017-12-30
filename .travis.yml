@@ -42,12 +42,15 @@ env:
     - ExcludedVar=-g
 # Tail $TAIL_LINES for output logging    
     - TAIL_LINES=20
+# Sleep time between first and second run    
+    - WAIT_TIME=2
+# Delete !!!!!!!!!!!!!!!!!!! CAREFULL !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# To ensure an empty Flckr database. Set DeleteAllFromFlickr=1. 0 otherwise.
+    - DeleteAllFromFlickr=0
   matrix:
 # TestScenario: Help, Delete DryRun, BadFiles, MultiProcessing, Remove, Replace, RemoveReplace
 # Help
-    - TestScenario=Help UploadrOptions="$VerboseVar --help"
-# Delete !!!!!!!!!!!!!!!!!!! CAREFULL !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    #- TestScenario=Delete UploadrOptions="$VerboseVar"
+    - TestScenario=Help UploadrOptions="$VerboseVar --help" DeleteAllFromFlickr=1
 # DryRun
     #- TestScenario=DryRun UploadrOptions="$VerboseVar -n"
 # Badfiles
@@ -61,7 +64,7 @@ env:
 # RemoveReplace
     - TestScenario=RemoveReplace UploadrOptions="$VerboseVar $BadFilesVar -p 5"
 # ExcludedFolders
-    - TestScenario=ExcludedFolders UploadrOptions="$VerboseVar $BadFilesVar $ExcludedVar"
+    - TestScenario=ExcludedFolders UploadrOptions="$VerboseVar $BadFilesVar $ExcludedVar -p 5"
 # =============================================================================
 # before_script
 # Get database token ready
@@ -89,9 +92,9 @@ before_script:
 script:
 # DELETE RUN ------------------------------------------------------------------
 # !!!!!!!!!!!!!!!!!!!!!!!!!! CAREFULL !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  - if [[ $TestScenario == Delete ]]; then cp flickr-deletr-master/tests/uploadr.ini flickr-deletr-master/uploadr.ini; fi
-  - if [[ $TestScenario == Delete ]]; then cp token/oauth-tokens.sqlite flickr-deletr-master/token/oauth-tokens.sqlite; fi
-  - if [[ $TestScenario == Delete ]]; then coverage run -a --concurrency multiprocessing ./flickr-deletr-master/delete.py; fi
+  - if [[ $DeleteAllFromFlickr == 1 ]]; then cp flickr-deletr-master/tests/uploadr.ini flickr-deletr-master/uploadr.ini; fi
+  - if [[ $DeleteAllFromFlickr == 1 ]]; then cp token/oauth-tokens.sqlite flickr-deletr-master/token/oauth-tokens.sqlite; fi
+  - if [[ $DeleteAllFromFlickr == 1 ]]; then coverage run -a --concurrency multiprocessing ./flickr-deletr-master/delete.py; fi
 
 # First RUN -------------------------------------------------------------------
 #  - coverage run -a --concurrency multiprocessing uploadr.py $VerboseVar -p 2
@@ -101,7 +104,7 @@ script:
 
   - coverage combine
   - coverage report -m uploadr.py
-  - sleep 5
+  - sleep $WAIT_TIME
 
 # Second RUN: Remove, Replace, RemoveReplace, ExcludedFolders -----------------
   - if [[ $TestScenario == Remove ]]; then rm "./tests/Test Photo Library/photo.jpg"; fi
@@ -110,12 +113,10 @@ script:
   - if [[ $TestScenario == Replace ]]; then cp "./tests/Test Photo Library/ReplaceTest/file_35.jpg.ForReplace" "./tests/Test Photo Library/Pics/file_35.jpg"; fi
   - if [[ $TestScenario == Replace ]]; then cp "./tests/Test Photo Library/ReplaceTest/file_34_Substituição.ForReplace" "./tests/Test Photo Library/Pics/file_34_Substituição.jpg"; fi
 
-  - if [[ $TestScenario == RemoveReplace ]]; then source ./tests/.RemoveReplace.sh RemoveReplace; fi
-  
-  #- if [[ $TestScenario == RemoveReplace ]]; then rm "./tests/Test Photo Library/photo.jpg"; fi
-  #- if [[ $TestScenario == RemoveReplace ]]; then rm "./tests/Test Photo Library/photo_Excepção.jpg"; fi
-  #- if [[ $TestScenario == RemoveReplace ]]; then cp "./tests/Test Photo Library/ReplaceTest/file_34_Substituição.ForReplace" "./tests/Test Photo Library/Pics.Replaced/file_34_Substituição.jpg"; fi
-  #- if [[ $TestScenario == RemoveReplace ]]; then cp "./tests/Test Photo Library/ReplaceTest/file_35.jpg.ForReplace" "./tests/Test Photo Library/Pics.Replaced/file_35.jpg"; fi
+  - if [[ $TestScenario == RemoveReplace ]]; then rm "./tests/Test Photo Library/photo.jpg"; fi
+  - if [[ $TestScenario == RemoveReplace ]]; then rm "./tests/Test Photo Library/photo_Excepção.jpg"; fi
+  - if [[ $TestScenario == RemoveReplace ]]; then cp "./tests/Test Photo Library/ReplaceTest/file_34_Substituição.ForReplace" "./tests/Test Photo Library/Pics.Replaced/file_34_Substituição.jpg"; fi
+  - if [[ $TestScenario == RemoveReplace ]]; then cp "./tests/Test Photo Library/ReplaceTest/file_35.jpg.ForReplace" "./tests/Test Photo Library/Pics.Replaced/file_35.jpg"; fi
 
   - if [[ $TestScenario == ExcludedFolders ]]; then cp ./tests/uploadr_excluded.ini ./uploadr.ini; fi
   
@@ -125,7 +126,7 @@ script:
 
   - coverage combine
   - coverage report -m uploadr.py
-  - sleep 5
+  - sleep WAIT_TIME
 
 # pytest --flakes (Code analysis) ---------------------------------------------
 # FOR NOW WITH PYTHON 2.* Versions only. Will edit tests for PYTHON 3.* Versions
@@ -136,7 +137,7 @@ script:
 
 # Deleted Pics Non existant on FLickr -----------------------------------------
 # For testing a local deleted file also not available in flickr
-# - sleep 10
+# - sleep $WAIT_TIME
 # Test Deleted file
 #  - coverage run -a uploadr.py $VerboseVar -bl 10
 #  - coverage report -m uploadr.py
