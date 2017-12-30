@@ -12,13 +12,10 @@
     -----------------------------
     Area for my personal notes on on-going work! Please ignore!
     * On first authenticate... removedeletemedia seems to fail
-    * Python 3: on Removing media... row(1).decode... Change to unicode. Test!
-    * Python 3: check encode and decode...
     * CODING: Should extend this control to other parameters (Enhancement #7)
         Check error:  DuplicateSectionError or DuplicateOptionError.
         Check also: api_key. KeyError(key)
-    * Ensure return fail handling via exception; via <err code xml> to be removed
-    * Correct the logging/messaging a bit...
+    * CODING Logging/Messaging groundrules:
       niceprint
       niceprint with verbose
 
@@ -34,9 +31,8 @@
       DEBUG: entering and existing functions
 
     * CHANGE -S OPTION TO SET IF ONE SHOULD SEARCH PRIOR TO LOADING...As it may
-      take a long time! Need to check.
+      take a long time! Need to check. Maybe not!
     * Test deleted file from local which is also deleted from flickr
-    * In multiprocessing mode photo.search seems to fail
     * Change code to insert on database prior to upload and then update result
     * Protect all DB access( single processing or multiprocessing) with:
       And even more:
@@ -4042,7 +4038,8 @@ if __name__ == "__main__":
     # finds duplicated images (based on checksum, titlename, setName) in Flickr
     parser.add_argument('-s', '--search-for-duplicates', action='store_true',
                         help='Lists duplicated files: same checksum, '
-                             'same title, list SetName (if different). ')
+                             'same title, list SetName (if different). '
+                             'Not operational at this time.')
 
     # parse arguments
     args = parser.parse_args()

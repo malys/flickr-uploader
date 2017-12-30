@@ -1,6 +1,6 @@
 # flickr-uploader
 ----------------
-by oPromessa, 2017, V2.6.3
+by oPromessa, 2017, V2.6.4
 
 ## IMPORTANT NOTE: (MOST OF THE WORK DONE). MORE IN PROGRESS...
 * Updated to use sybrenstuvel's flickrapi and OAuth...
