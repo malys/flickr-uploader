@@ -79,7 +79,7 @@ before_script:
 #  - cat uploadr.ini
   - echo "INSERT INTO oauth_tokens ( api_key, lookup_key, oauth_token, oauth_token_secret, access_level, fullname, username, user_nsid) VALUES ( '"$api_key"', '', '"$oauth_token"', '"$oauth_token_secret"', 'delete', '"$fullname"', '"$username"', '"$user_nsid"');" | sqlite3 token/oauth-tokens.sqlite
   - sqlite3 token/oauth-tokens.sqlite 'SELECT * FROM oauth_tokens;'
-  - md5sum "./tests/Test Photo Library/Pics"/*
+  - md5sum "./tests/Test Photo Library"/*
   - remote_syslog/remote_syslog -c ~/syslog2.yml
   - echo Travis Python Version
   - echo ${TRAVIS_PYTHON_VERSION}
@@ -112,8 +112,9 @@ script:
 
   - if [[ $TestScenario == RemoveReplace ]]; then rm "./tests/Test Photo Library/photo.jpg"; fi
   - if [[ $TestScenario == RemoveReplace ]]; then rm "./tests/Test Photo Library/photo_Excepção.jpg"; fi
-  - if [[ $TestScenario == RemoveReplace ]]; then cp "./tests/Test Photo Library/ReplaceTest/file_34_Substituição.ForReplace" "./tests/Test Photo Library/Pics/file_34_Substituição.jpg"; fi
-  - if [[ $TestScenario == RemoveReplace ]]; then cp "./tests/Test Photo Library/ReplaceTest/file_35.jpg.ForReplace" "./tests/Test Photo Library/Pics/file_35.jpg"; fi
+  - if [[ $TestScenario == RemoveReplace ]]; then rm "./tests/Test Photo Library/photo_Excep"*; fi  
+  - if [[ $TestScenario == RemoveReplace ]]; then cp "./tests/Test Photo Library/ReplaceTest/file_34_Substituição.ForReplace" "./tests/Test Photo Library/Pics.Replaced/file_34_Substituição.jpg"; fi
+  - if [[ $TestScenario == RemoveReplace ]]; then cp "./tests/Test Photo Library/ReplaceTest/file_35.jpg.ForReplace" "./tests/Test Photo Library/Pics.Replaced/file_35.jpg"; fi
 
   - if [[ $TestScenario == ExcludedFolders ]]; then cp ./tests/uploadr_excluded.ini ./uploadr.ini; fi
   
@@ -142,7 +143,7 @@ script:
 
 after_script:
 # MD5SUM Output for REFERENCE -------------------------------------------------
-  - if [[ $TestScenario == RemoveReplace ]]; then md5sum "./tests/Test Photo Library/Pics"/*; fi
+  - if [[ $TestScenario == RemoveReplace ]]; then md5sum "./tests/Test Photo Library"/*; fi
 
 # DB OUTPUT for REFERENCE -----------------------------------------------------
   - sqlite3 flickrdb "SELECT *, datetime( last_modified, 'unixepoch', 'localtime') FROM files;"
