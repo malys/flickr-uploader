@@ -110,11 +110,12 @@ script:
   - if [[ $TestScenario == Replace ]]; then cp "./tests/Test Photo Library/ReplaceTest/file_35.jpg.ForReplace" "./tests/Test Photo Library/Pics/file_35.jpg"; fi
   - if [[ $TestScenario == Replace ]]; then cp "./tests/Test Photo Library/ReplaceTest/file_34_Substituição.ForReplace" "./tests/Test Photo Library/Pics/file_34_Substituição.jpg"; fi
 
-  - if [[ $TestScenario == RemoveReplace ]]; then rm "./tests/Test Photo Library/photo.jpg"; fi
-  - if [[ $TestScenario == RemoveReplace ]]; then rm "./tests/Test Photo Library/photo_Excepção.jpg"; fi
-  - if [[ $TestScenario == RemoveReplace ]]; then rm "./tests/Test Photo Library/photo_Excep"*; fi  
-  - if [[ $TestScenario == RemoveReplace ]]; then cp "./tests/Test Photo Library/ReplaceTest/file_34_Substituição.ForReplace" "./tests/Test Photo Library/Pics.Replaced/file_34_Substituição.jpg"; fi
-  - if [[ $TestScenario == RemoveReplace ]]; then cp "./tests/Test Photo Library/ReplaceTest/file_35.jpg.ForReplace" "./tests/Test Photo Library/Pics.Replaced/file_35.jpg"; fi
+  - if [[ $TestScenario == RemoveReplace ]]; then source ./.RemoveReplace.sh RemoveReplace; fi
+  
+  #- if [[ $TestScenario == RemoveReplace ]]; then rm "./tests/Test Photo Library/photo.jpg"; fi
+  #- if [[ $TestScenario == RemoveReplace ]]; then rm "./tests/Test Photo Library/photo_Excepção.jpg"; fi
+  #- if [[ $TestScenario == RemoveReplace ]]; then cp "./tests/Test Photo Library/ReplaceTest/file_34_Substituição.ForReplace" "./tests/Test Photo Library/Pics.Replaced/file_34_Substituição.jpg"; fi
+  #- if [[ $TestScenario == RemoveReplace ]]; then cp "./tests/Test Photo Library/ReplaceTest/file_35.jpg.ForReplace" "./tests/Test Photo Library/Pics.Replaced/file_35.jpg"; fi
 
   - if [[ $TestScenario == ExcludedFolders ]]; then cp ./tests/uploadr_excluded.ini ./uploadr.ini; fi
   
