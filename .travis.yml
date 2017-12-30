@@ -115,7 +115,7 @@ script:
   - sleep 5
 
 # EXCLUDED RUN
-  - if [[ $TestScenario == ExcludedFolders ]]; then cp "./tests/uploadr_excluded.ini ./uploadr.ini"; fi
+  - if [[ $TestScenario == ExcludedFolders ]]; then cp ./tests/uploadr_excluded.ini ./uploadr.ini; fi
   - if [[ $TestScenario == ExcludedFolders ]]; then coverage run -a --concurrency multiprocessing uploadr.py $VerboseVar $UploadrOptions >> /home/travis/build/oPromessa/flickr-uploader/nohup.log 2>> /home/travis/build/oPromessa/flickr-uploader/nohup.err; fi
   - if [[ $TestScenario == ExcludedFolders ]]; then tail -10 /home/travis/build/oPromessa/flickr-uploader/nohup.log; fi
   - if [[ $TestScenario == ExcludedFolders ]]; then tail -10 /home/travis/build/oPromessa/flickr-uploader/nohup.err; fi

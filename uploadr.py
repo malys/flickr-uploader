@@ -1519,10 +1519,12 @@ class Uploadr:
         Returns True if a file is within an EXCLUDED_FOLDERS directory/folder
         """
         for excluded_dir in EXCLUDED_FOLDERS:
-            logging.debug('type(excluded_dir):[{!s}]'.type(excluded_dir))
+            logging.debug('type(excluded_dir):[{!s}]'
+                          .format(type(excluded_dir)))
             logging.debug('is excluded_dir unicode?[{!s}]'
                           .format(isThisStringUnicode(excluded_dir)))
-            logging.debug('type(filename):[{!s}]'.type(filename))
+            logging.debug('type(filename):[{!s}]'
+                          .format(type(filename)))
             logging.debug('is filename unicode?[{!s}]'
                           .format(isThisStringUnicode(filename)))
             logging.debug('is os.path.dirname(filename) unicode?[{!s}]'
