@@ -3386,12 +3386,9 @@ set0 = sets.find('photosets').findall('photoset')[0]
             # if checksum,                             Count=0  THEN NOT EXISTS
             returnIsPhotoUploaded = False
         elif returnPhotoUploaded >= 1:
-            reportError(Caught=True,
-                        CaughtPrefix='+++',
-                        CaughtCode='190',
-                        CaughtMsg='Found [{!s}] images with checksum:[{!s}]'
-                                  .format(returnPhotoUploaded, xchecksum),
-                        NicePrint=True)
+            logging.warning('+++#190: '
+                            'Found [{!s}] images with checksum:[{!s}]'
+                            .format(returnPhotoUploaded, xchecksum))
             # Get title from filepath as filename without extension
             # NOTE: not compatible with use of the -i option
             xpath_filename, xtitle_filename = os.path.split(xfile)
