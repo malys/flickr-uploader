@@ -422,24 +422,6 @@ def reportError(Caught=False, CaughtPrefix='', CaughtCode=0, CaughtMsg='',
 # retries execution of a function
 #
 def retry(attempts=3, waittime=5, randtime=False):
-          # errorlistdict=[{'Caught':False, 'CaughtPrefix':'',
-          #                 'CaughtCode':0, 'CaughtMsg':'',
-          #                 'NicePrint':False,
-          #                 'exceptUse':False,
-          #                 'exceptCode':0, 'exceptMsg':'',
-          #                 'exceptSysInfo':''},
-          #                {'Caught':False, 'CaughtPrefix':'',
-          #                 'CaughtCode':0, 'CaughtMsg':'',
-          #                 'NicePrint':False,
-          #                 'exceptUse':False,
-          #                 'exceptCode':0, 'exceptMsg':'',
-          #                 'exceptSysInfo':''},
-          #                {'Caught':False, 'CaughtPrefix':'',
-          #                 'CaughtCode':0, 'CaughtMsg':'',
-          #                 'NicePrint':False,
-          #                 'exceptUse':False,
-          #                 'exceptCode':0, 'exceptMsg':'',
-          #                 'exceptSysInfo':''}):
     """
     Catches exceptions while running a supplied function
     Re-runs it for times while sleeping X seconds in-between
@@ -467,45 +449,25 @@ def retry(attempts=3, waittime=5, randtime=False):
                                         .format(f.__name__, i, a))
             for i in range(attempts if attempts > 0 else 1):
                 try:
-                    logging.warning('Function:[{!s}] Attempt:[{!s}] of [{!s}]'
+                    logging.warning('___Function:[{!s}] Attempt:[{!s}] of [{!s}]'
                                     .format(f.__name__, i+1, attempts))
                     return f(*args, **kwargs)
                 except Exception as e:
-                    logging.error('Error code A: [{!s}]'.format(e))
+                    logging.error('___Error code A: [{!s}]'.format(e))
                     error = e
                 except flickrapi.exceptions.FlickrError as ex:
                     logging.error('___Retry: Error code B: [{!s}]'.format(ex))
-                    # reportError(Caught=errordict[0]['Caught'],
-                    #             CaughtPrefix=errordict[0]['CaughtPrefix'],
-                    #             CaughtCode=errordict[0]['CaughtCode'],
-                    #             CaughtMsg=errordict[0]['CaughtMsg'],
-                    #             exceptUse=errordict[0]['exceptUse'],
-                    #             exceptCode=ex.code,
-                    #             exceptMsg=ex,
-                    #             NicePrint=errordict[0]['NicePrint'],
-                    #             exceptSysInfo=errordict[0]['exceptSysInfo'])
                 except lite.Error as e:
                     logging.error('___Retry: Error code C: [{!s}]'.format(e))
                     error = e
-                    # reportError(Caught=errordict[1]['Caught'],
-                    #             CaughtPrefix=errordict[1]['CaughtPrefix'],
-                    #             CaughtCode=errordict[1]['CaughtCode'],
-                    #             CaughtMsg='{!s}: [{!s}]'
-                    #                       .format(errordict[1]['CaughtMsg'],
-                    #                               e.args[0]),
-                    #             NicePrint=errordict[1]['NicePrint'])
                     # Release the lock on error.
                     # CODING: Check how to handle this particular scenario.
                     # flick.useDBLock(nulockDB, False)
                     # self.useDBLock( lock, True)
                 except:
                     logging.error('___Retry: Error Caught D: Catchall')
-                    # reportError(Caught=True,
-                    #             CaughtPrefix='+++',
-                    #             CaughtCode='992',
-                    #             CaughtMsg='Caught exception in XXXX',
-                    #             exceptSysInfo=True)
-                logging.warning('Function:[{!s}] Waiting:[{!s}] Rnd:[{!s}]'
+
+                logging.warning('___Function:[{!s}] Waiting:[{!s}] Rnd:[{!s}]'
                                 .format(f.__name__, waittime, randtime))
                 if randtime:
                     rtime.sleep(random.randrange(0,
@@ -514,8 +476,10 @@ def retry(attempts=3, waittime=5, randtime=False):
                                                  else 1))
                 else:
                     rtime.sleep(waittime if waittime >= 0 else 0)
-            logging.warning('___Retry f():[{!s}] arg[{!s}]={!s} Raising ERROR!'
-                            .format(f.__name__, i, a))
+            logging.warning('___Retry f():[{!s}] '
+                            'Max:[{!s}] Delay:[{!s}] Rnd[{!s}]: Raising ERROR!'
+                            .format(f.__name__, attempts,
+                                    waittime, randtime))                    
             raise error
         return new_wrapper
     return wrapper_fn
