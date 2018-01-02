@@ -161,9 +161,9 @@ from __future__ import division    # This way: 3 / 2 == 1.5; 3 // 2 == 1
 # Check if it is still required httplib
 #     Only use is for exception httplib.HTTPException
 try:
-    import httplib as httplib # Python 2
+    import httplib as httplib      # Python 2
 except ImportError:
-    import http.client as httplib # Python 3
+    import http.client as httplib  # Python 3
 import sys
 import argparse
 import mimetypes
@@ -176,9 +176,9 @@ import errno
 import subprocess
 import re
 try:
-    import ConfigParser as ConfigParser # Python 2
+    import ConfigParser as ConfigParser  # Python 2
 except ImportError:
-    import configparser as ConfigParser # Python 3
+    import configparser as ConfigParser  # Python 3
 import multiprocessing
 import flickrapi
 import xml
@@ -224,7 +224,7 @@ class UPLDRConstants:
     TimeFormat = '%Y.%m.%d %H:%M:%S'
     # For future use...
     # UTF = 'utf-8'
-    Version = '2.6.4'
+    Version = '2.6.6'
     # Identify the execution Run of this process
     Run = eval(time.strftime('int("%j")+int("%H")*100+int("%M")'))
 
@@ -1737,7 +1737,6 @@ class Uploadr:
             file_checksum = self.md5Checksum(file)
 
             # Check if file is already loaded
-            # CODING: In multiprocessing mode photo.search seems to fail
             isLoaded, isCount, isfile_id = self.is_photo_already_uploaded(
                                                                file,
                                                                file_checksum,
@@ -1812,23 +1811,23 @@ class Uploadr:
                     # Perform actual upload of the file
                     search_result = None
                     for x in range(0, MAX_UPLOAD_ATTEMPTS):
-                        try:
-                            # Reset variables on each iteration
-                            search_result = None
-                            uploadResp = None
-                            logging.warning('Uploading/Reuploading '
-                                            '[{!s}/{!s} attempts].'
-                                            .format(x, MAX_UPLOAD_ATTEMPTS))
-                            if (x > 0):
-                                niceprint('Reuploading:[{!s}]...'
-                                          '[{!s}/{!s} attempts].'
-                                          .format(StrUnicodeOut(file),
-                                                  x,
-                                                  MAX_UPLOAD_ATTEMPTS))
+                        # Reset variables on each iteration
+                        search_result = None
+                        uploadResp = None
+                        logging.warning('Uploading/Reuploading '
+                                        '[{!s}/{!s} attempts].'
+                                        .format(x, MAX_UPLOAD_ATTEMPTS))
+                        if (x > 0):
+                            niceprint('Reuploading:[{!s}]...'
+                                      '[{!s}/{!s} attempts].'
+                                      .format(StrUnicodeOut(file),
+                                              x,
+                                              MAX_UPLOAD_ATTEMPTS))
 
-                            # Upload file to Flickr
-                            # replace commas from tags and checksum tags
-                            # to avoid tags conflicts
+                        # Upload file to Flickr
+                        # replace commas from tags and checksum tags
+                        # to avoid tags conflicts
+                        try:
                             uploadResp = nuflickr.upload(
                                     filename=file,
                                     fileobj=FileWithCallback(file,
@@ -1858,15 +1857,17 @@ class Uploadr:
 
                             # Save photo_id returned from Flickr upload
                             photo_id = uploadResp.findall('photoid')[0].text
-                            logging.warning('Uploaded photo_id=[{!s}] Ok. '
-                                            'Will check for issues ('
+                            logging.warning('Uploaded photo_id=[{!s}] [{!s}] '
+                                            'Ok. Will check for issues ('
                                             'duplicates or wrong checksum)'
-                                            .format(photo_id))
+                                            .format(photo_id,
+                                                    StrUnicodeOut(file)))
                             if (args.verbose):
-                                niceprint('Uploaded photo_id=[{!s}] Ok. '
-                                          'Will check for issues ('
+                                niceprint('Uploaded photo_id=[{!s}] [{!s}] '
+                                          'Ok. Will check for issues ('
                                           'duplicates or wrong checksum)'
-                                          .format(photo_id))
+                                          .format(photo_id,
+                                                  StrUnicodeOut(file)))
 
                             # Successful upload. Break attempts cycle
                             break
@@ -1889,7 +1890,7 @@ class Uploadr:
                             # on error, check if exists a photo
                             # with file_checksum
                             # CODING: Revise and simplify this code
-                            # CODING: Possibly use is_photo_already_loaded
+                            # CODING: Possibly use is_photo_already_uploaded
                             # CODING: but checking without SET
                             search_result = self.photos_search(file_checksum)
                             if not self.isGood(search_result):
@@ -3275,7 +3276,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
     # Note: There could be more entries due to errors. To be checked manually
     #
     def is_photo_already_uploaded(self, xfile, xchecksum, xsetName):
-        """ is_photo_already_loaded
+        """ is_photo_already_uploaded
 
             Searchs for image with same:
                 title(file without extension)
@@ -3306,10 +3307,6 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                                     tags='checksum:{}'
                                                          .format(xchecksum),
                                                     extras='tags'))
-            # searchIsUploaded = nuflickr.photos.search(user_id="me",
-            #                                           tags='checksum:{}'
-            #                                                .format(xchecksum),
-            #                                           extras='tags')
         except flickrapi.exceptions.FlickrError as ex:
             reportError(Caught=True,
                         CaughtPrefix='+++',
@@ -3438,6 +3435,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                 logging.info('len(resp.findall(''set'')):[{!s}]'
                              .format(len(resp.findall('set'))))
 
+                # B) checksum, title, empty setName,       Count=1  THEN EXISTS, ASSIGN SET
                 if (len(resp.findall('set')) == 0):
                     niceprint('PHOTO UPLOADED WITHOUT SET')
                     logging.warning('PHOTO UPLOADED WITHOUT SET')
