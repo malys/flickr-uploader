@@ -12,6 +12,7 @@
     -----------------------------
     Area for my personal notes on on-going work! Please ignore!
     * On first authenticate... removedeletemedia seems to fail
+    * Test if it Re-upload or not pictures removed from flickr Web interface.
     * CODING: Should extend this control to other parameters (Enhancement #7)
         Check error:  DuplicateSectionError or DuplicateOptionError.
         Check also: api_key. KeyError(key)
@@ -30,7 +31,7 @@
       INFO: relevant output of variables
       DEBUG: entering and existing functions
 
-    * CHANGE -S OPTION TO SET IF ONE SHOULD SEARCH PRIOR TO LOADING...As it may
+    * CHANGE -s OPTION TO SET IF ONE SHOULD SEARCH PRIOR TO LOADING...As it may
       take a long time! Need to check. Maybe not!
     * Test deleted file from local which is also deleted from flickr
     * Change code to insert on database prior to upload and then update result
@@ -85,7 +86,6 @@
       uploadr WILL not delete the files.
     * Would be nice to update ALL tags on replacePhoto and not only the
       mandatory checksum tag as FLICKR maintains the tags from the first load.
-    * Does not Re-upload pictures removed from flickr.
     * If local flickrdb is deleted it will re-upload entire local Library.
       It would be interesting to attempt to rebuild local database. With the
       exception of tags (would require use of exiftool) almost all other
@@ -161,9 +161,9 @@ from __future__ import division    # This way: 3 / 2 == 1.5; 3 // 2 == 1
 # Check if it is still required httplib
 #     Only use is for exception httplib.HTTPException
 try:
-    import httplib as httplib # Python 2
+    import httplib as httplib      # Python 2
 except ImportError:
-    import http.client as httplib # Python 3
+    import http.client as httplib  # Python 3
 import sys
 import argparse
 import mimetypes
@@ -176,9 +176,9 @@ import errno
 import subprocess
 import re
 try:
-    import ConfigParser as ConfigParser # Python 2
+    import ConfigParser as ConfigParser  # Python 2
 except ImportError:
-    import configparser as ConfigParser # Python 3
+    import configparser as ConfigParser  # Python 3
 import multiprocessing
 import flickrapi
 import xml
@@ -224,7 +224,7 @@ class UPLDRConstants:
     TimeFormat = '%Y.%m.%d %H:%M:%S'
     # For future use...
     # UTF = 'utf-8'
-    Version = '2.6.4'
+    Version = '2.6.6'
     # Identify the execution Run of this process
     Run = eval(time.strftime('int("%j")+int("%H")*100+int("%M")'))
 
@@ -422,24 +422,6 @@ def reportError(Caught=False, CaughtPrefix='', CaughtCode=0, CaughtMsg='',
 # retries execution of a function
 #
 def retry(attempts=3, waittime=5, randtime=False):
-          # errorlistdict=[{'Caught':False, 'CaughtPrefix':'',
-          #                 'CaughtCode':0, 'CaughtMsg':'',
-          #                 'NicePrint':False,
-          #                 'exceptUse':False,
-          #                 'exceptCode':0, 'exceptMsg':'',
-          #                 'exceptSysInfo':''},
-          #                {'Caught':False, 'CaughtPrefix':'',
-          #                 'CaughtCode':0, 'CaughtMsg':'',
-          #                 'NicePrint':False,
-          #                 'exceptUse':False,
-          #                 'exceptCode':0, 'exceptMsg':'',
-          #                 'exceptSysInfo':''},
-          #                {'Caught':False, 'CaughtPrefix':'',
-          #                 'CaughtCode':0, 'CaughtMsg':'',
-          #                 'NicePrint':False,
-          #                 'exceptUse':False,
-          #                 'exceptCode':0, 'exceptMsg':'',
-          #                 'exceptSysInfo':''}):
     """
     Catches exceptions while running a supplied function
     Re-runs it for times while sleeping X seconds in-between
@@ -467,45 +449,30 @@ def retry(attempts=3, waittime=5, randtime=False):
                                         .format(f.__name__, i, a))
             for i in range(attempts if attempts > 0 else 1):
                 try:
-                    logging.warning('Function:[{!s}] Attempt:[{!s}] of [{!s}]'
+                    logging.warning('___Retry f():[{!s}]: '
+                                    'Attempt:[{!s}] of [{!s}]'
                                     .format(f.__name__, i+1, attempts))
                     return f(*args, **kwargs)
                 except Exception as e:
-                    logging.error('Error code A: [{!s}]'.format(e))
+                    logging.error('___Retry f():[{!s}]: Error code A: [{!s}]'
+                                  .format(f.__name__, e))
                     error = e
                 except flickrapi.exceptions.FlickrError as ex:
-                    logging.error('___Retry: Error code B: [{!s}]'.format(ex))
-                    # reportError(Caught=errordict[0]['Caught'],
-                    #             CaughtPrefix=errordict[0]['CaughtPrefix'],
-                    #             CaughtCode=errordict[0]['CaughtCode'],
-                    #             CaughtMsg=errordict[0]['CaughtMsg'],
-                    #             exceptUse=errordict[0]['exceptUse'],
-                    #             exceptCode=ex.code,
-                    #             exceptMsg=ex,
-                    #             NicePrint=errordict[0]['NicePrint'],
-                    #             exceptSysInfo=errordict[0]['exceptSysInfo'])
+                    logging.error('___Retry f():[{!s}]: Error code B: [{!s}]'
+                                  .format(f.__name__, ex))
                 except lite.Error as e:
-                    logging.error('___Retry: Error code C: [{!s}]'.format(e))
+                    logging.error('___Retry f():[{!s}]: Error code C: [{!s}]'
+                                  .format(f.__name__, e))
                     error = e
-                    # reportError(Caught=errordict[1]['Caught'],
-                    #             CaughtPrefix=errordict[1]['CaughtPrefix'],
-                    #             CaughtCode=errordict[1]['CaughtCode'],
-                    #             CaughtMsg='{!s}: [{!s}]'
-                    #                       .format(errordict[1]['CaughtMsg'],
-                    #                               e.args[0]),
-                    #             NicePrint=errordict[1]['NicePrint'])
                     # Release the lock on error.
                     # CODING: Check how to handle this particular scenario.
                     # flick.useDBLock(nulockDB, False)
                     # self.useDBLock( lock, True)
                 except:
-                    logging.error('___Retry: Error Caught D: Catchall')
-                    # reportError(Caught=True,
-                    #             CaughtPrefix='+++',
-                    #             CaughtCode='992',
-                    #             CaughtMsg='Caught exception in XXXX',
-                    #             exceptSysInfo=True)
-                logging.warning('Function:[{!s}] Waiting:[{!s}] Rnd:[{!s}]'
+                    logging.error('___Retry f():[{!s}]: Error code D: Catchall'
+                                  .format(f.__name__))
+
+                logging.warning('___Function:[{!s}] Waiting:[{!s}] Rnd:[{!s}]'
                                 .format(f.__name__, waittime, randtime))
                 if randtime:
                     rtime.sleep(random.randrange(0,
@@ -514,8 +481,10 @@ def retry(attempts=3, waittime=5, randtime=False):
                                                  else 1))
                 else:
                     rtime.sleep(waittime if waittime >= 0 else 0)
-            logging.warning('___Retry f():[{!s}] arg[{!s}]={!s} Raising ERROR!'
-                            .format(f.__name__, i, a))
+            logging.error('___Retry f():[{!s}] '
+                            'Max:[{!s}] Delay:[{!s}] Rnd[{!s}]: Raising ERROR!'
+                            .format(f.__name__, attempts,
+                                    waittime, randtime))
             raise error
         return new_wrapper
     return wrapper_fn
@@ -1768,7 +1737,6 @@ class Uploadr:
             file_checksum = self.md5Checksum(file)
 
             # Check if file is already loaded
-            # CODING: In multiprocessing mode photo.search seems to fail
             isLoaded, isCount, isfile_id = self.is_photo_already_uploaded(
                                                                file,
                                                                file_checksum,
@@ -1791,76 +1759,75 @@ class Uploadr:
             elif row is None:
                 if (args.verbose):
                     niceprint('Uploading file:[{!s}]...'
-                              .format(StrUnicodeOut(file)))
-                    niceprint('On Album:[{!s}]...'
-                              .format(StrUnicodeOut(setName)))
+                              'On Album:[{!s}]...'
+                              .format(StrUnicodeOut(file),
+                                      StrUnicodeOut(setName)))
 
                 logging.warning('Uploading file:[{!s}]... '
                                 'On Album:[{!s}]...'
                                 .format(StrUnicodeOut(file),
                                         StrUnicodeOut(setName)))
 
+                # Title Handling
+                if args.title:  # Replace
+                    FLICKR["title"] = args.title
+                if args.description:  # Replace
+                    FLICKR["description"] = args.description
+                if args.tags:  # Append a space to later add -t TAGS
+                    FLICKR["tags"] += " "
+                    if args.verbose:
+                        niceprint('TAGS:[{} {}]'
+                                  .format(FLICKR["tags"],
+                                         args.tags).replace(',', ''))
+
+                # if FLICKR["title"] is empty...
+                # if filename's exif title is empty...
+                #   Can't check without import exiftool
+                # set it to filename OR do not load it up in order to
+                # allow flickr.com itself to set it up
+                # NOTE: an empty title forces flickrapi/auth.py
+                # code at line 280 to encode into utf-8 the filename
+                # this causes an error
+                # UnicodeDecodeError: 'ascii' codec can't decode byte 0xc3
+                # in position 11: ordinal not in range(128)
+                # Worked around it by forcing the title to filename
+                if FLICKR["title"] == "":
+                    path_filename, title_filename = os.path.split(file)
+                    logging.info('path:[{!s}] '
+                                 'filename:[{!s}] '
+                                 'ext=[{!s}]'.format(
+                                      path_filename,
+                                      title_filename,
+                                      os.path.splitext(title_filename)[1]))
+                    title_filename = os.path.splitext(title_filename)[0]
+                    logging.warning('title_name:[{!s}]'.format(title_filename))
+                else:
+                    title_filename = FLICKR["title"]
+                    logging.warning('title from INI file:[{!s}]'
+                                    .format(title_filename))
+
                 # CODING focus this try and not cover so much code!
                 try:
-                    if args.title:  # Replace
-                        FLICKR["title"] = args.title
-                    if args.description:  # Replace
-                        FLICKR["description"] = args.description
-                    if args.tags:  # Append a space to later add -t TAGS
-                        FLICKR["tags"] += " "
-                        if args.verbose:
-                            niceprint('TAGS:[{} {}]'
-                                      .format(FLICKR["tags"],
-                                             args.tags).replace(',', ''))
-
-                    # if FLICKR["title"] is empty...
-                    # if filename's exif title is empty...
-                    #   Can't check without import exiftool
-                    # set it to filename OR do not load it up in order to
-                    # allow flickr.com itself to set it up
-                    # NOTE: an empty title forces flickrapi/auth.py
-                    # code at line 280 to encode into utf-8 the filename
-                    # this causes an error
-                    # UnicodeDecodeError: 'ascii' codec can't decode byte 0xc3
-                    # in position 11: ordinal not in range(128)
-                    # Worked around it by forcing the title to filename
-                    if FLICKR["title"] == "":
-                        path_filename, title_filename = os.path.split(file)
-                        logging.info('path:[{!s}] '
-                                     'filename:[{!s}] '
-                                     'ext=[{!s}]'.format(
-                                          path_filename,
-                                          title_filename,
-                                          os.path.splitext(title_filename)[1]))
-                        title_filename = os.path.splitext(title_filename)[0]
-                        logging.warning('title_name:[{!s}] '
-                                        .format(title_filename))
-                    else:
-                        title_filename = FLICKR["title"]
-                        logging.warning('title '
-                                        'from INI file:[{!s}]'
-                                        .format(title_filename))
-
                     # Perform actual upload of the file
                     search_result = None
                     for x in range(0, MAX_UPLOAD_ATTEMPTS):
-                        try:
-                            # Reset variables on each iteration
-                            search_result = None
-                            uploadResp = None
-                            logging.warning('Uploading/Reuploading '
-                                            '[{!s}/{!s} attempts].'
-                                            .format(x, MAX_UPLOAD_ATTEMPTS))
-                            if (x > 0):
-                                niceprint('Reuploading:[{!s}]...'
-                                          '[{!s}/{!s} attempts].'
-                                          .format(StrUnicodeOut(file),
-                                                  x,
-                                                  MAX_UPLOAD_ATTEMPTS))
+                        # Reset variables on each iteration
+                        search_result = None
+                        uploadResp = None
+                        logging.warning('Uploading/Reuploading '
+                                        '[{!s}/{!s} attempts].'
+                                        .format(x, MAX_UPLOAD_ATTEMPTS))
+                        if (x > 0):
+                            niceprint('Reuploading:[{!s}]...'
+                                      '[{!s}/{!s} attempts].'
+                                      .format(StrUnicodeOut(file),
+                                              x,
+                                              MAX_UPLOAD_ATTEMPTS))
 
-                            # Upload file to Flickr
-                            # replace commas from tags and checksum tags
-                            # to avoid tags conflicts
+                        # Upload file to Flickr
+                        # replace commas from tags and checksum tags
+                        # to avoid tags conflicts
+                        try:
                             uploadResp = nuflickr.upload(
                                     filename=file,
                                     fileobj=FileWithCallback(file,
@@ -1890,21 +1857,23 @@ class Uploadr:
 
                             # Save photo_id returned from Flickr upload
                             photo_id = uploadResp.findall('photoid')[0].text
-                            logging.warning('Uploaded photo_id=[{!s}] Ok. '
-                                            'Will check for issues ('
+                            logging.warning('Uploaded photo_id=[{!s}] [{!s}] '
+                                            'Ok. Will check for issues ('
                                             'duplicates or wrong checksum)'
-                                            .format(photo_id))
+                                            .format(photo_id,
+                                                    StrUnicodeOut(file)))
                             if (args.verbose):
-                                niceprint('Uploaded photo_id=[{!s}] Ok. '
-                                          'Will check for issues ('
+                                niceprint('Uploaded photo_id=[{!s}] [{!s}] '
+                                          'Ok. Will check for issues ('
                                           'duplicates or wrong checksum)'
-                                          .format(photo_id))
+                                          .format(photo_id,
+                                                  StrUnicodeOut(file)))
 
                             # Successful upload. Break attempts cycle
                             break
 
                         # Exceptions for flickr.upload function call...
-                        # No as it is caught in the outher try to consider the
+                        # No as it is caught in the outer try to consider the
                         # Error #5 invalid videos format loading...
                         except (IOError, httplib.HTTPException):
                             reportError(Caught=True,
@@ -1921,7 +1890,7 @@ class Uploadr:
                             # on error, check if exists a photo
                             # with file_checksum
                             # CODING: Revise and simplify this code
-                            # CODING: Possibly use is_photo_already_loaded
+                            # CODING: Possibly use is_photo_already_uploaded
                             # CODING: but checking without SET
                             search_result = self.photos_search(file_checksum)
                             if not self.isGood(search_result):
@@ -3291,12 +3260,12 @@ set0 = sets.find('photosets').findall('photoset')[0]
     # (calls Flickr photos.search)
     #
     # CODING: possible outcomes
-    # if checksum,                             Count=0  THEN NOT EXISTS
-    # if checksum, title, empty setName,       Count=1  THEN EXISTS, ASSIGN SET
-    # if checksum, title, setName (1 or more), Count>=1 THEN EXISTS
-    # if checksum, title, other setName,       Count>=1 THEN NOT EXISTS
-    # if checksum, title, setName BUT ALSO checksum, title, other setName => ??
-    # if checksum, title, setName BUT ALSO checksum, title, empty setName => ??
+    # A) checksum,                             Count=0  THEN NOT EXISTS
+    # B) checksum, title, empty setName,       Count=1  THEN EXISTS, ASSIGN SET
+    # C) checksum, title, setName (1 or more), Count>=1 THEN EXISTS
+    # D) checksum, title, other setName,       Count>=1 THEN NOT EXISTS
+    # E) checksum, title, setName BUT ALSO checksum, title, other setName => ??
+    # F) checksum, title, setName BUT ALSO checksum, title, empty setName => ??
     #
     # Logic:
     #   Search photos with checksum
@@ -3307,7 +3276,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
     # Note: There could be more entries due to errors. To be checked manually
     #
     def is_photo_already_uploaded(self, xfile, xchecksum, xsetName):
-        """ is_photo_already_loaded
+        """ is_photo_already_uploaded
 
             Searchs for image with same:
                 title(file without extension)
@@ -3338,10 +3307,6 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                                     tags='checksum:{}'
                                                          .format(xchecksum),
                                                     extras='tags'))
-            # searchIsUploaded = nuflickr.photos.search(user_id="me",
-            #                                           tags='checksum:{}'
-            #                                                .format(xchecksum),
-            #                                           extras='tags')
         except flickrapi.exceptions.FlickrError as ex:
             reportError(Caught=True,
                         CaughtPrefix='+++',
@@ -3383,15 +3348,12 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                   .find('photos').attrib['total'])
 
         if returnPhotoUploaded == 0:
-            # if checksum,                             Count=0  THEN NOT EXISTS
+            # A) checksum,                             Count=0  THEN NOT EXISTS
             returnIsPhotoUploaded = False
         elif returnPhotoUploaded >= 1:
-            reportError(Caught=True,
-                        CaughtPrefix='+++',
-                        CaughtCode='190',
-                        CaughtMsg='Found [{!s}] images with checksum:[{!s}]'
-                                  .format(returnPhotoUploaded, xchecksum),
-                        NicePrint=True)
+            logging.warning('+++#190: '
+                            'Found [{!s}] images with checksum:[{!s}]'
+                            .format(returnPhotoUploaded, xchecksum))
             # Get title from filepath as filename without extension
             # NOTE: not compatible with use of the -i option
             xpath_filename, xtitle_filename = os.path.split(xfile)
@@ -3401,28 +3363,23 @@ set0 = sets.find('photosets').findall('photoset')[0]
             # For each pic found on Flickr 1st check title and then Sets
             returnList = []
             for pic in searchIsUploaded.find('photos').findall('photo'):
-                if args.verbose is not None and args.verbose:
-                    logging.info(
-                        'pic.id=[{!s}] pic.title=[{!s}] pic.tags=[{!s}]'
-                        .format(pic.attrib['id'],
-                                StrUnicodeOut(pic.attrib['title']),
-                                StrUnicodeOut(pic.attrib['tags'])))
+                logging.info('pic.id=[{!s}] pic.title=[{!s}] pic.tags=[{!s}]'
+                             .format(pic.attrib['id'],
+                                     StrUnicodeOut(pic.attrib['title']),
+                                     StrUnicodeOut(pic.attrib['tags'])))
 
                 # CODING: UnicodeWarning: Unicode equal comparison failed to
                 # convert both arguments to Unicode
-                logging.info('type(xtitle_filename)=[{!s}] '
-                             'type(pic.attrib[title])=[{!s}]'
-                             .format(type(xtitle_filename),
-                                     type(pic.attrib['title'])))
-                logging.info('xtitle_filename=[{!s}] '
-                             'pic.attrib[title]=[{!s}]'
+                logging.info('xtitle_filename/type=[{!s}]/[{!s}] '
+                             'pic.attrib[title]/type=[{!s}]/[{!s}]'
                              .format(StrUnicodeOut(xtitle_filename),
-                                     StrUnicodeOut(pic.attrib['title'])))
+                                     type(xtitle_filename),
+                                     StrUnicodeOut(pic.attrib['title']),
+                                     type(pic.attrib['title'])))
                 logging.info('Compare Titles=[{!s}]'
                             .format((StrUnicodeOut(xtitle_filename) ==
                                      StrUnicodeOut(pic.attrib['title']))))
 
-                # if not (xtitle_filename == pic.attrib['title']):
                 if not (StrUnicodeOut(xtitle_filename) ==
                             StrUnicodeOut(pic.attrib['title'])):
                     logging.info('Different titles: File:[{!s}] Flickr:[{!s}]'
@@ -3438,8 +3395,6 @@ set0 = sets.find('photosets').findall('photoset')[0]
                     resp = None
                     resp = R_photos_getAllContexts(
                                             dict(photo_id=pic.attrib['id']))
-                    # resp = nuflickr.photos.getAllContexts(
-                    #                                 photo_id=pic.attrib['id'])
                 except flickrapi.exceptions.FlickrError as ex:
                     reportError(Caught=True,
                                 CaughtPrefix='+++',
@@ -3480,6 +3435,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                 logging.info('len(resp.findall(''set'')):[{!s}]'
                              .format(len(resp.findall('set'))))
 
+                # B) checksum, title, empty setName,       Count=1  THEN EXISTS, ASSIGN SET
                 if (len(resp.findall('set')) == 0):
                     niceprint('PHOTO UPLOADED WITHOUT SET')
                     logging.warning('PHOTO UPLOADED WITHOUT SET')
@@ -3528,7 +3484,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                     # logging.info('output for returnList:[{!s}]'
                     #              .format(returnList))
 
-                    # if checksum, title, setName (1 or more), Count>=1 THEN EXISTS
+                    # C) checksum, title, setName (1 or more), Count>=1 THEN EXISTS
                     if (StrUnicodeOut(xsetName) ==
                             StrUnicodeOut(setinlist.attrib['title'])):
                         niceprint('IS PHOTO UPLOADED=TRUE')
@@ -3539,7 +3495,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                returnPhotoUploaded, \
                                returnPhotoID
                     else:
-                        # if checksum, title, other setName,       Count>=1 THEN NOT EXISTS
+                        # D) checksum, title, other setName,       Count>=1 THEN NOT EXISTS
                         niceprint('IS PHOTO UPLOADED=FALSE, CONTINUING')
                         logging.warning('IS PHOTO UPLOADED=FALSE, CONTINUING')
                         continue
@@ -4050,9 +4006,9 @@ if __name__ == "__main__":
         pprint.pprint(args)
 
     if args.verbose:
-        niceprint('FILES_DIR: [{!s}]'.format(FILES_DIR))
+        niceprint('FILES_DIR: [{!s}]'.format(StrUnicodeOut(FILES_DIR)))
 
-    logging.warning('FILES_DIR: [{!s}]'.format(FILES_DIR))
+    logging.warning('FILES_DIR: [{!s}]'.format(StrUnicodeOut(FILES_DIR)))
     if FILES_DIR == "":
         niceprint('Please configure the name of the folder [FILES_DIR] '
                   'in the INI file [normally uploadr.ini], '
