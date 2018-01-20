@@ -31,8 +31,6 @@
       INFO: relevant output of variables
       DEBUG: entering and existing functions
 
-    * CHANGE -s OPTION TO SET IF ONE SHOULD SEARCH PRIOR TO LOADING...As it may
-      take a long time! Need to check. Maybe not!
     * Test deleted file from local which is also deleted from flickr
     * Change code to insert on database prior to upload and then update result
     * Protect all DB access( single processing or multiprocessing) with:
@@ -1737,14 +1735,21 @@ class Uploadr:
             file_checksum = self.md5Checksum(file)
 
             # Check if file is already loaded
-            isLoaded, isCount, isfile_id = self.is_photo_already_uploaded(
-                                                               file,
-                                                               file_checksum,
-                                                               setName)
-            logging.warning('is_photo_already_uploaded:[{!s}] '
-                            'count:[{!s}] pic:[{!s}] '
-                            'row is None == [{!s}]'
-                            .format(isLoaded, isCount, isfile_id, row is None))
+            if (args.not_is_already_uploaded):
+                isLoaded = False
+                logging.warning('not_is_photo_already_uploaded:[{!s}] '
+                                .format(isLoaded))                
+            else:
+                isLoaded, isCount, isfile_id = self.is_photo_already_uploaded(
+                                                                file,
+                                                                file_checksum,
+                                                                setName)
+                logging.warning('is_photo_already_uploaded:[{!s}] '
+                                'count:[{!s}] pic:[{!s}] '
+                                'row is None == [{!s}]'
+                                .format(isLoaded, isCount,
+                                        isfile_id, row is None))
+
             if isLoaded and row is None:
                 # Insert into DB files
                 logging.warning('ALREADY LOADED. '
@@ -1857,17 +1862,17 @@ class Uploadr:
 
                             # Save photo_id returned from Flickr upload
                             photo_id = uploadResp.findall('photoid')[0].text
-                            logging.warning('Uploaded photo_id=[{!s}] [{!s}] '
+                            logging.warning('Uploaded [{!s}] photo_id=[{!s}] '
                                             'Ok. Will check for issues ('
                                             'duplicates or wrong checksum)'
-                                            .format(photo_id,
-                                                    StrUnicodeOut(file)))
+                                            .format(StrUnicodeOut(file),
+                                                    photo_id))
                             if (args.verbose):
-                                niceprint('Uploaded photo_id=[{!s}] [{!s}] '
+                                niceprint('Uploaded [{!s}] photo_id=[{!s}] '
                                           'Ok. Will check for issues ('
                                           'duplicates or wrong checksum)'
-                                          .format(photo_id,
-                                                  StrUnicodeOut(file)))
+                                          .format(StrUnicodeOut(file),
+                                                  photo_id))                                
 
                             # Successful upload. Break attempts cycle
                             break
@@ -3944,6 +3949,9 @@ if __name__ == "__main__":
                         help='Provides progress indicator on each upload. '
                              'Normally used in conjunction with -v option. '
                              'See also LOGGING_LEVEL value in INI file.')
+    parser.add_argument('-u', '--not-is-already-uploaded', action='store_true',
+                        help='Do not check if file is already uploaded '
+                             'and exists on flickr prior to uploading.')
     parser.add_argument('-n', '--dry-run', action='store_true',
                         help='Dry run.')
     parser.add_argument('-i', '--title', action='store',
@@ -3992,7 +4000,7 @@ if __name__ == "__main__":
                              'files in your Library that flickr does not '
                              'recognize (Error 5). Check also option -b. ')
     # finds duplicated images (based on checksum, titlename, setName) in Flickr
-    parser.add_argument('-s', '--search-for-duplicates', action='store_true',
+    parser.add_argument('-z', '--search-for-duplicates', action='store_true',
                         help='Lists duplicated files: same checksum, '
                              'same title, list SetName (if different). '
                              'Not operational at this time.')
