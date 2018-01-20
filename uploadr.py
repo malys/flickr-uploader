@@ -4006,9 +4006,9 @@ if __name__ == "__main__":
         pprint.pprint(args)
 
     if args.verbose:
-        niceprint('FILES_DIR: [{!s}]'.format(FILES_DIR))
+        niceprint('FILES_DIR: [{!s}]'.format(StrUnicodeOut(FILES_DIR)))
 
-    logging.warning('FILES_DIR: [{!s}]'.format(FILES_DIR))
+    logging.warning('FILES_DIR: [{!s}]'.format(StrUnicodeOut(FILES_DIR)))
     if FILES_DIR == "":
         niceprint('Please configure the name of the folder [FILES_DIR] '
                   'in the INI file [normally uploadr.ini], '
