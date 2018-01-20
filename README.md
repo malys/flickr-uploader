@@ -209,7 +209,7 @@ optional arguments:
 
 ### Launch from the command line in Daemon mode (-d option).
 - Recommendation is to use Task Scheduler or cron.
-- With -d option it runr in daemon mode and checks for files every SLEEP_TIME seconds (as configured on uploadr.ini)
+- With -d option it runs in daemon mode and checks for files every SLEEP_TIME seconds (as configured on uploadr.ini)
 - SLEEP_TIME is only used in this case.
 ```bash
 $ ./uploadr.py -v -d
