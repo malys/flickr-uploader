@@ -189,12 +189,30 @@ optional arguments:
 
 ## Task Scheduler (cron)
 ------------------------
-Optionally run with crontab/Task Scheduler (Synology/Control Panel)
+### On Synology systems, run with Task Scheduler (Synology/Control Panel)
+- Log into your Synology system via Web interface.
+   - Go to Control Panel-> Task Scheduler
+   - Create a new "User Defined Script"
+   - Adjust the run schedule settings, the email notifications
+   - Under "Run Command" include a reference to the uploadr.cron file
+`/full/path/to/uploadr.cron`
 - Use  upload.cron added to the distribution and adapt to your needs.
+- Do not use crontab directly. Having Task Scheduler replaces crontab.
 
+### On Linux/Unix/Mac based systems, run via crontab
+- Use  upload.cron added to the distribution and adapt to your needs.
+- Use wither "crontab -e" or vi /etc/crontab according to your system.
 ```bash
-cron entry (runs at the top of every hour)
+# cron entry (runs at the top of every hour)
 0  *  *  *  * /full/path/to/uploadr.cron > /dev/null 2>&1
+```
+
+### Launch from the command line in Daemon mode (-d option).
+- Recommendation is to use Task Scheduler or cron.
+- With -d option it runr in daemon mode and checks for files every SLEEP_TIME seconds (as configured on uploadr.ini)
+- SLEEP_TIME is only used in this case.
+```bash
+$ ./uploadr.py -v -d
 ```
 
 ## Recognition
