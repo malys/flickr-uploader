@@ -1256,7 +1256,7 @@ class Uploadr:
                 # Will release (set to None) the nulockDB lock control
                 # this prevents subsequent calls to useDBLock( nuLockDB, False)
                 # to raise exception:
-                #    ValueError('semaphore or lock released too many times
+                #    ValueError('semaphore or lock released too many times')
                 if (args.verbose):
                     niceprint('===Multiprocessing=== pool joined! '
                               'What happens to nulockDB is None:[{!s}]? '
