@@ -850,6 +850,9 @@ class Uploadr:
                 niceprint('\t{!s} files processed (uploaded, md5ed '
                           'or timestamp checked)'.format(count))
 
+        sys.stdout.flush()
+
+
     # -------------------------------------------------------------------------
     # authenticate
     #
