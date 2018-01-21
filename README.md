@@ -218,6 +218,8 @@ optional arguments:
   -b, --bad-files       Save on database bad files to prevent continuous
                         uploading attempts. Bad files are files in your
                         Library that flickr does not recognize (Error 5).
+  -w, --walk-files-only Scan files to populate database
+  -f  --fast-upload     Disable walk files to upload directly
 ```
 
 ## Task Scheduler (cron)

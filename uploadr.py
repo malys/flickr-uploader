@@ -1095,7 +1095,27 @@ class Uploadr:
 
         niceprint("*****Uploading files*****")
 
-        allMedia = self.grabNewFiles()
+        if (args.fast_upload):
+            # Load files from databases
+            con = lite.connect(DB_PATH)
+            con.text_factory = str
+            with con:
+                    cur = con.cursor()
+                    cur.execute("SELECT path FROM allfiles")
+                    allMedia = set(file[0] for file in cur.fetchall())
+                    logging.debug('len(allMedia)'.format(len(allMedia)))
+
+            # Closing DB connection
+            if con is not None:
+                con.close() 
+        else:
+            # Normal process
+            allMedia = self.grabNewFiles()
+
+            if (args.walk_files_only):
+                logging.warning('WALK files only.')
+                sys.exit(1)
+
         # If managing changes, consider all files
         if MANAGE_CHANGES:
             logging.warning('MANAGED_CHANGES is True. Reviewing allMedia.')
@@ -1114,9 +1134,10 @@ class Uploadr:
                 changedMedia = set(allMedia) - existingMedia
 
         changedMedia_count = len(changedMedia)
+        allMedia_count = len(allMedia)
         nuMediacount = changedMedia_count
-        niceprint('Found [{!s}] files to upload.'
-                  .format(str(changedMedia_count)))
+        niceprint('Found [{!s}] files to upload in total of [{!s}] .'
+                  .format(str(changedMedia_count),str(allMedia_count)))
 
         if (args.bad_files):
             # Cater for bad files
@@ -1439,38 +1460,51 @@ class Uploadr:
         """
 
         files = []
-        for dirpath, dirnames, filenames in\
-                os.walk(FILES_DIR, followlinks=True):
-            for f in filenames:
-                filePath = os.path.join(dirpath, f)
-                if self.isFileIgnored(filePath):
-                    logging.debug('File {!s} in EXCLUDED_FOLDERS:'
-                                  .format(filePath.encode('utf-8')))
-                    continue
-                if any(ignored.search(f) for ignored in IGNORED_REGEX):
-                    logging.debug('File {!s} in IGNORED_REGEX:'
-                                  .format(filePath.encode('utf-8')))
-                    continue
-                ext = os.path.splitext(os.path.basename(f))[1][1:].lower()
-                if ext in ALLOWED_EXT:
-                    fileSize = os.path.getsize(dirpath + "/" + f)
-                    if (fileSize < FILE_MAX_SIZE):
-                        files.append(
-                            os.path.normpath(
-                                StrUnicodeOut(dirpath) +
-                                StrUnicodeOut("/") +
-                                StrUnicodeOut(f).replace("'", "\'")))
-                    else:
-                        niceprint('Skipping file due to '
-                                  'size restriction: [{!s}]'.format(
-                                        os.path.normpath(
-                                            StrUnicodeOut(dirpath) +
-                                            StrUnicodeOut('/') +
-                                            StrUnicodeOut(f))))
-        files.sort()
-        if LOGGING_LEVEL <= logging.DEBUG:
-            niceprint('Pretty Print Output for {!s}:'.format('files'))
-            pprint.pprint(files)
+
+        con = lite.connect(DB_PATH)
+        con.text_factory = str
+        flick.cleanDB('allfiles', con)
+        with con:
+            cur = con.cursor()
+            for dirpath, dirnames, filenames in\
+                    os.walk(FILES_DIR, followlinks=True):
+                for f in filenames:
+                    filePath = os.path.join(dirpath, f)
+                    if self.isFileIgnored(filePath):
+                        logging.debug('File {!s} in EXCLUDED_FOLDERS:'
+                                    .format(filePath.encode('utf-8')))
+                        continue
+                    if any(ignored.search(f) for ignored in IGNORED_REGEX):
+                        logging.debug('File {!s} in IGNORED_REGEX:'
+                                    .format(filePath.encode('utf-8')))
+                        continue
+                    ext = os.path.splitext(os.path.basename(f))[1][1:].lower()
+                    if ext in ALLOWED_EXT:
+                        fileSize = os.path.getsize(dirpath + "/" + f)
+                        if (fileSize < FILE_MAX_SIZE and fileSize > 0):
+                            tmppath = os.path.normpath(
+                                    StrUnicodeOut(dirpath) +
+                                    StrUnicodeOut("/") +
+                                    StrUnicodeOut(f).replace("'", "\'"))
+                            files.append( tmppath )
+                            cur.execute('INSERT INTO allfiles ( path ) VALUES (?)', (tmppath,))          
+                        else:
+                            niceprint('Skipping file due to '
+                                    'size restriction: [{!s} - {!s}]'.format(
+                                            os.path.normpath(
+                                                StrUnicodeOut(dirpath) +
+                                                StrUnicodeOut('/') +
+                                                StrUnicodeOut(f))),
+                                                fileSize
+                                                )
+            files.sort()
+            if LOGGING_LEVEL <= logging.DEBUG:
+                niceprint('Pretty Print Output for {!s}:'.format('files'))
+                pprint.pprint(files)
+
+        # Closing DB connection
+        if con is not None:
+            con.close()
 
         return files
 
@@ -2839,7 +2873,7 @@ class Uploadr:
             cur = con.cursor()
             cur.execute('CREATE TABLE IF NOT EXISTS files '
                         '(files_id INT, path TEXT, set_id INT, '
-                        'md5 TEXT, tagged INT)')
+                        'md5 TEXT, tagged INT)')          
             cur.execute('CREATE TABLE IF NOT EXISTS sets '
                         '(set_id INT, name TEXT, primary_photo_id INTEGER)')
             cur.execute('CREATE UNIQUE INDEX IF NOT EXISTS fileindex '
@@ -2881,9 +2915,23 @@ class Uploadr:
                 cur.execute('PRAGMA user_version')
                 row = cur.fetchone()
             if (row[0] == 2):
-                niceprint('Database version: [{!s}]'.format(row[0]))
                 # Database version 3
-                # ...for future use!
+                # Create allfiles
+                niceprint('Adding table allfiles to database')
+                cur.execute('PRAGMA user_version="3"')
+                cur.execute('CREATE TABLE IF NOT EXISTS allfiles '
+                            '(files_id INTEGER PRIMARY KEY AUTOINCREMENT, '
+                            'path TEXT)')
+                cur.execute('CREATE UNIQUE INDEX IF NOT EXISTS allfileindex '
+                            'ON allfiles (path)')
+                con.commit()
+                cur = con.cursor()
+                cur.execute('PRAGMA user_version')
+                row = cur.fetchone()
+            if (row[0] == 3):
+                niceprint('Database version: [{!s}]'.format(row[0]))
+                # Database version 4
+                # ...for future use!    
             # Closing DB connection
             if con is not None:
                 con.close()
@@ -2902,47 +2950,50 @@ class Uploadr:
             niceprint('Completed database setup')
 
     # -------------------------------------------------------------------------
-    # cleanDBbadfiles
+    # cleanDB
     #
-    # Cleans up (deletes) contents from DB badfiles table
+    # Cleans up (deletes) contents from DB table
     #
-    def cleanDBbadfiles(self):
+    def cleanDB(self, dbname, con):
         """
-            cleanDBbadfiles
+            cleanDB
 
-            Cleans up (deletes) contents from DB badfiles table
+            Cleans up (deletes) contents from DB table
         """
-        niceprint('Cleaning up badfiles table from the database: [{!s}]'
-                  .format(DB_PATH))
-        con = None
+        niceprint('Cleaning up {!s} table from the database: [{!s}]'
+                  .format(dbname, DB_PATH))
+        # con = None
+        local = False
         try:
-            con = lite.connect(DB_PATH)
-            con.text_factory = str
+            if con is None:
+                con = lite.connect(DB_PATH)
+                con.text_factory = str
+                local = True
             cur = con.cursor()
             cur.execute('PRAGMA user_version')
             row = cur.fetchone()
             if (row[0] >= 2):
                 # delete from badfiles table and reset SEQUENCE
-                niceprint('Deleting from badfiles table. Reseting sequence.')
+                niceprint('Deleting from "{!s} table. Reseting sequence.'.format(dbname))
                 try:
-                    cur.execute('DELETE FROM badfiles')
+                    cur.execute('DELETE FROM {!s}'.format(dbname))
                     cur.execute('DELETE FROM SQLITE_SEQUENCE '
-                                'WHERE name="badfiles"')
+                                'WHERE name="{!s}"'.format(dbname))
                     con.commit()
                 except lite.Error as e:
                     reportError(Caught=True,
                                 CaughtPrefix='+++ DB',
                                 CaughtCode='147',
                                 CaughtMsg='DB error on SELECT FROM '
-                                          'badfiles: [{!s}]'
-                                          .format(e.args[0]),
+                                          '{!s}: [{!s}]'
+                                          .format(dbname,e.args[0]),
                                 NicePrint=True)
                     raise
             else:
                 niceprint('Wrong DB version. '
                           'Expected 2 or higher and not:[{!s}]'.format(row[0]))
             # Closing DB connection
-            if con is not None:
+            if con is not None and local:
                 con.close()
         except lite.Error as e:
             reportError(Caught=True,
@@ -2951,11 +3002,14 @@ class Uploadr:
                         CaughtMsg='DB error on SELECT: [{!s}]'
                                   .format(e.args[0]),
                         NicePrint=True)
-            if con is not None:
+            if con is not None and local:
                 con.close()
             sys.exit(2)
         finally:
-            niceprint('Completed cleaning up badfiles table from the database')
+            niceprint('Completed cleaning up {!s} table from the database'.format(dbname))
+
+
+
 
     # -------------------------------------------------------------------------
     # md5Checksum
@@ -4015,6 +4069,13 @@ if __name__ == "__main__":
                         help='Lists duplicated files: same checksum, '
                              'same title, list SetName (if different). '
                              'Not operational at this time.')
+    # Walk files only
+    parser.add_argument('-w', '--walk-files-only', action='store_true',
+                        help='Scan files to populate database')    
+    # Disable walk files to save time an use current files in allfiles database
+    parser.add_argument('-f', '--fast-upload', action='store_true',
+                        help='Disable walk files to upload directly')                         
+                                         
 
     # parse arguments
     args = parser.parse_args()
@@ -4052,7 +4113,7 @@ if __name__ == "__main__":
     # Setup the database
     flick.setupDB()
     if (args.clean_bad_files):
-        flick.cleanDBbadfiles()
+        flick.cleanDB('badfiles')
 
     if args.daemon:
         # Will run in daemon mode every SLEEP_TIME seconds
