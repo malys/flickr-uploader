@@ -1189,8 +1189,8 @@ class Uploadr:
                     logging.warning('===Actual/Planned Chunk size: '
                                     '[{!s}]/[{!s}]'
                                     .format(len(nuChangeMedia), sz))
-                    logging.debug(type(nuChangeMedia))
-
+                    logging.debug('===type(nuChangeMedia)=[{!s}]'
+                                  .format(type(nuChangeMedia)))
                     logging.debug('===Job/Task Process: Creating...')
                     uploadTask = multiprocessing.Process(
                                         target=self.uploadFileX,
@@ -4050,7 +4050,7 @@ if __name__ == "__main__":
         # Will run in daemon mode every SLEEP_TIME seconds
         logging.warning('Will run in daemon mode every {!s} seconds'
                         .format(SLEEP_TIME))
-        logging.WARNING('Make sure you have previously authenticated!')
+        logging.warning('Make sure you have previously authenticated!')
         flick.run()
     else:
         niceprint("Checking if token is available... if not will authenticate")
