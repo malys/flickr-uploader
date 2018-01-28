@@ -229,7 +229,7 @@ optional arguments:
    - Adjust the run schedule settings, the email notifications
    - Under "Run Command" include a reference to the uploadr.cron file
 `/full/path/to/uploadr.cron`
-- Use  upload.cron added to the distribution and adapt to your needs.
+- Use sample file uploadr.cron added to the distribution and adapt to your needs.
 - Do not use crontab directly. Having Task Scheduler replaces crontab.
 
 ### On Linux/Unix/Mac based systems, run via crontab
@@ -243,6 +243,7 @@ optional arguments:
 ### Launch from the command line in Daemon mode (-d option).
 - Recommendation is to use Task Scheduler or cron.
 - With -d option it runs in daemon mode and checks for files every SLEEP_TIME seconds (as configured on uploadr.ini)
+- It simply loads the files. It does not create Albums/Sets.
 - SLEEP_TIME is only used in this case.
 ```bash
 $ ./uploadr.py -v -d
