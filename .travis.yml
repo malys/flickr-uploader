@@ -59,10 +59,10 @@ env:
     #- TestScenario=Remove UploadrOptions="$VerboseVar $BadFilesVar"
 # Replace
     #- TestScenario=Replace UploadrOptions="$VerboseVar $BadFilesVar"
-# RemoveReplace
-    - TestScenario=RemoveReplace UploadrOptions="$VerboseVar $BadFilesVar -p 10"
-# ExcludedFolders
-    - TestScenario=ExcludedFolders UploadrOptions="$VerboseVar $BadFilesVar $ExcludedVar -p 5"
+# RemoveReplace, also test cleaning up badfiles database entries
+    - TestScenario=RemoveReplace UploadrOptions="$VerboseVar $BadFilesVar -p 10 -c"
+# ExcludedFolders, also test cleaning up badfiles database entries
+    - TestScenario=ExcludedFolders UploadrOptions="$VerboseVar $BadFilesVar $ExcludedVar -p 5 -c"
 # =============================================================================
 # before_script
 # Get database token ready

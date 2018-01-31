@@ -222,7 +222,7 @@ class UPLDRConstants:
     TimeFormat = '%Y.%m.%d %H:%M:%S'
     # For future use...
     # UTF = 'utf-8'
-    Version = '2.6.6'
+    Version = '2.6.7'
     # Identify the execution Run of this process
     Run = eval(time.strftime('int("%j")+int("%H")*100+int("%M")'))
 
