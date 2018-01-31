@@ -1735,7 +1735,7 @@ class Uploadr:
 
             # use file modified timestamp to check for changes
             last_modified = os.stat(file).st_mtime
-            file_checksum = self.md5Checksum(file)
+            file_checksum = None
 
             # Check if file is already loaded
             if (args.not_is_already_uploaded):
@@ -1743,6 +1743,7 @@ class Uploadr:
                 logging.warning('not_is_photo_already_uploaded:[{!s}] '
                                 .format(isLoaded))                
             else:
+                file_checksum = self.md5Checksum(file)
                 isLoaded, isCount, isfile_id = self.is_photo_already_uploaded(
                                                                 file,
                                                                 file_checksum,
@@ -1754,6 +1755,9 @@ class Uploadr:
                                         isfile_id, row is None))
 
             if isLoaded and row is None:
+                if file_checksum is None:
+                    file_checksum = self.md5Checksum(file)
+
                 # Insert into DB files
                 logging.warning('ALREADY LOADED. '
                                 'DO NOT PERFORM ANYTHING ELSE. '
@@ -1775,6 +1779,9 @@ class Uploadr:
                                 'On Album:[{!s}]...'
                                 .format(StrUnicodeOut(file),
                                         StrUnicodeOut(setName)))
+
+                if file_checksum is None:
+                    file_checksum = self.md5Checksum(file)
 
                 # Title Handling
                 if args.title:  # Replace
@@ -2071,10 +2078,11 @@ class Uploadr:
                         # Update db both the new file/md5 and the
                         # last_modified time of file by by calling replacePhoto
 
-                        fileMd5 = self.md5Checksum(file)
-                        if (fileMd5 != str(row[4])):
+                        if file_checksum is None:
+                            file_checksum = self.md5Checksum(file)
+                        if (file_checksum != str(row[4])):
                             self.replacePhoto(lock, file, row[1], row[4],
-                                              fileMd5, last_modified,
+                                              file_checksum, last_modified,
                                               cur, con)
                 except lite.Error as e:
                     reportError(Caught=True,
