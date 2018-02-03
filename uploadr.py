@@ -31,8 +31,6 @@
       INFO: relevant output of variables
       DEBUG: entering and existing functions
 
-    * CHANGE -s OPTION TO SET IF ONE SHOULD SEARCH PRIOR TO LOADING...As it may
-      take a long time! Need to check. Maybe not!
     * Test deleted file from local which is also deleted from flickr
     * Change code to insert on database prior to upload and then update result
     * Protect all DB access( single processing or multiprocessing) with:
@@ -224,7 +222,7 @@ class UPLDRConstants:
     TimeFormat = '%Y.%m.%d %H:%M:%S'
     # For future use...
     # UTF = 'utf-8'
-    Version = '2.6.6'
+    Version = '2.6.7'
     # Identify the execution Run of this process
     Run = eval(time.strftime('int("%j")+int("%H")*100+int("%M")'))
 
@@ -852,6 +850,9 @@ class Uploadr:
                 niceprint('\t{!s} files processed (uploaded, md5ed '
                           'or timestamp checked)'.format(count))
 
+        sys.stdout.flush()
+
+
     # -------------------------------------------------------------------------
     # authenticate
     #
@@ -1188,8 +1189,8 @@ class Uploadr:
                     logging.warning('===Actual/Planned Chunk size: '
                                     '[{!s}]/[{!s}]'
                                     .format(len(nuChangeMedia), sz))
-                    logging.debug(type(nuChangeMedia))
-
+                    logging.debug('===type(nuChangeMedia)=[{!s}]'
+                                  .format(type(nuChangeMedia)))
                     logging.debug('===Job/Task Process: Creating...')
                     uploadTask = multiprocessing.Process(
                                         target=self.uploadFileX,
@@ -1258,7 +1259,7 @@ class Uploadr:
                 # Will release (set to None) the nulockDB lock control
                 # this prevents subsequent calls to useDBLock( nuLockDB, False)
                 # to raise exception:
-                #    ValueError('semaphore or lock released too many times
+                #    ValueError('semaphore or lock released too many times')
                 if (args.verbose):
                     niceprint('===Multiprocessing=== pool joined! '
                               'What happens to nulockDB is None:[{!s}]? '
@@ -1734,18 +1735,29 @@ class Uploadr:
 
             # use file modified timestamp to check for changes
             last_modified = os.stat(file).st_mtime
-            file_checksum = self.md5Checksum(file)
+            file_checksum = None
 
             # Check if file is already loaded
-            isLoaded, isCount, isfile_id = self.is_photo_already_uploaded(
-                                                               file,
-                                                               file_checksum,
-                                                               setName)
-            logging.warning('is_photo_already_uploaded:[{!s}] '
-                            'count:[{!s}] pic:[{!s}] '
-                            'row is None == [{!s}]'
-                            .format(isLoaded, isCount, isfile_id, row is None))
+            if (args.not_is_already_uploaded):
+                isLoaded = False
+                logging.warning('not_is_photo_already_uploaded:[{!s}] '
+                                .format(isLoaded))                
+            else:
+                file_checksum = self.md5Checksum(file)
+                isLoaded, isCount, isfile_id = self.is_photo_already_uploaded(
+                                                                file,
+                                                                file_checksum,
+                                                                setName)
+                logging.warning('is_photo_already_uploaded:[{!s}] '
+                                'count:[{!s}] pic:[{!s}] '
+                                'row is None == [{!s}]'
+                                .format(isLoaded, isCount,
+                                        isfile_id, row is None))
+
             if isLoaded and row is None:
+                if file_checksum is None:
+                    file_checksum = self.md5Checksum(file)
+
                 # Insert into DB files
                 logging.warning('ALREADY LOADED. '
                                 'DO NOT PERFORM ANYTHING ELSE. '
@@ -1767,6 +1779,9 @@ class Uploadr:
                                 'On Album:[{!s}]...'
                                 .format(StrUnicodeOut(file),
                                         StrUnicodeOut(setName)))
+
+                if file_checksum is None:
+                    file_checksum = self.md5Checksum(file)
 
                 # Title Handling
                 if args.title:  # Replace
@@ -1857,17 +1872,17 @@ class Uploadr:
 
                             # Save photo_id returned from Flickr upload
                             photo_id = uploadResp.findall('photoid')[0].text
-                            logging.warning('Uploaded photo_id=[{!s}] [{!s}] '
+                            logging.warning('Uploaded [{!s}] photo_id=[{!s}] '
                                             'Ok. Will check for issues ('
                                             'duplicates or wrong checksum)'
-                                            .format(photo_id,
-                                                    StrUnicodeOut(file)))
+                                            .format(StrUnicodeOut(file),
+                                                    photo_id))
                             if (args.verbose):
-                                niceprint('Uploaded photo_id=[{!s}] [{!s}] '
+                                niceprint('Uploaded [{!s}] photo_id=[{!s}] '
                                           'Ok. Will check for issues ('
                                           'duplicates or wrong checksum)'
-                                          .format(photo_id,
-                                                  StrUnicodeOut(file)))
+                                          .format(StrUnicodeOut(file),
+                                                  photo_id))                                
 
                             # Successful upload. Break attempts cycle
                             break
@@ -2063,10 +2078,11 @@ class Uploadr:
                         # Update db both the new file/md5 and the
                         # last_modified time of file by by calling replacePhoto
 
-                        fileMd5 = self.md5Checksum(file)
-                        if (fileMd5 != str(row[4])):
+                        if file_checksum is None:
+                            file_checksum = self.md5Checksum(file)
+                        if (file_checksum != str(row[4])):
                             self.replacePhoto(lock, file, row[1], row[4],
-                                              fileMd5, last_modified,
+                                              file_checksum, last_modified,
                                               cur, con)
                 except lite.Error as e:
                     reportError(Caught=True,
@@ -3944,6 +3960,9 @@ if __name__ == "__main__":
                         help='Provides progress indicator on each upload. '
                              'Normally used in conjunction with -v option. '
                              'See also LOGGING_LEVEL value in INI file.')
+    parser.add_argument('-u', '--not-is-already-uploaded', action='store_true',
+                        help='Do not check if file is already uploaded '
+                             'and exists on flickr prior to uploading.')
     parser.add_argument('-n', '--dry-run', action='store_true',
                         help='Dry run.')
     parser.add_argument('-i', '--title', action='store',
@@ -3992,7 +4011,7 @@ if __name__ == "__main__":
                              'files in your Library that flickr does not '
                              'recognize (Error 5). Check also option -b. ')
     # finds duplicated images (based on checksum, titlename, setName) in Flickr
-    parser.add_argument('-s', '--search-for-duplicates', action='store_true',
+    parser.add_argument('-z', '--search-for-duplicates', action='store_true',
                         help='Lists duplicated files: same checksum, '
                              'same title, list SetName (if different). '
                              'Not operational at this time.')
@@ -4039,7 +4058,7 @@ if __name__ == "__main__":
         # Will run in daemon mode every SLEEP_TIME seconds
         logging.warning('Will run in daemon mode every {!s} seconds'
                         .format(SLEEP_TIME))
-        logging.WARNING('Make sure you have previously authenticated!')
+        logging.warning('Make sure you have previously authenticated!')
         flick.run()
     else:
         niceprint("Checking if token is available... if not will authenticate")
