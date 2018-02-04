@@ -95,6 +95,8 @@
       like a charm.
     * If you reduce FILE_MAX_SIZE in settings, the previously loaded files
       (over such size) are not removed.
+    * If you change IGNORED_REGEX in settings, the previously loaded files
+      (which match such regular expression) are not removed.      
     * Arguments not fully tested:
         -n
         -r (should work)
@@ -3460,6 +3462,12 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                        'set': '',
                                        'tags': pic.attrib['tags'],
                                        'result': 'empty'})
+                    # CODING: TEST
+                    returnIsPhotoUploaded = True
+                    returnPhotoID = pic.attrib['id']
+                    return returnIsPhotoUploaded, \
+                           returnPhotoUploaded, \
+                           returnPhotoID                    
 
                 for setinlist in resp.findall('set'):
                     logging.warning('setinlist:')
