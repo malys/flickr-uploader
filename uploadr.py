@@ -1468,12 +1468,20 @@ class Uploadr:
             cur = con.cursor()
             for dirpath, dirnames, filenames in\
                     os.walk(FILES_DIR, followlinks=True):
+
+                if os.path.basename(os.path.normpath(dirpath)).encode('utf-8') in EXCLUDED_FOLDERS:
+                    dirnames[:] = []
+                    filenames[:] = []   
+                    logging.warning('Folder {!s} ignored.'
+                        .format(os.path.basename(os.path.normpath(dirpath)).encode('utf-8'))) 
+                    
+                  
                 for f in filenames:
                     filePath = os.path.join(dirpath, f)
-                    if self.isFileIgnored(filePath):
-                        logging.debug('File {!s} in EXCLUDED_FOLDERS:'
-                                    .format(filePath.encode('utf-8')))
-                        continue
+                    #if self.isFileIgnored(filePath):
+                    #    logging.debug('File {!s} in EXCLUDED_FOLDERS:'
+                    #                .format(filePath.encode('utf-8')))
+                    #    continue
                     if any(ignored.search(f) for ignored in IGNORED_REGEX):
                         logging.debug('File {!s} in IGNORED_REGEX:'
                                     .format(filePath.encode('utf-8')))
@@ -1489,14 +1497,17 @@ class Uploadr:
                             files.append( tmppath )
                             cur.execute('INSERT INTO allfiles ( path ) VALUES (?)', (tmppath,))          
                         else:
-                            niceprint('Skipping file due to '
-                                    'size restriction: [{!s} - {!s}]'.format(
-                                            os.path.normpath(
-                                                StrUnicodeOut(dirpath) +
-                                                StrUnicodeOut('/') +
-                                                StrUnicodeOut(f))),
-                                                fileSize
-                                                )
+                            try:
+                                niceprint('Skipping file due to '
+                                        'size restriction: [{!s} - {!s}]'.format(
+                                                os.path.normpath(
+                                                    StrUnicodeOut(dirpath) +
+                                                    StrUnicodeOut('/') +
+                                                    StrUnicodeOut(f))),
+                                                    fileSize
+                                                    )
+                            except (IndexError) as e:
+                                logging.error(e)
             files.sort()
             if LOGGING_LEVEL <= logging.DEBUG:
                 niceprint('Pretty Print Output for {!s}:'.format('files'))
