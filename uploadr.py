@@ -4130,7 +4130,7 @@ if __name__ == "__main__":
         flick.getFlickrSets()
         flick.convertRawFiles()
         flick.upload()
-        flick.removeDeletedMedia()
+        # flick.removeDeletedMedia()
 
         if args.search_for_duplicates:
             flick.searchForDuplicates()
