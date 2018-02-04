@@ -185,8 +185,8 @@ Run ./uploadrd.py --help for up to the minute information or arguments:
 ```bash
 $ ./uploadr.py --help
 
-usage: uploadr.py [-h] [-v] [-n] [-i TITLE] [-e DESCRIPTION] [-t TAGS] [-r]
-                  [-p P] [-g] [-l N] [-d] [-b]
+usage: uploadr.py [-h] [-v] [-x] [-u] [-n] [-i TITLE] [-e DESCRIPTION]
+                  [-t TAGS] [-r] [-p P] [-g] [-l N] [-d] [-b] [-c] [-z]
 
 Upload files to Flickr. Uses uploadr.ini as config file.
 
@@ -195,7 +195,14 @@ optional arguments:
   -v, --verbose         Provides some more verbose output. Will provide
                         progress information on upload. See also LOGGING_LEVEL
                         value in INI file.
-  -n, --dry-run         Dry run
+  -x, --verbose-progress
+                        Provides progress indicator on each upload. Normally
+                        used in conjunction with -v option. See also
+                        LOGGING_LEVEL value in INI file.
+  -u, --not-is-already-uploaded
+                        Do not check if file is already uploaded and exists on
+                        flickr prior to uploading.
+  -n, --dry-run         Dry run.
   -i TITLE, --title TITLE
                         Title for uploaded files. Overwrites title from INI
                         config file. If not indicated and not defined in INI
@@ -203,12 +210,12 @@ optional arguments:
   -e DESCRIPTION, --description DESCRIPTION
                         Description for uploaded filesOverwrites description
                         from INI config file.
-  -t TAGS, --tags TAGS  Space-separated tags for uploaded files.It appends to
+  -t TAGS, --tags TAGS  Space-separated tags for uploaded files. It appends to
                         the tags defined in INI file.
   -r, --drip-feed       Wait a bit between uploading individual files
   -p P, --processes P   Number of photos to upload simultaneously.
   -g, --remove-ignored  Remove previously uploaded files, that are now being
-                        ignored due to change of the INI file configuration
+                        excluded due to change of the INI file configuration
                         EXCLUDED_FOLDERS
   -l N, --list-photos-not-in-set N
                         List as many as N photos not in set. Maximum listed
@@ -218,6 +225,16 @@ optional arguments:
   -b, --bad-files       Save on database bad files to prevent continuous
                         uploading attempts. Bad files are files in your
                         Library that flickr does not recognize (Error 5).
+                        Check also option -c.
+  -c, --clean-bad-files
+                        Resets the badfiles table/list to allow a new
+                        uploading attempt for bad files. Bad files are files
+                        in your Library that flickr does not recognize (Error
+                        5). Check also option -b.
+  -z, --search-for-duplicates
+                        Lists duplicated files: same checksum, same title,
+                        list SetName (if different). Not operational at this
+                        time.
 ```
 
 ## Task Scheduler (cron)

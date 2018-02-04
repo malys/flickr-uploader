@@ -3512,8 +3512,10 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                returnPhotoID
                     else:
                         # D) checksum, title, other setName,       Count>=1 THEN NOT EXISTS
-                        niceprint('IS PHOTO UPLOADED=FALSE, CONTINUING')
-                        logging.warning('IS PHOTO UPLOADED=FALSE, CONTINUING')
+                        niceprint('IS PHOTO UPLOADED=FALSE, '
+                                  'CONTINUING SEARCH IN SETS')
+                        logging.warning('IS PHOTO UPLOADED=FALSE, '
+                                        'CONTINUING SEARCH IN SETS')
                         continue
 
         return returnIsPhotoUploaded, returnPhotoUploaded, returnPhotoID

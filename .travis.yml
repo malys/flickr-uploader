@@ -43,7 +43,7 @@ env:
     - TAIL_LINES=20  # Tail $TAIL_LINES for output logging
     - WAIT_TIME=2    # Sleep time between first and second run    
 # Delete !!!!!!!!!!!!!!!!!!! CAREFULL !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# To ensure an empty Flckr database. Set DeleteAllFromFlickr=1. 0 otherwise.
+# To ensure an empty Flickr database. Set DeleteAllFromFlickr=1. 0 otherwise.
     - DeleteAllFromFlickr=0
   matrix:
 # TestScenario: Help, Delete DryRun, BadFiles, MultiProcessing, Remove, Replace, RemoveReplace
@@ -101,15 +101,24 @@ script:
 
   - coverage combine
   - coverage report -m uploadr.py
+  
+# DB OUTPUT for REFERENCE RUN#1------------------------------------------------
+  - sqlite3 flickrdb "SELECT *, datetime( last_modified, 'unixepoch', 'localtime') FROM files ORDER BY path;"
+  - sqlite3 flickrdb 'SELECT * FROM badfiles ORDER BY path;'
+  - sqlite3 flickrdb 'SELECT * FROM sets ORDER BY name;'
+  - sqlite3 flickrdb 'SELECT sets.set_id, sets.name, count(*) FROM sets, files WHERE sets.set_id = files.set_id GROUP BY 1, 2 ORDER BY 2;'
+  - sqlite3 flickrdb 'SELECT sets.set_id, sets.name, files_id, path FROM sets, files WHERE sets.set_id = files.set_id ORDER BY sets.name, path;'
+
+# WAIT TINE BEFORE SECOND RUN -------------------------------------------------
   - sleep $WAIT_TIME
 
 # Second RUN: Remove, Replace, RemoveReplace, ExcludedFolders -----------------
   - if [[ $TestScenario == Remove ]]; then rm "./tests/Test Photo Library/photo.jpg"; fi
   - if [[ $TestScenario == Remove ]]; then rm "./tests/Test Photo Library/photo_Excepção.jpg"; fi
 
-  - if [[ $TestScenario == Replace ]]; then cp "./tests/Test Photo Library/ReplaceTest/file_35.jpg.ForReplace" "./tests/Test Photo Library/Pics/file_35.jpg"; fi
-  - if [[ $TestScenario == Replace ]]; then cp "./tests/Test Photo Library/ReplaceTest/file_34_Substituição.ForReplace" "./tests/Test Photo Library/Pics/file_34_Substituição.jpg"; fi
-
+  - if [[ $TestScenario == Replace ]]; then cp "./tests/Test Photo Library/ReplaceTest/file_34_Substituição.ForReplace" "./tests/Test Photo Library/Pics.Replaced/file_34_Substituição.jpg"; fi
+  - if [[ $TestScenario == Replace ]]; then cp "./tests/Test Photo Library/ReplaceTest/file_35.jpg.ForReplace" "./tests/Test Photo Library/Pics.Replaced/file_35.jpg"; fi
+  
   - if [[ $TestScenario == RemoveReplace ]]; then rm "./tests/Test Photo Library/photo.jpg"; fi
   - if [[ $TestScenario == RemoveReplace ]]; then rm "./tests/Test Photo Library/photo_Excepção.jpg"; fi
   - if [[ $TestScenario == RemoveReplace ]]; then cp "./tests/Test Photo Library/ReplaceTest/file_34_Substituição.ForReplace" "./tests/Test Photo Library/Pics.Replaced/file_34_Substituição.jpg"; fi
@@ -147,13 +156,13 @@ after_script:
 # MD5SUM Output for REFERENCE -------------------------------------------------
 #  - if [[ $TestScenario == RemoveReplace ]]; then find "./tests/Test Photo Library" -type f -exec md5sum '{}' \; ; fi
 
-# DB OUTPUT for REFERENCE -----------------------------------------------------
-  - sqlite3 flickrdb "SELECT *, datetime( last_modified, 'unixepoch', 'localtime') FROM files;"
-  - sqlite3 flickrdb 'SELECT * FROM badfiles;'
-  - sqlite3 flickrdb 'SELECT * FROM sets;'
-  - sqlite3 flickrdb 'SELECT sets.set_id, sets.name, count(*) FROM sets, files WHERE sets.set_id = files.set_id GROUP BY 1, 2;'
-  - sqlite3 flickrdb 'SELECT sets.set_id, sets.name, files_id, path FROM sets, files WHERE sets.set_id = files.set_id ORDER BY sets.set_id, path;'
-
+# DB OUTPUT for REFERENCE RUN#2------------------------------------------------
+  - sqlite3 flickrdb "SELECT *, datetime( last_modified, 'unixepoch', 'localtime') FROM files ORDER BY path;"
+  - sqlite3 flickrdb 'SELECT * FROM badfiles ORDER BY path;'
+  - sqlite3 flickrdb 'SELECT * FROM sets ORDER BY name;'
+  - sqlite3 flickrdb 'SELECT sets.set_id, sets.name, count(*) FROM sets, files WHERE sets.set_id = files.set_id GROUP BY 1, 2 ORDER BY 2;'
+  - sqlite3 flickrdb 'SELECT sets.set_id, sets.name, files_id, path FROM sets, files WHERE sets.set_id = files.set_id ORDER BY sets.name, path;'
+  
 # Deploy to Heroku ------------------------------------------------------------
 deploy:
   provider: heroku
