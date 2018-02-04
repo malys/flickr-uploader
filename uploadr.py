@@ -3463,11 +3463,15 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                        'tags': pic.attrib['tags'],
                                        'result': 'empty'})
                     # CODING: TEST
-                    returnIsPhotoUploaded = True
-                    returnPhotoID = pic.attrib['id']
-                    return returnIsPhotoUploaded, \
-                           returnPhotoUploaded, \
-                           returnPhotoID                    
+                    # Valid for re-running interrupted runs EXCEPT when you
+                    # you have two pics, with same file name and checksum on
+                    # two different sets. SAME Orphaned pic will then be
+                    # assigned to TWO DIFFERENT SETS
+                    # returnIsPhotoUploaded = True
+                    # returnPhotoID = pic.attrib['id']
+                    # return returnIsPhotoUploaded, \
+                    #        returnPhotoUploaded, \
+                    #        returnPhotoID                    
 
                 for setinlist in resp.findall('set'):
                     logging.warning('setinlist:')
