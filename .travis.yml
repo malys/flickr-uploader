@@ -103,11 +103,11 @@ script:
   - coverage report -m uploadr.py
   
 # DB OUTPUT for REFERENCE RUN#1------------------------------------------------
-  - sqlite3 flickrdb "SELECT *, datetime( last_modified, 'unixepoch', 'localtime') FROM files ORDER BY path;"
-  - sqlite3 flickrdb 'SELECT * FROM badfiles ORDER BY path;'
-  - sqlite3 flickrdb 'SELECT * FROM sets ORDER BY name;'
-  - sqlite3 flickrdb 'SELECT sets.set_id, sets.name, count(*) FROM sets, files WHERE sets.set_id = files.set_id GROUP BY 1, 2 ORDER BY 2;'
-  - sqlite3 flickrdb 'SELECT sets.set_id, sets.name, files_id, path FROM sets, files WHERE sets.set_id = files.set_id ORDER BY sets.name, path;'
+  - if [[ $TestScenario != Help ]]; then sqlite3 flickrdb "SELECT *, datetime( last_modified, 'unixepoch', 'localtime') FROM files ORDER BY path;"; fi
+  - if [[ $TestScenario != Help ]]; then sqlite3 flickrdb 'SELECT * FROM badfiles ORDER BY path;'; fi
+  - if [[ $TestScenario != Help ]]; then sqlite3 flickrdb 'SELECT * FROM sets ORDER BY name;'; fi
+  - if [[ $TestScenario != Help ]]; then sqlite3 flickrdb 'SELECT sets.set_id, sets.name, count(*) FROM sets, files WHERE sets.set_id = files.set_id GROUP BY 1, 2 ORDER BY 2;'; fi
+  - if [[ $TestScenario != Help ]]; sqlite3 flickrdb 'SELECT sets.set_id, sets.name, files_id, path FROM sets, files WHERE sets.set_id = files.set_id ORDER BY sets.name, path;'; fi
 
 # WAIT TINE BEFORE SECOND RUN -------------------------------------------------
   - sleep $WAIT_TIME
