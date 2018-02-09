@@ -6,6 +6,7 @@
 
     THIS SCRIPT IS PROVIDED WITH NO WARRANTY WHATSOEVER.
     PLEASE REVIEW THE SOURCE CODE TO MAKE SURE IT WILL WORK FOR YOUR NEEDS.
+    FEEDBACK ON ANY TESTING AND FEEDBACK YOU DO IS GREATLY APPRECIATED.
     IF YOU FIND A BUG, PLEASE REPORT IT.
 
     Some giberish. Please ignore!
@@ -19,21 +20,17 @@
     * CODING Logging/Messaging groundrules:
       niceprint
       niceprint with verbose
-
-      CRITICAL: Blocking situations
-      ERROR: Relevant errors
-      exceptions
-        logging.error
-        niceprint (optional)
-        Syserror
-      Handled Exceptions...
-      WARNING: relevant conclusions/situations
-      INFO: relevant output of variables
-      DEBUG: entering and existing functions
+      logging.critical: Blocking situations
+      logging.error: Relevant errors
+      Handled Exceptions: Messages controlled via reportError function
+      logging.warning: relevant conclusions/situations
+      logging.info: relevant output of variables
+      logging.debug: entering and exiting functions
+      Note: Consider using assertions
 
     * Test deleted file from local which is also deleted from flickr
     * Change code to insert on database prior to upload and then update result
-    * Protect all DB access( single processing or multiprocessing) with:
+    * Protect all DB access (single processing or multiprocessing) with:
       And even more:
         try:
             # Acquire DB lock if running in multiprocessing mode
@@ -53,8 +50,6 @@
 
     ## Update History
     -----------------
-    * Adding database table badfiles to mark Library files not loaded into
-      Flickr due to [flickr:Error: 5: Filetype was not recognised]
     * Functions to be migrated...
        * convertRawFiles
 
@@ -96,7 +91,7 @@
     * If you reduce FILE_MAX_SIZE in settings, the previously loaded files
       (over such size) are not removed.
     * If you change IGNORED_REGEX in settings, the previously loaded files
-      (which match such regular expression) are not removed.      
+      (which match such regular expression) are not removed.
     * Arguments not fully tested:
         -n
         -r (should work)
@@ -126,8 +121,10 @@
     * As far as my testing goes :) the following errors are handled:
             Flickr reports file not loaded due to error: 5
                 [flickr:Error: 5: Filetype was not recognised]
-                Might as well log such files and marked them not to be loaded
-                again!
+                Such files are recorded so that they are not reloaded again.
+                Check -b and -c options.
+            Flickr reports file not loaded due to error: 8
+                [flickr:Error: 8: Filesize was too large]
             Database is locked
             error setting video date
             error 502: flickrapi
@@ -1743,7 +1740,7 @@ class Uploadr:
             if (args.not_is_already_uploaded):
                 isLoaded = False
                 logging.warning('not_is_photo_already_uploaded:[{!s}] '
-                                .format(isLoaded))                
+                                .format(isLoaded))
             else:
                 file_checksum = self.md5Checksum(file)
                 isLoaded, isCount, isfile_id = self.is_photo_already_uploaded(
@@ -1884,7 +1881,7 @@ class Uploadr:
                                           'Ok. Will check for issues ('
                                           'duplicates or wrong checksum)'
                                           .format(StrUnicodeOut(file),
-                                                  photo_id))                                
+                                                  photo_id))
 
                             # Successful upload. Break attempts cycle
                             break
@@ -2022,11 +2019,18 @@ class Uploadr:
                                 exceptSysInfo=True)
                     # Error code: [5]
                     # Error code: [Error: 5: Filetype was not recognised]
-                    if (format(ex.code) == '5') and (args.bad_files):
+                    # Error code: [8]
+                    # Error code: [Error: 8: Filesize was too large]
+                    if ((format(ex.code) == '5') or (format(ex.code) == '8'))
+                        and (args.bad_files):
                         # Add to db the file NOT uploaded
                         # Control for when running multiprocessing set locking
-                        niceprint('Adding to Bad files table:[{!s}]'
-                                  .format(file))
+                        niceprint('Adding to Bad files table:[{!s}] '
+                                  'due to [{!s}]'
+                                  .format(file,
+                                          'Filetype was not recognised'
+                                          if (format(ex.code) == '5')
+                                          else 'Filesize was too large'))
                         logging.info('Bad file:[{!s}]'.format(file))
 
                         self.useDBLock(lock, True)
@@ -3471,7 +3475,7 @@ set0 = sets.find('photosets').findall('photoset')[0]
                     # returnPhotoID = pic.attrib['id']
                     # return returnIsPhotoUploaded, \
                     #        returnPhotoUploaded, \
-                    #        returnPhotoID                    
+                    #        returnPhotoID
 
                 for setinlist in resp.findall('set'):
                     logging.warning('setinlist:')
