@@ -2021,8 +2021,8 @@ class Uploadr:
                     # Error code: [Error: 5: Filetype was not recognised]
                     # Error code: [8]
                     # Error code: [Error: 8: Filesize was too large]
-                    if ((format(ex.code) == '5') or (format(ex.code) == '8'))
-                        and (args.bad_files):
+                    if (((format(ex.code) == '5') or (format(ex.code) == '8'))
+                        and (args.bad_files)):
                         # Add to db the file NOT uploaded
                         # Control for when running multiprocessing set locking
                         niceprint('Adding to Bad files table:[{!s}] '
