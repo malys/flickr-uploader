@@ -4020,14 +4020,16 @@ if __name__ == "__main__":
                         help='Save on database bad files to prevent '
                              'continuous uploading attempts. Bad files are '
                              'files in your Library that flickr does not '
-                             'recognize (Error 5). Check also option -c.')
+                             'recognize (Error 5) or are too large (Error 8). '
+                             'Check also option -c.')
     # cater for bad files. files in your Library that flickr does not recognize
     # -c clears the badfiles table to allow a reset of the list
     parser.add_argument('-c', '--clean-bad-files', action='store_true',
                         help='Resets the badfiles table/list to allow a new '
                              'uploading attempt for bad files. Bad files are '
                              'files in your Library that flickr does not '
-                             'recognize (Error 5). Check also option -b. ')
+                             'recognize (Error 5) or are too large (Error 8). '
+                             'Check also option -b.')
     # finds duplicated images (based on checksum, titlename, setName) in Flickr
     parser.add_argument('-z', '--search-for-duplicates', action='store_true',
                         help='Lists duplicated files: same checksum, '
