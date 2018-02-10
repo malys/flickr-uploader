@@ -26,7 +26,23 @@
       logging.warning: relevant conclusions/situations
       logging.info: relevant output of variables
       logging.debug: entering and exiting functions
-      Note: Consider using assertions
+      Note: Consider using assertions:
+        def niceassert(s):
+        \"""
+         Returns a message with the format:
+             [2017.11.19 01:53:57]:[PID       ][PRINT   ]:[uploadr] Message
+             Accounts for UTF-8 Messages
+        \"""
+         return('{}[{!s}][{!s}]:[{!s:11s}]{}[{!s:8s}]:[{!s}] {!s}'.format(
+                UPLDRConstants.R,
+                UPLDRConstants.Run,
+                nutime.strftime(UPLDRConstants.TimeFormat),
+                os.getpid(),
+                UPLDRConstants.W,
+                'ASSERT',
+                'uploadr',
+                StrUnicodeOut(s)))
+        assert param1 >= 0, niceassert('param1 is not >= 0:'.format(param1))
 
     * Test deleted file from local which is also deleted from flickr
     * Change code to insert on database prior to upload and then update result
@@ -218,11 +234,16 @@ class UPLDRConstants:
     """ UPLDRConstants class
     """
 
+    # -------------------------------------------------------------------------
+    # Class Global Variables
+    #   class variable shared by all instances
+    #
+    #   TimeFormat = Format to display date and time. Used with strftime
+    #   Version    = Version Major.Minor.Fix
+    #   Run        = Identify the execution Run of this process. Unique number
+    #
     TimeFormat = '%Y.%m.%d %H:%M:%S'
-    # For future use...
-    # UTF = 'utf-8'
     Version = '2.6.7'
-    # Identify the execution Run of this process
     Run = eval(time.strftime('int("%j")+int("%H")*100+int("%M")'))
 
     # -------------------------------------------------------------------------
@@ -240,6 +261,13 @@ class UPLDRConstants:
     def __init__(self):
         """ class UPLDRConstants __init__
         """
+        # ---------------------------------------------------------------------
+        # Instance Global Variables
+        #   instance variable unique to each instance
+        #
+        #   nuMediacount = counter of total files to initially upload
+        #
+        self.nuMediacount = None        
         pass
 
 # -----------------------------------------------------------------------------
@@ -253,13 +281,14 @@ class UPLDRConstants:
 #   numutex      = multiprocessing mutex to control access to value nurunning
 #   nurunning    = multiprocessing Value to count processed photos
 #   nuMediacount = counter of total files to initially upload
+#                = moved to class UPLDRConstants
 nutime = time
 nuflickr = None
 nulockDB = None
 numutex = None
 nurunning = None
-nuMediacount = None
-
+# CODING: To be changed to x=UPLDRContants() and x.nuMediacount = 0
+UPLDRConstants.nuMediacount = 0
 
 # -----------------------------------------------------------------------------
 # isThisStringUnicode
@@ -842,12 +871,15 @@ class Uploadr:
 
         if not total:
             if (int(count) % 100 == 0):
-                niceprint('\t{!s} files processed (uploaded, md5ed '
-                          'or timestamp checked)'.format(count))
+                niceprint('\t{!s} of {!s:8s} files processed (uploaded, md5ed '
+                          'or timestamp checked).'
+                          .format(count, UPLDRConstants.nuMediacount))
+
         else:
             if (int(count) % 100 > 0):
-                niceprint('\t{!s} files processed (uploaded, md5ed '
-                          'or timestamp checked)'.format(count))
+                niceprint('\t{!s} of {!s:8s} files processed (uploaded, md5ed '
+                          'or timestamp checked).'
+                          .format(count, UPLDRConstants.nuMediacount))
 
         sys.stdout.flush()
 
@@ -1090,7 +1122,6 @@ class Uploadr:
         global nulockDB
         global numutex
         global nurunning
-        global nuMediacount
 
         niceprint("*****Uploading files*****")
 
@@ -1113,7 +1144,7 @@ class Uploadr:
                 changedMedia = set(allMedia) - existingMedia
 
         changedMedia_count = len(changedMedia)
-        nuMediacount = changedMedia_count
+        UPLDRConstants.nuMediacount = changedMedia_count
         niceprint('Found [{!s}] files to upload.'
                   .format(str(changedMedia_count)))
 
@@ -4098,7 +4129,7 @@ if __name__ == "__main__":
             flick.removeIgnoredMedia()
 
         flick.createSets()
-        flick.printStat(nuMediacount)
+        flick.printStat(UPLDRConstants.nuMediacount)
 
 niceprint('--------- (V{!s}) End time: {!s} ---------'
           .format(UPLDRConstants.Version,
