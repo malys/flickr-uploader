@@ -1160,7 +1160,8 @@ class Uploadr:
                 logging.debug('len(badMedia)'.format(len(badMedia)))
 
             changedMedia_count = len(changedMedia)
-            UPLDRConstants.nuMediacount = changedMedia_count
+            # Careful with control on "i != changedMedia_count - 1"
+            # UPLDRConstants.nuMediacount = changedMedia_count
             niceprint('Removing {!s} badfiles. Found {!s} files to upload.'
                       .format(len(badMedia),
                               changedMedia_count))
