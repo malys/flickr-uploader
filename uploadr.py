@@ -1031,15 +1031,15 @@ class Uploadr:
 
             for row in rows:
                 logging.debug('Checking file_id:[{!s}] file:[{!s}] '
-                              'isFileIgnored?'
+                              'isFileExcluded?'
                               .format(StrUnicodeOut(row[0]),
                                       StrUnicodeOut(row[1])))
                 logging.debug('type(row[1]):[{!s}]'.format(type(row[1])))
                 # row[0] is photo_id
                 # row[1] is filename
-                if (self.isFileIgnored(unicode(row[1], 'utf-8')
-                                       if sys.version_info < (3, )
-                                       else str(row[1]))):
+                if (self.isFileExcluded(unicode(row[1], 'utf-8')
+                                        if sys.version_info < (3, )
+                                        else str(row[1]))):
                     self.deleteFile(row, cur)
 
         # Closing DB connection
@@ -1473,9 +1473,19 @@ class Uploadr:
         files = []
         for dirpath, dirnames, filenames in\
                 os.walk(FILES_DIR, followlinks=True):
+            
+            # Prevent walking thru files in the list of EXCLUDED_FOLDERS
+            if os.path.basename(os.path.normpath(dirpath)).encode('utf-8') in EXCLUDED_FOLDERS:
+                    dirnames[:] = []
+                    filenames[:] = []   
+                    logging.warning('Folder {!s} ignored.'
+                        .format(os.path.basename(os.path.normpath(dirpath)).encode('utf-8'))) 
+            
+            
+            
             for f in filenames:
                 filePath = os.path.join(dirpath, f)
-                if self.isFileIgnored(filePath):
+                if self.isFileExcluded(filePath):
                     logging.debug('File {!s} in EXCLUDED_FOLDERS:'
                                   .format(filePath.encode('utf-8')))
                     continue
@@ -1507,14 +1517,14 @@ class Uploadr:
         return files
 
     # -------------------------------------------------------------------------
-    # isFileIgnored
+    # isFileExcluded
     #
     # Check if a filename is within the list of EXCLUDED_FOLDERS. Returns:
     #   True = if filename's folder is within one of the EXCLUDED_FOLDERS
     #   False = if filename's folder not on one of the EXCLUDED_FOLDERS
     #
-    def isFileIgnored(self, filename):
-        """ isFileIgnored
+    def isFileExcluded(self, filename):
+        """ isFileExcluded
 
         Returns True if a file is within an EXCLUDED_FOLDERS directory/folder
         """
@@ -1535,10 +1545,10 @@ class Uploadr:
                                   StrUnicodeOut(filename)))
             # Now everything should be in Unicode
             if excluded_dir in os.path.dirname(filename):
-                logging.debug('Returning isFileIgnored:[True]')
+                logging.debug('Returning isFileExcluded:[True]')
                 return True
 
-        logging.debug('Returning isFileIgnored:[False]')
+        logging.debug('Returning isFileExcluded:[False]')
         return False
 
     # -------------------------------------------------------------------------
