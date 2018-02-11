@@ -1482,7 +1482,7 @@ class Uploadr:
                 filenames[:] = []   
                 logging.warning('Folder [{!s}] with path [{!s}] excluded.'
                                 .format(
-                                    StrUnicodeOut(os.ath.basename(
+                                    StrUnicodeOut(os.path.basename(
                                                      os.path.normpath(
                                                         dirpath))
                                                  ),
