@@ -1488,7 +1488,7 @@ class Uploadr:
                                                  ),
                                     StrUnicodeOut(os.path.normpath(dirpath)))
                                 )
-                niceprint('Folder [{!s}] with path [{!s}] excluded.'
+                niceprint('Folder [{!s}] on path [{!s}] excluded.'
                           .format(StrUnicodeOut(os.path.basename(
                                                    os.path.normpath(dirpath))
                                                ),
