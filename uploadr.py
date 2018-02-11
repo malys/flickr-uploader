@@ -243,7 +243,7 @@ class UPLDRConstants:
     #   Run        = Identify the execution Run of this process. Unique number
     #
     TimeFormat = '%Y.%m.%d %H:%M:%S'
-    Version = '2.6.7'
+    Version = '2.6.8'
     Run = eval(time.strftime('int("%j")+int("%H")*100+int("%M")'))
 
     # -------------------------------------------------------------------------
