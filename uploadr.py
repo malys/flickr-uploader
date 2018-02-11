@@ -871,13 +871,13 @@ class Uploadr:
 
         if not total:
             if (int(count) % 100 == 0):
-                niceprint('\t{!s} of {!s:8s} files processed (uploaded, md5ed '
+                niceprint('\t{!s} of \t{!s} files processed (uploaded, md5ed '
                           'or timestamp checked).'
                           .format(count, UPLDRConstants.nuMediacount))
 
         else:
             if (int(count) % 100 > 0):
-                niceprint('\t{!s} of {!s:8s} files processed (uploaded, md5ed '
+                niceprint('\t{!s} of \t{!s} files processed (uploaded, md5ed '
                           'or timestamp checked).'
                           .format(count, UPLDRConstants.nuMediacount))
 
@@ -1160,6 +1160,7 @@ class Uploadr:
                 logging.debug('len(badMedia)'.format(len(badMedia)))
 
             changedMedia_count = len(changedMedia)
+            UPLDRConstants.nuMediacount = changedMedia_count
             niceprint('Removing {!s} badfiles. Found {!s} files to upload.'
                       .format(len(badMedia),
                               changedMedia_count))
