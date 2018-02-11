@@ -1480,7 +1480,7 @@ class Uploadr:
                 in EXCLUDED_FOLDERS:
                 dirnames[:] = []
                 filenames[:] = []   
-                logging.warning('Folder [{!s}] with path [{!s}] excluded.'
+                logging.warning('Folder [{!s}] on path [{!s}] excluded.'
                                 .format(
                                     StrUnicodeOut(os.path.basename(
                                                      os.path.normpath(
@@ -1489,7 +1489,7 @@ class Uploadr:
                                     StrUnicodeOut(os.path.normpath(dirpath)))
                                 )
                 niceprint('Folder [{!s}] with path [{!s}] excluded.'
-                          .format(StrUnicodeOut(os.ath.basename(
+                          .format(StrUnicodeOut(os.path.basename(
                                                    os.path.normpath(dirpath))
                                                ),
                                 StrUnicodeOut(os.path.normpath(dirpath))))
