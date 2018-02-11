@@ -1887,7 +1887,7 @@ class Uploadr:
                                           if FLICKR["title"] == ""
                                           else str(FLICKR["title"]),
                                     description=str(FLICKR["description"]),
-                                    tags='{} checksum:{} {} {}'
+                                    tags='{} checksum:{} "{}" {}'
                                          .format(
                                                 FLICKR["tags"],
                                                 file_checksum,
