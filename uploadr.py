@@ -1473,22 +1473,35 @@ class Uploadr:
         files = []
         for dirpath, dirnames, filenames in\
                 os.walk(FILES_DIR, followlinks=True):
-            
+
             # Prevent walking thru files in the list of EXCLUDED_FOLDERS
-            if os.path.basename(os.path.normpath(dirpath)).encode('utf-8') in EXCLUDED_FOLDERS:
-                    dirnames[:] = []
-                    filenames[:] = []   
-                    logging.warning('Folder {!s} ignored.'
-                        .format(os.path.basename(os.path.normpath(dirpath)).encode('utf-8'))) 
-            
-            
-            
+            # Reduce time by not checking a file in an excluded folder
+            if StrUnicodeOut(os.path.basename(os.path.normpath(dirpath))) \
+                in EXCLUDED_FOLDERS:
+                dirnames[:] = []
+                filenames[:] = []   
+                logging.warning('Folder [{!s}] with path [{!s}] excluded.'
+                                .format(
+                                    StrUnicodeOut(os.ath.basename(
+                                                     os.path.normpath(
+                                                        dirpath))
+                                                 ),
+                                    StrUnicodeOut(os.path.normpath(dirpath)))
+                                )
+                niceprint('Folder [{!s}] with path [{!s}] excluded.'
+                          .format(StrUnicodeOut(os.ath.basename(
+                                                   os.path.normpath(dirpath))
+                                               ),
+                                StrUnicodeOut(os.path.normpath(dirpath))))
+
             for f in filenames:
                 filePath = os.path.join(dirpath, f)
-                if self.isFileExcluded(filePath):
-                    logging.debug('File {!s} in EXCLUDED_FOLDERS:'
-                                  .format(filePath.encode('utf-8')))
-                    continue
+                # CODING: No need as files in EXCLUDED_FOLDERS were already
+                # removed.
+                # if self.isFileExcluded(filePath):
+                #     logging.debug('File {!s} in EXCLUDED_FOLDERS:'
+                #                   .format(filePath.encode('utf-8')))
+                #     continue
                 if any(ignored.search(f) for ignored in IGNORED_REGEX):
                     logging.debug('File {!s} in IGNORED_REGEX:'
                                   .format(filePath.encode('utf-8')))
