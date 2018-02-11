@@ -1793,7 +1793,11 @@ class Uploadr:
                 # Insert into DB files
                 logging.warning('ALREADY LOADED. '
                                 'DO NOT PERFORM ANYTHING ELSE. '
-                                'ROW IS NONE... UPDATING DATABASE')
+                                'ROW IS NONE... UPDATING LOCAL DATABASE.')
+                niceprint('Already loaded file:[{!s}]...'
+                          'On Album:[{!s}]... UPDATING LOCAL DATABASE.'
+                          .format(StrUnicodeOut(file),
+                                  StrUnicodeOut(setName)))                
                 dbInsertIntoFiles(lock, isfile_id, file,
                                   file_checksum, last_modified)
 
@@ -1883,10 +1887,11 @@ class Uploadr:
                                           if FLICKR["title"] == ""
                                           else str(FLICKR["title"]),
                                     description=str(FLICKR["description"]),
-                                    tags='{} checksum:{} {}'
+                                    tags='{} checksum:{} {} {}'
                                          .format(
                                                 FLICKR["tags"],
                                                 file_checksum,
+                                                StrUnicodeOut(setName),
                                                 args.tags if args.tags else '')
                                                 .replace(',', ''),
                                     is_public=str(FLICKR["is_public"]),
