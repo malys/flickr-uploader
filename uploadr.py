@@ -1910,11 +1910,10 @@ class Uploadr:
                                           if FLICKR["title"] == ""
                                           else str(FLICKR["title"]),
                                     description=str(FLICKR["description"]),
-                                    tags='{} checksum:{} "{}" {}'
+                                    tags='{} checksum:{} {}'
                                          .format(
                                                 FLICKR["tags"],
                                                 file_checksum,
-                                                StrUnicodeOut(setName),
                                                 args.tags if args.tags else '')
                                                 .replace(',', ''),
                                     is_public=str(FLICKR["is_public"]),
