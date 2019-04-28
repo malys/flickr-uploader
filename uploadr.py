@@ -6,7 +6,6 @@
 
     THIS SCRIPT IS PROVIDED WITH NO WARRANTY WHATSOEVER.
     PLEASE REVIEW THE SOURCE CODE TO MAKE SURE IT WILL WORK FOR YOUR NEEDS.
-    FEEDBACK ON ANY TESTING AND FEEDBACK YOU DO IS GREATLY APPRECIATED.
     IF YOU FIND A BUG, PLEASE REPORT IT.
 
     Some giberish. Please ignore!
@@ -20,33 +19,21 @@
     * CODING Logging/Messaging groundrules:
       niceprint
       niceprint with verbose
-      logging.critical: Blocking situations
-      logging.error: Relevant errors
-      Handled Exceptions: Messages controlled via reportError function
-      logging.warning: relevant conclusions/situations
-      logging.info: relevant output of variables
-      logging.debug: entering and exiting functions
-      Note: Consider using assertions:
-        def niceassert(s):
-        \"""
-         Returns a message with the format:
-             [2017.11.19 01:53:57]:[PID       ][PRINT   ]:[uploadr] Message
-             Accounts for UTF-8 Messages
-        \"""
-         return('{}[{!s}][{!s}]:[{!s:11s}]{}[{!s:8s}]:[{!s}] {!s}'.format(
-                UPLDRConstants.R,
-                UPLDRConstants.Run,
-                nutime.strftime(UPLDRConstants.TimeFormat),
-                os.getpid(),
-                UPLDRConstants.W,
-                'ASSERT',
-                'uploadr',
-                StrUnicodeOut(s)))
-        assert param1 >= 0, niceassert('param1 is not >= 0:'.format(param1))
+
+      CRITICAL: Blocking situations
+      ERROR: Relevant errors
+      exceptions
+        logging.error
+        niceprint (optional)
+        Syserror
+      Handled Exceptions...
+      WARNING: relevant conclusions/situations
+      INFO: relevant output of variables
+      DEBUG: entering and existing functions
 
     * Test deleted file from local which is also deleted from flickr
     * Change code to insert on database prior to upload and then update result
-    * Protect all DB access (single processing or multiprocessing) with:
+    * Protect all DB access( single processing or multiprocessing) with:
       And even more:
         try:
             # Acquire DB lock if running in multiprocessing mode
@@ -66,6 +53,8 @@
 
     ## Update History
     -----------------
+    * Adding database table badfiles to mark Library files not loaded into
+      Flickr due to [flickr:Error: 5: Filetype was not recognised]
     * Functions to be migrated...
        * convertRawFiles
 
@@ -106,8 +95,6 @@
       like a charm.
     * If you reduce FILE_MAX_SIZE in settings, the previously loaded files
       (over such size) are not removed.
-    * If you change IGNORED_REGEX in settings, the previously loaded files
-      (which match such regular expression) are not removed.
     * Arguments not fully tested:
         -n
         -r (should work)
@@ -137,10 +124,8 @@
     * As far as my testing goes :) the following errors are handled:
             Flickr reports file not loaded due to error: 5
                 [flickr:Error: 5: Filetype was not recognised]
-                Such files are recorded so that they are not reloaded again.
-                Check -b and -c options.
-            Flickr reports file not loaded due to error: 8
-                [flickr:Error: 8: Filesize was too large]
+                Might as well log such files and marked them not to be loaded
+                again!
             Database is locked
             error setting video date
             error 502: flickrapi
@@ -234,16 +219,11 @@ class UPLDRConstants:
     """ UPLDRConstants class
     """
 
-    # -------------------------------------------------------------------------
-    # Class Global Variables
-    #   class variable shared by all instances
-    #
-    #   TimeFormat = Format to display date and time. Used with strftime
-    #   Version    = Version Major.Minor.Fix
-    #   Run        = Identify the execution Run of this process. Unique number
-    #
     TimeFormat = '%Y.%m.%d %H:%M:%S'
-    Version = '2.6.8'
+    # For future use...
+    # UTF = 'utf-8'
+    Version = '2.6.7'
+    # Identify the execution Run of this process
     Run = eval(time.strftime('int("%j")+int("%H")*100+int("%M")'))
 
     # -------------------------------------------------------------------------
@@ -261,13 +241,6 @@ class UPLDRConstants:
     def __init__(self):
         """ class UPLDRConstants __init__
         """
-        # ---------------------------------------------------------------------
-        # Instance Global Variables
-        #   instance variable unique to each instance
-        #
-        #   nuMediacount = counter of total files to initially upload
-        #
-        self.nuMediacount = None        
         pass
 
 # -----------------------------------------------------------------------------
@@ -281,14 +254,13 @@ class UPLDRConstants:
 #   numutex      = multiprocessing mutex to control access to value nurunning
 #   nurunning    = multiprocessing Value to count processed photos
 #   nuMediacount = counter of total files to initially upload
-#                = moved to class UPLDRConstants
 nutime = time
 nuflickr = None
 nulockDB = None
 numutex = None
 nurunning = None
-# CODING: To be changed to x=UPLDRContants() and x.nuMediacount = 0
-UPLDRConstants.nuMediacount = 0
+nuMediacount = None
+
 
 # -----------------------------------------------------------------------------
 # isThisStringUnicode
@@ -871,15 +843,12 @@ class Uploadr:
 
         if not total:
             if (int(count) % 100 == 0):
-                niceprint('\t{!s} of \t{!s} files processed (uploaded, md5ed '
-                          'or timestamp checked).'
-                          .format(count, UPLDRConstants.nuMediacount))
-
+                niceprint('\t{!s} files processed (uploaded, md5ed '
+                          'or timestamp checked)'.format(count))
         else:
             if (int(count) % 100 > 0):
-                niceprint('\t{!s} of \t{!s} files processed (uploaded, md5ed '
-                          'or timestamp checked).'
-                          .format(count, UPLDRConstants.nuMediacount))
+                niceprint('\t{!s} files processed (uploaded, md5ed '
+                          'or timestamp checked)'.format(count))
 
         sys.stdout.flush()
 
@@ -1031,15 +1000,15 @@ class Uploadr:
 
             for row in rows:
                 logging.debug('Checking file_id:[{!s}] file:[{!s}] '
-                              'isFileExcluded?'
+                              'isFileIgnored?'
                               .format(StrUnicodeOut(row[0]),
                                       StrUnicodeOut(row[1])))
                 logging.debug('type(row[1]):[{!s}]'.format(type(row[1])))
                 # row[0] is photo_id
                 # row[1] is filename
-                if (self.isFileExcluded(unicode(row[1], 'utf-8')
-                                        if sys.version_info < (3, )
-                                        else str(row[1]))):
+                if (self.isFileIgnored(unicode(row[1], 'utf-8')
+                                       if sys.version_info < (3, )
+                                       else str(row[1]))):
                     self.deleteFile(row, cur)
 
         # Closing DB connection
@@ -1122,10 +1091,31 @@ class Uploadr:
         global nulockDB
         global numutex
         global nurunning
+        global nuMediacount
 
         niceprint("*****Uploading files*****")
 
-        allMedia = self.grabNewFiles()
+        if (args.fast_upload):
+            # Load files from databases
+            con = lite.connect(DB_PATH)
+            con.text_factory = str
+            with con:
+                    cur = con.cursor()
+                    cur.execute("SELECT path FROM allfiles")
+                    allMedia = set(file[0] for file in cur.fetchall())
+                    logging.debug('len(allMedia)'.format(len(allMedia)))
+
+            # Closing DB connection
+            if con is not None:
+                con.close() 
+        else:
+            # Normal process
+            allMedia = self.grabNewFiles()
+
+            if (args.walk_files_only):
+                logging.warning('WALK files only.')
+                sys.exit(1)
+
         # If managing changes, consider all files
         if MANAGE_CHANGES:
             logging.warning('MANAGED_CHANGES is True. Reviewing allMedia.')
@@ -1144,9 +1134,10 @@ class Uploadr:
                 changedMedia = set(allMedia) - existingMedia
 
         changedMedia_count = len(changedMedia)
-        UPLDRConstants.nuMediacount = changedMedia_count
-        niceprint('Found [{!s}] files to upload.'
-                  .format(str(changedMedia_count)))
+        allMedia_count = len(allMedia)
+        nuMediacount = changedMedia_count
+        niceprint('Found [{!s}] files to upload in total of [{!s}] .'
+                  .format(str(changedMedia_count),str(allMedia_count)))
 
         if (args.bad_files):
             # Cater for bad files
@@ -1160,8 +1151,6 @@ class Uploadr:
                 logging.debug('len(badMedia)'.format(len(badMedia)))
 
             changedMedia_count = len(changedMedia)
-            # Careful with control on "i != changedMedia_count - 1"
-            # UPLDRConstants.nuMediacount = changedMedia_count
             niceprint('Removing {!s} badfiles. Found {!s} files to upload.'
                       .format(len(badMedia),
                               changedMedia_count))
@@ -1471,73 +1460,74 @@ class Uploadr:
         """
 
         files = []
-        for dirpath, dirnames, filenames in\
-                os.walk(FILES_DIR, followlinks=True):
 
-            # Prevent walking thru files in the list of EXCLUDED_FOLDERS
-            # Reduce time by not checking a file in an excluded folder
-            if StrUnicodeOut(os.path.basename(os.path.normpath(dirpath))) \
-                in EXCLUDED_FOLDERS:
-                dirnames[:] = []
-                filenames[:] = []   
-                logging.warning('Folder [{!s}] on path [{!s}] excluded.'
-                                .format(
-                                    StrUnicodeOut(os.path.basename(
-                                                     os.path.normpath(
-                                                        dirpath))
-                                                 ),
-                                    StrUnicodeOut(os.path.normpath(dirpath)))
-                                )
-                niceprint('Folder [{!s}] on path [{!s}] excluded.'
-                          .format(StrUnicodeOut(os.path.basename(
-                                                   os.path.normpath(dirpath))
-                                               ),
-                                StrUnicodeOut(os.path.normpath(dirpath))))
+        con = lite.connect(DB_PATH)
+        con.text_factory = str
+        flick.cleanDB('allfiles', con)
+        with con:
+            cur = con.cursor()
+            for dirpath, dirnames, filenames in\
+                    os.walk(FILES_DIR, followlinks=True):
 
-            for f in filenames:
-                filePath = os.path.join(dirpath, f)
-                # CODING: No need as files in EXCLUDED_FOLDERS were already
-                # removed.
-                # if self.isFileExcluded(filePath):
-                #     logging.debug('File {!s} in EXCLUDED_FOLDERS:'
-                #                   .format(filePath.encode('utf-8')))
-                #     continue
-                if any(ignored.search(f) for ignored in IGNORED_REGEX):
-                    logging.debug('File {!s} in IGNORED_REGEX:'
-                                  .format(filePath.encode('utf-8')))
-                    continue
-                ext = os.path.splitext(os.path.basename(f))[1][1:].lower()
-                if ext in ALLOWED_EXT:
-                    fileSize = os.path.getsize(dirpath + "/" + f)
-                    if (fileSize < FILE_MAX_SIZE):
-                        files.append(
-                            os.path.normpath(
-                                StrUnicodeOut(dirpath) +
-                                StrUnicodeOut("/") +
-                                StrUnicodeOut(f).replace("'", "\'")))
-                    else:
-                        niceprint('Skipping file due to '
-                                  'size restriction: [{!s}]'.format(
-                                        os.path.normpath(
-                                            StrUnicodeOut(dirpath) +
-                                            StrUnicodeOut('/') +
-                                            StrUnicodeOut(f))))
-        files.sort()
-        if LOGGING_LEVEL <= logging.DEBUG:
-            niceprint('Pretty Print Output for {!s}:'.format('files'))
-            pprint.pprint(files)
+                if os.path.basename(os.path.normpath(dirpath)).encode('utf-8') in EXCLUDED_FOLDERS:
+                    dirnames[:] = []
+                    filenames[:] = []   
+                    logging.warning('Folder {!s} ignored.'
+                        .format(os.path.basename(os.path.normpath(dirpath)).encode('utf-8'))) 
+                    
+                  
+                for f in filenames:
+                    filePath = os.path.join(dirpath, f)
+                    #if self.isFileIgnored(filePath):
+                    #    logging.debug('File {!s} in EXCLUDED_FOLDERS:'
+                    #                .format(filePath.encode('utf-8')))
+                    #    continue
+                    if any(ignored.search(f) for ignored in IGNORED_REGEX):
+                        logging.debug('File {!s} in IGNORED_REGEX:'
+                                    .format(filePath.encode('utf-8')))
+                        continue
+                    ext = os.path.splitext(os.path.basename(f))[1][1:].lower()
+                    if ext in ALLOWED_EXT:
+                        fileSize = os.path.getsize(dirpath + "/" + f)
+                        if (fileSize < FILE_MAX_SIZE and fileSize > 0):
+                            tmppath = os.path.normpath(
+                                    StrUnicodeOut(dirpath) +
+                                    StrUnicodeOut("/") +
+                                    StrUnicodeOut(f).replace("'", "\'"))
+                            files.append( tmppath )
+                            cur.execute('INSERT INTO allfiles ( path ) VALUES (?)', (tmppath,))          
+                        else:
+                            try:
+                                niceprint('Skipping file due to '
+                                        'size restriction: [{!s} - {!s}]'.format(
+                                                os.path.normpath(
+                                                    StrUnicodeOut(dirpath) +
+                                                    StrUnicodeOut('/') +
+                                                    StrUnicodeOut(f))),
+                                                    fileSize
+                                                    )
+                            except (IndexError) as e:
+                                logging.error(e)
+            files.sort()
+            if LOGGING_LEVEL <= logging.DEBUG:
+                niceprint('Pretty Print Output for {!s}:'.format('files'))
+                pprint.pprint(files)
+
+        # Closing DB connection
+        if con is not None:
+            con.close()
 
         return files
 
     # -------------------------------------------------------------------------
-    # isFileExcluded
+    # isFileIgnored
     #
     # Check if a filename is within the list of EXCLUDED_FOLDERS. Returns:
     #   True = if filename's folder is within one of the EXCLUDED_FOLDERS
     #   False = if filename's folder not on one of the EXCLUDED_FOLDERS
     #
-    def isFileExcluded(self, filename):
-        """ isFileExcluded
+    def isFileIgnored(self, filename):
+        """ isFileIgnored
 
         Returns True if a file is within an EXCLUDED_FOLDERS directory/folder
         """
@@ -1558,10 +1548,10 @@ class Uploadr:
                                   StrUnicodeOut(filename)))
             # Now everything should be in Unicode
             if excluded_dir in os.path.dirname(filename):
-                logging.debug('Returning isFileExcluded:[True]')
+                logging.debug('Returning isFileIgnored:[True]')
                 return True
 
-        logging.debug('Returning isFileExcluded:[False]')
+        logging.debug('Returning isFileIgnored:[False]')
         return False
 
     # -------------------------------------------------------------------------
@@ -1796,7 +1786,7 @@ class Uploadr:
             if (args.not_is_already_uploaded):
                 isLoaded = False
                 logging.warning('not_is_photo_already_uploaded:[{!s}] '
-                                .format(isLoaded))
+                                .format(isLoaded))                
             else:
                 file_checksum = self.md5Checksum(file)
                 isLoaded, isCount, isfile_id = self.is_photo_already_uploaded(
@@ -1816,11 +1806,7 @@ class Uploadr:
                 # Insert into DB files
                 logging.warning('ALREADY LOADED. '
                                 'DO NOT PERFORM ANYTHING ELSE. '
-                                'ROW IS NONE... UPDATING LOCAL DATABASE.')
-                niceprint('Already loaded file:[{!s}]...'
-                          'On Album:[{!s}]... UPDATING LOCAL DATABASE.'
-                          .format(StrUnicodeOut(file),
-                                  StrUnicodeOut(setName)))                
+                                'ROW IS NONE... UPDATING DATABASE')
                 dbInsertIntoFiles(lock, isfile_id, file,
                                   file_checksum, last_modified)
 
@@ -1941,7 +1927,7 @@ class Uploadr:
                                           'Ok. Will check for issues ('
                                           'duplicates or wrong checksum)'
                                           .format(StrUnicodeOut(file),
-                                                  photo_id))
+                                                  photo_id))                                
 
                             # Successful upload. Break attempts cycle
                             break
@@ -2079,18 +2065,11 @@ class Uploadr:
                                 exceptSysInfo=True)
                     # Error code: [5]
                     # Error code: [Error: 5: Filetype was not recognised]
-                    # Error code: [8]
-                    # Error code: [Error: 8: Filesize was too large]
-                    if (((format(ex.code) == '5') or (format(ex.code) == '8'))
-                        and (args.bad_files)):
+                    if (format(ex.code) == '5') and (args.bad_files):
                         # Add to db the file NOT uploaded
                         # Control for when running multiprocessing set locking
-                        niceprint('Adding to Bad files table:[{!s}] '
-                                  'due to [{!s}]'
-                                  .format(file,
-                                          'Filetype was not recognised'
-                                          if (format(ex.code) == '5')
-                                          else 'Filesize was too large'))
+                        niceprint('Adding to Bad files table:[{!s}]'
+                                  .format(file))
                         logging.info('Bad file:[{!s}]'.format(file))
 
                         self.useDBLock(lock, True)
@@ -2905,7 +2884,7 @@ class Uploadr:
             cur = con.cursor()
             cur.execute('CREATE TABLE IF NOT EXISTS files '
                         '(files_id INT, path TEXT, set_id INT, '
-                        'md5 TEXT, tagged INT)')
+                        'md5 TEXT, tagged INT)')          
             cur.execute('CREATE TABLE IF NOT EXISTS sets '
                         '(set_id INT, name TEXT, primary_photo_id INTEGER)')
             cur.execute('CREATE UNIQUE INDEX IF NOT EXISTS fileindex '
@@ -2947,9 +2926,23 @@ class Uploadr:
                 cur.execute('PRAGMA user_version')
                 row = cur.fetchone()
             if (row[0] == 2):
-                niceprint('Database version: [{!s}]'.format(row[0]))
                 # Database version 3
-                # ...for future use!
+                # Create allfiles
+                niceprint('Adding table allfiles to database')
+                cur.execute('PRAGMA user_version="3"')
+                cur.execute('CREATE TABLE IF NOT EXISTS allfiles '
+                            '(files_id INTEGER PRIMARY KEY AUTOINCREMENT, '
+                            'path TEXT)')
+                cur.execute('CREATE UNIQUE INDEX IF NOT EXISTS allfileindex '
+                            'ON allfiles (path)')
+                con.commit()
+                cur = con.cursor()
+                cur.execute('PRAGMA user_version')
+                row = cur.fetchone()
+            if (row[0] == 3):
+                niceprint('Database version: [{!s}]'.format(row[0]))
+                # Database version 4
+                # ...for future use!    
             # Closing DB connection
             if con is not None:
                 con.close()
@@ -2968,47 +2961,50 @@ class Uploadr:
             niceprint('Completed database setup')
 
     # -------------------------------------------------------------------------
-    # cleanDBbadfiles
+    # cleanDB
     #
-    # Cleans up (deletes) contents from DB badfiles table
+    # Cleans up (deletes) contents from DB table
     #
-    def cleanDBbadfiles(self):
+    def cleanDB(self, dbname, con):
         """
-            cleanDBbadfiles
+            cleanDB
 
-            Cleans up (deletes) contents from DB badfiles table
+            Cleans up (deletes) contents from DB table
         """
-        niceprint('Cleaning up badfiles table from the database: [{!s}]'
-                  .format(DB_PATH))
-        con = None
+        niceprint('Cleaning up {!s} table from the database: [{!s}]'
+                  .format(dbname, DB_PATH))
+        # con = None
+        local = False
         try:
-            con = lite.connect(DB_PATH)
-            con.text_factory = str
+            if con is None:
+                con = lite.connect(DB_PATH)
+                con.text_factory = str
+                local = True
             cur = con.cursor()
             cur.execute('PRAGMA user_version')
             row = cur.fetchone()
             if (row[0] >= 2):
                 # delete from badfiles table and reset SEQUENCE
-                niceprint('Deleting from badfiles table. Reseting sequence.')
+                niceprint('Deleting from "{!s} table. Reseting sequence.'.format(dbname))
                 try:
-                    cur.execute('DELETE FROM badfiles')
+                    cur.execute('DELETE FROM {!s}'.format(dbname))
                     cur.execute('DELETE FROM SQLITE_SEQUENCE '
-                                'WHERE name="badfiles"')
+                                'WHERE name="{!s}"'.format(dbname))
                     con.commit()
                 except lite.Error as e:
                     reportError(Caught=True,
                                 CaughtPrefix='+++ DB',
                                 CaughtCode='147',
                                 CaughtMsg='DB error on SELECT FROM '
-                                          'badfiles: [{!s}]'
-                                          .format(e.args[0]),
+                                          '{!s}: [{!s}]'
+                                          .format(dbname,e.args[0]),
                                 NicePrint=True)
                     raise
             else:
                 niceprint('Wrong DB version. '
                           'Expected 2 or higher and not:[{!s}]'.format(row[0]))
             # Closing DB connection
-            if con is not None:
+            if con is not None and local:
                 con.close()
         except lite.Error as e:
             reportError(Caught=True,
@@ -3017,11 +3013,14 @@ class Uploadr:
                         CaughtMsg='DB error on SELECT: [{!s}]'
                                   .format(e.args[0]),
                         NicePrint=True)
-            if con is not None:
+            if con is not None and local:
                 con.close()
             sys.exit(2)
         finally:
-            niceprint('Completed cleaning up badfiles table from the database')
+            niceprint('Completed cleaning up {!s} table from the database'.format(dbname))
+
+
+
 
     # -------------------------------------------------------------------------
     # md5Checksum
@@ -3526,16 +3525,6 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                        'set': '',
                                        'tags': pic.attrib['tags'],
                                        'result': 'empty'})
-                    # CODING: TEST
-                    # Valid for re-running interrupted runs EXCEPT when you
-                    # you have two pics, with same file name and checksum on
-                    # two different sets. SAME Orphaned pic will then be
-                    # assigned to TWO DIFFERENT SETS
-                    # returnIsPhotoUploaded = True
-                    # returnPhotoID = pic.attrib['id']
-                    # return returnIsPhotoUploaded, \
-                    #        returnPhotoUploaded, \
-                    #        returnPhotoID
 
                 for setinlist in resp.findall('set'):
                     logging.warning('setinlist:')
@@ -3588,10 +3577,8 @@ set0 = sets.find('photosets').findall('photoset')[0]
                                returnPhotoID
                     else:
                         # D) checksum, title, other setName,       Count>=1 THEN NOT EXISTS
-                        niceprint('IS PHOTO UPLOADED=FALSE, '
-                                  'CONTINUING SEARCH IN SETS')
-                        logging.warning('IS PHOTO UPLOADED=FALSE, '
-                                        'CONTINUING SEARCH IN SETS')
+                        niceprint('IS PHOTO UPLOADED=FALSE, CONTINUING')
+                        logging.warning('IS PHOTO UPLOADED=FALSE, CONTINUING')
                         continue
 
         return returnIsPhotoUploaded, returnPhotoUploaded, returnPhotoID
@@ -4080,21 +4067,26 @@ if __name__ == "__main__":
                         help='Save on database bad files to prevent '
                              'continuous uploading attempts. Bad files are '
                              'files in your Library that flickr does not '
-                             'recognize (Error 5) or are too large (Error 8). '
-                             'Check also option -c.')
+                             'recognize (Error 5). Check also option -c.')
     # cater for bad files. files in your Library that flickr does not recognize
     # -c clears the badfiles table to allow a reset of the list
     parser.add_argument('-c', '--clean-bad-files', action='store_true',
                         help='Resets the badfiles table/list to allow a new '
                              'uploading attempt for bad files. Bad files are '
                              'files in your Library that flickr does not '
-                             'recognize (Error 5) or are too large (Error 8). '
-                             'Check also option -b.')
+                             'recognize (Error 5). Check also option -b. ')
     # finds duplicated images (based on checksum, titlename, setName) in Flickr
     parser.add_argument('-z', '--search-for-duplicates', action='store_true',
                         help='Lists duplicated files: same checksum, '
                              'same title, list SetName (if different). '
                              'Not operational at this time.')
+    # Walk files only
+    parser.add_argument('-w', '--walk-files-only', action='store_true',
+                        help='Scan files to populate database')    
+    # Disable walk files to save time an use current files in allfiles database
+    parser.add_argument('-f', '--fast-upload', action='store_true',
+                        help='Disable walk files to upload directly')                         
+                                         
 
     # parse arguments
     args = parser.parse_args()
@@ -4132,7 +4124,7 @@ if __name__ == "__main__":
     # Setup the database
     flick.setupDB()
     if (args.clean_bad_files):
-        flick.cleanDBbadfiles()
+        flick.cleanDB('badfiles')
 
     if args.daemon:
         # Will run in daemon mode every SLEEP_TIME seconds
@@ -4149,7 +4141,7 @@ if __name__ == "__main__":
         flick.getFlickrSets()
         flick.convertRawFiles()
         flick.upload()
-        flick.removeDeletedMedia()
+        # flick.removeDeletedMedia()
 
         if args.search_for_duplicates:
             flick.searchForDuplicates()
@@ -4158,7 +4150,7 @@ if __name__ == "__main__":
             flick.removeIgnoredMedia()
 
         flick.createSets()
-        flick.printStat(UPLDRConstants.nuMediacount)
+        flick.printStat(nuMediacount)
 
 niceprint('--------- (V{!s}) End time: {!s} ---------'
           .format(UPLDRConstants.Version,
